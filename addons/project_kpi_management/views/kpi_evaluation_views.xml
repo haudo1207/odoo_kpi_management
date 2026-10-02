@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="kpi_evaluation_view_list" model="ir.ui.view">
+        <field name="name">kpi.evaluation.list</field>
+        <field name="model">kpi.evaluation</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="employee_id"/>
+                <field name="period_id"/>
+                <field name="job_id" optional="show"/>
+                <field name="department_id" optional="show"/>
+                <field name="kpi_score" optional="hide"/>
+                <field name="final_score"/>
+                <field name="final_rating"/>
+                <field name="insufficient_data" optional="show"/>
+                <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-warning="state == 'submitted'" decoration-success="state == 'approved'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="kpi_evaluation_view_form" model="ir.ui.view">
+        <field name="name">kpi.evaluation.form</field>
+        <field name="model">kpi.evaluation</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_submit" string="Gửi duyệt" type="object" class="btn-primary" invisible="state != 'draft' or not id"/>
+                    <button name="action_approve" string="Duyệt" type="object" class="btn-primary" invisible="state != 'submitted'"/>
+                    <button name="action_return_draft" string="Trả về nháp" type="object" invisible="state != 'submitted'"/>
+                    <button name="action_reopen" string="Mở lại" type="object" invisible="state != 'approved'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-warning" role="alert" invisible="not insufficient_data or not id">
+                        Không đủ dữ liệu đánh giá: trọng số được áp dụng là <field name="applicable_weight" class="oe_inline"/>%.
+                        Hệ thống không tự xếp loại. Hãy chọn xếp loại thủ công và ghi lý do trước khi gửi duyệt.
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" invisible="not id"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="employee_id" readonly="id"/>
+                            <field name="period_id" readonly="id" domain="[('state', '=', 'open')]"/>
+                            <field name="template_id" readonly="id"/>
+                        </group>
+                        <group>
+                            <field name="job_id"/>
+                            <field name="department_id"/>
+                        </group>
+                    </group>
+                    <group invisible="not id">
+                        <group string="Điểm">
+                            <field name="kpi_score"/>
+                            <field name="manager_adjustment" readonly="state != 'draft'"/>
+                            <field name="adjustment_note" readonly="state != 'draft'" required="manager_adjustment != 0"
+                                   invisible="manager_adjustment == 0 and not adjustment_note"/>
+                            <field name="final_score" class="fw-bold"/>
+                        </group>
+                        <group string="Xếp loại">
+                            <field name="rating" invisible="insufficient_data"/>
+                            <field name="manual_rating" invisible="not insufficient_data" readonly="state != 'draft'"/>
+                            <field name="manual_rating_note" invisible="not insufficient_data" readonly="state != 'draft'"/>
+                            <field name="final_rating" class="fw-bold"/>
+                        </group>
+                    </group>
+                    <notebook invisible="not id">
+                        <page string="Chỉ số" name="lines">
+                            <field name="line_ids" readonly="state != 'draft'">
+                                <list editable="bottom" create="0" delete="0"
+                                      decoration-muted="not is_applicable">
+                                    <field name="sequence" column_invisible="1"/>
+                                    <field name="evaluation_state" column_invisible="1"/>
+                                    <field name="metric_id" readonly="1"/>
+                                    <field name="compute_mode" optional="hide"/>
+                                    <field name="target"/>
+                                    <field name="unit"/>
+                                    <field name="weight" readonly="1"/>
+                                    <field name="min_volume" optional="hide" readonly="1"/>
+                                    <field name="volume" optional="show" readonly="1"/>
+                                    <field name="actual" readonly="compute_mode == 'auto'"/>
+                                    <field name="actual_entered" invisible="compute_mode != 'manual'"/>
+                                    <field name="is_applicable"/>
+                                    <field name="score"/>
+                                    <field name="weighted_score" optional="show"/>
+                                    <field name="remark" optional="show"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="kpi_evaluation_view_search" model="ir.ui.view">
+        <field name="name">kpi.evaluation.search</field>
+        <field name="model">kpi.evaluation</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="employee_id"/>
+                <field name="period_id"/>
+                <field name="department_id"/>
+                <field name="job_id"/>
+                <filter name="draft" string="Nháp" domain="[('state', '=', 'draft')]"/>
+                <filter name="submitted" string="Đã gửi" domain="[('state', '=', 'submitted')]"/>
+                <filter name="approved" string="Đã duyệt" domain="[('state', '=', 'approved')]"/>
+                <separator/>
+                <filter name="insufficient" string="Không đủ dữ liệu đánh giá" domain="[('insufficient_data', '=', True)]"/>
+                <filter name="adjusted" string="Có điều chỉnh điểm" domain="[('manager_adjustment', '!=', 0)]"/>
+                <filter name="group_period" string="Kỳ" context="{'group_by': 'period_id'}"/>
+                <filter name="group_department" string="Phòng ban" context="{'group_by': 'department_id'}"/>
+                <filter name="group_job" string="Chức danh" context="{'group_by': 'job_id'}"/>
+                <filter name="group_rating" string="Xếp loại" context="{'group_by': 'final_rating'}"/>
+                <filter name="group_state" string="Trạng thái" context="{'group_by': 'state'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="kpi_evaluation_action" model="ir.actions.act_window">
+        <field name="name">Phiếu đánh giá</field>
+        <field name="res_model">kpi.evaluation</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="kpi_evaluation_reason_wizard_view_form" model="ir.ui.view">
+        <field name="name">kpi.evaluation.reason.wizard.form</field>
+        <field name="model">kpi.evaluation.reason.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <group>
+                    <field name="evaluation_id" readonly="1"/>
+                    <field name="mode" invisible="1"/>
+                    <field name="reason" placeholder="Lý do sẽ được lưu vào lịch sử phiếu"/>
+                </group>
+                <footer>
+                    <button name="action_confirm" string="Xác nhận" type="object" class="btn-primary"/>
+                    <button string="Huỷ" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="kpi_period_view_list" model="ir.ui.view">
+        <field name="name">kpi.period.list</field>
+        <field name="model">kpi.period</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="period_type"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="state" widget="badge" decoration-success="state == 'open'" decoration-muted="state == 'closed'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="kpi_period_view_form" model="ir.ui.view">
+        <field name="name">kpi.period.form</field>
+        <field name="model">kpi.period</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_close" string="Đóng kỳ" type="object" invisible="state != 'open'"/>
+                    <button name="action_open" string="Mở lại kỳ" type="object" invisible="state != 'closed'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="VD: Tháng 10/2026"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="period_type"/>
+                        </group>
+                        <group>
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="kpi_period_action" model="ir.actions.act_window">
+        <field name="name">Kỳ đánh giá</field>
+        <field name="res_model">kpi.period</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

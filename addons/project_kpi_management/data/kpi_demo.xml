@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Chỉ nạp khi database có demo data. Các bản ghi demo của module khác có cờ noupdate,
+         nên chỉ áp dụng khi cài mới (-i), lệnh -u bỏ qua -->
+
+    <!-- hr.job_developer là bản ghi demo của module hr -->
+    <record id="hr.job_developer" model="hr.job">
+        <field name="kpi_template_id" ref="kpi_template_developer"/>
+    </record>
+
+    <!-- Stage "Done" của project demo khai báo fold = False, làm date_end không được ghi (hỏng D1, D7) -->
+    <record id="project.project_stage_2" model="project.task.type">
+        <field name="fold" eval="True"/>
+    </record>
+
+    <record id="kpi_period_current_month" model="kpi.period">
+        <field name="name" eval="'Tháng ' + DateTime.today().strftime('%m/%Y')"/>
+        <field name="period_type">month</field>
+        <field name="date_from" eval="DateTime.today().replace(day=1).strftime('%Y-%m-%d')"/>
+        <field name="date_to" eval="((DateTime.today().replace(day=28) + relativedelta(days=4)).replace(day=1) - relativedelta(days=1)).strftime('%Y-%m-%d')"/>
+    </record>
+</odoo>

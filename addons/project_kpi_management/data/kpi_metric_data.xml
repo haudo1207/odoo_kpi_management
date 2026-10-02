@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- noupdate: lệnh -u không ghi đè các chỉnh sửa trên giao diện -->
+    <data noupdate="1">
+        <record id="kpi_metric_d1" model="kpi.metric">
+            <field name="code">D1</field>
+            <field name="name">Hoàn thành đúng hạn</field>
+            <field name="category">delivery</field>
+            <field name="unit">%</field>
+            <field name="direction">higher</field>
+            <field name="compute_mode">auto</field>
+            <field name="description">Task xong đúng hạn / Task có deadline trong kỳ × 100. Nguồn: date_end, date_deadline. Task quá hạn mà chưa xong cũng tính là trễ. Bỏ qua task 1_canceled.</field>
+        </record>
+
+        <record id="kpi_metric_d2" model="kpi.metric">
+            <field name="code">D2</field>
+            <field name="name">Story point hoàn thành</field>
+            <field name="category">delivery</field>
+            <field name="unit">SP</field>
+            <field name="direction">higher</field>
+            <field name="compute_mode">auto</field>
+            <field name="description">Tổng story_points của task Done trong kỳ. Mục tiêu đặt theo team, quản lý sửa trên phiếu Nháp.</field>
+        </record>
+
+        <record id="kpi_metric_d3" model="kpi.metric">
+            <field name="code">D3</field>
+            <field name="name">Mật độ lỗi</field>
+            <field name="category">quality</field>
+            <field name="unit">bug/SP</field>
+            <field name="direction">lower</field>
+            <field name="compute_mode">auto</field>
+            <field name="description">Bug tính KPI / SP hoàn thành. Bug tính KPI: bug_resolution ∈ {valid, wont_fix} và bug_root_cause = code. Quy bug về người được giao và kỳ (date_end) của task gốc.</field>
+        </record>
+
+        <record id="kpi_metric_d4" model="kpi.metric">
+            <field name="code">D4</field>
+            <field name="name">Lỗi lọt production</field>
+            <field name="category">quality</field>
+            <field name="unit">%</field>
+            <field name="direction">lower</field>
+            <field name="compute_mode">auto</field>
+            <field name="description">Bug production tính KPI / Tổng bug tính KPI × 100. Nguồn: is_production_bug. Quy bug như D3.</field>
+        </record>
+
+        <record id="kpi_metric_d5" model="kpi.metric">
+            <field name="code">D5</field>
+            <field name="name">Pass review lần đầu</field>
+            <field name="category">process</field>
+            <field name="unit">%</field>
+            <field name="direction">higher</field>
+            <field name="compute_mode">auto</field>
+            <field name="description">Task được duyệt mà chưa từng bị trả về / Task đã duyệt × 100. Proxy: review_reject_count.</field>
+        </record>
+
+        <record id="kpi_metric_d6" model="kpi.metric">
+            <field name="code">D6</field>
+            <field name="name">Có unit test</field>
+            <field name="category">process</field>
+            <field name="unit">%</field>
+            <field name="direction">higher</field>
+            <field name="compute_mode">auto</field>
+            <field name="description">Task Feature có unit test / Task Feature Done × 100. Proxy: has_unit_test, chỉ quản lý được sửa.</field>
+        </record>
+
+        <record id="kpi_metric_d7" model="kpi.metric">
+            <field name="code">D7</field>
+            <field name="name">Thời gian sửa bug nghiêm trọng</field>
+            <field name="category">quality</field>
+            <field name="unit">giờ</field>
+            <field name="direction">lower</field>
+            <field name="compute_mode">auto</field>
+            <field name="description">Trung bình working_hours_close của bug priority High/Urgent. Quy cho người được giao chính bug, theo date_end của bug.</field>
+        </record>
+
+        <record id="kpi_metric_d8" model="kpi.metric">
+            <field name="code">D8</field>
+            <field name="name">Chia sẻ kiến thức</field>
+            <field name="category">collaboration</field>
+            <field name="unit">sự kiện</field>
+            <field name="direction">higher</field>
+            <field name="compute_mode">auto</field>
+            <field name="description">Số sự kiện calendar.event gắn nhãn "Chia sẻ kiến thức" do nhân viên tổ chức trong kỳ.</field>
+        </record>
+
+        <record id="kpi_metric_d9" model="kpi.metric">
+            <field name="code">D9</field>
+            <field name="name">Đánh giá của quản lý</field>
+            <field name="category">collaboration</field>
+            <field name="unit">điểm</field>
+            <field name="direction">higher</field>
+            <field name="compute_mode">manual</field>
+            <field name="description">Quản lý chấm thang 1–5: làm việc nhóm, hỗ trợ đồng nghiệp, thái độ. Bắt buộc nhập trước khi Gửi duyệt.</field>
+        </record>
+    </data>
+</odoo>

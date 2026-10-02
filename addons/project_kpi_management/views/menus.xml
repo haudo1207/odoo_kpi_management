@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_kpi_root" name="KPI" sequence="60"/>
+
+    <menuitem id="menu_kpi_evaluation_root" name="Đánh giá" parent="menu_kpi_root" sequence="10"/>
+    <menuitem id="menu_kpi_evaluation" name="Phiếu đánh giá" parent="menu_kpi_evaluation_root" action="kpi_evaluation_action" sequence="10"/>
+
+    <menuitem id="menu_kpi_config" name="Cấu hình" parent="menu_kpi_root" sequence="100"/>
+    <menuitem id="menu_kpi_metric" name="Chỉ số KPI" parent="menu_kpi_config" action="kpi_metric_action" sequence="10"/>
+    <menuitem id="menu_kpi_template" name="Bộ KPI" parent="menu_kpi_config" action="kpi_template_action" sequence="20"/>
+    <menuitem id="menu_kpi_period" name="Kỳ đánh giá" parent="menu_kpi_config" action="kpi_period_action" sequence="30"/>
+</odoo>

@@ -1,0 +1,28 @@
+{
+    "name": "Project KPI & Performance Management",
+    "version": "19.0.1.0.0",
+    "summary": "Đánh giá KPI nhân viên theo kỳ từ dữ liệu Odoo Project",
+    "category": "Services/Project",
+    "author": "Nam4",
+    "license": "LGPL-3",
+    "depends": ["project", "hr", "calendar"],
+    "data": [
+        "security/ir.model.access.csv",
+        "data/kpi_metric_data.xml",
+        "data/kpi_template_data.xml",
+        "data/ir_cron_data.xml",
+        "views/kpi_metric_views.xml",
+        "views/kpi_template_views.xml",
+        "views/kpi_period_views.xml",
+        "views/kpi_evaluation_views.xml",
+        "views/hr_job_views.xml",
+        "views/project_task_views.xml",
+        "views/menus.xml",
+    ],
+    "demo": [
+        "data/kpi_demo.xml",
+    ],
+    "post_init_hook": "post_init_hook",
+    "application": True,
+    "installable": True,
+}

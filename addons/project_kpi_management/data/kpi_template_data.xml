@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Dòng khai báo ngay trong template bằng (0, 0, {...}) để ràng buộc tổng trọng số được kiểm tra khi nạp -->
+        <record id="kpi_template_developer" model="kpi.template">
+            <field name="name">Developer</field>
+            <field name="description">Bộ KPI chuẩn cho lập trình viên, đánh giá theo nhân viên và theo kỳ.</field>
+            <field name="line_ids" eval="[
+                (0, 0, {'sequence': 1, 'metric_id': ref('kpi_metric_d1'), 'target': 90, 'weight': 20, 'min_volume': 3}),
+                (0, 0, {'sequence': 2, 'metric_id': ref('kpi_metric_d2'), 'target': 20, 'weight': 10, 'min_volume': 0}),
+                (0, 0, {'sequence': 3, 'metric_id': ref('kpi_metric_d3'), 'target': 0.3, 'weight': 15, 'min_volume': 1}),
+                (0, 0, {'sequence': 4, 'metric_id': ref('kpi_metric_d4'), 'target': 5, 'weight': 15, 'min_volume': 1}),
+                (0, 0, {'sequence': 5, 'metric_id': ref('kpi_metric_d5'), 'target': 80, 'weight': 10, 'min_volume': 3}),
+                (0, 0, {'sequence': 6, 'metric_id': ref('kpi_metric_d6'), 'target': 70, 'weight': 10, 'min_volume': 1}),
+                (0, 0, {'sequence': 7, 'metric_id': ref('kpi_metric_d7'), 'target': 24, 'weight': 5, 'min_volume': 1}),
+                (0, 0, {'sequence': 8, 'metric_id': ref('kpi_metric_d8'), 'target': 1, 'weight': 5, 'min_volume': 0}),
+                (0, 0, {'sequence': 9, 'metric_id': ref('kpi_metric_d9'), 'target': 4, 'weight': 10, 'min_volume': 0}),
+            ]"/>
+        </record>
+    </data>
+</odoo>

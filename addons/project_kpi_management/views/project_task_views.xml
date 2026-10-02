@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="project_task_view_form_inherit_kpi" model="ir.ui.view">
+        <field name="name">project.task.form.inherit.kpi</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_form2"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='description_page']" position="after">
+                <page name="kpi_page" string="Thông tin KPI">
+                    <group>
+                        <group string="Phân loại">
+                            <field name="task_type" widget="radio" options="{'horizontal': true}"/>
+                            <field name="story_points"/>
+                            <field name="has_unit_test" invisible="task_type != 'feature'"/>
+                        </group>
+                        <group string="Theo dõi">
+                            <field name="days_late" decoration-danger="days_late &gt; 0"/>
+                            <field name="review_reject_count"/>
+                        </group>
+                    </group>
+                    <group string="Thông tin bug" invisible="task_type != 'bug'">
+                        <group>
+                            <field name="origin_task_id"/>
+                            <field name="is_production_bug"/>
+                        </group>
+                        <group>
+                            <field name="bug_resolution"/>
+                            <field name="bug_root_cause"/>
+                        </group>
+                    </group>
+                    <group string="Bug phát sinh từ task này" invisible="not bug_ids">
+                        <field name="bug_ids" nolabel="1" colspan="2" readonly="1">
+                            <list>
+                                <field name="name"/>
+                                <field name="user_ids" widget="many2many_avatar_user"/>
+                                <field name="is_production_bug"/>
+                                <field name="bug_resolution"/>
+                                <field name="bug_root_cause"/>
+                                <field name="state"/>
+                            </list>
+                        </field>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="project_task_view_list_inherit_kpi" model="ir.ui.view">
+        <field name="name">project.task.list.inherit.kpi</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_tree2"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="task_type" optional="show"/>
+                <field name="story_points" optional="show" sum="Tổng SP"/>
+                <field name="days_late" optional="show" decoration-danger="days_late &gt; 0"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="project_task_view_search_inherit_kpi" model="ir.ui.view">
+        <field name="name">project.task.search.inherit.kpi</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_search_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='closed_tasks']" position="after">
+                <separator/>
+                <filter name="kpi_bug" string="Bug" domain="[('task_type', '=', 'bug')]"/>
+                <filter name="kpi_production_bug" string="Lỗi production" domain="[('task_type', '=', 'bug'), ('is_production_bug', '=', True)]"/>
+                <filter name="kpi_late" string="Trễ hạn" domain="[('days_late', '&gt;', 0)]"/>
+                <filter name="kpi_rejected" string="Bị trả về" domain="[('review_reject_count', '&gt;', 0)]"/>
+                <separator/>
+                <filter name="kpi_bug_unclassified" string="Bug chưa phân loại"
+                        domain="[('task_type', '=', 'bug'), '|', ('bug_resolution', '=', False), ('bug_root_cause', '=', False)]"/>
+                <filter name="kpi_bug_no_origin" string="Bug thiếu task gốc"
+                        domain="[('task_type', '=', 'bug'), ('origin_task_id', '=', False)]"/>
+                <filter name="kpi_group_task_type" string="Loại task" context="{'group_by': 'task_type'}"/>
+                <filter name="kpi_group_root_cause" string="Nguyên nhân bug" context="{'group_by': 'bug_root_cause'}"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,8 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_kpi_metric_user,kpi.metric.user,model_kpi_metric,base.group_user,1,1,1,1
+access_kpi_template_user,kpi.template.user,model_kpi_template,base.group_user,1,1,1,1
+access_kpi_template_line_user,kpi.template.line.user,model_kpi_template_line,base.group_user,1,1,1,1
+access_kpi_period_user,kpi.period.user,model_kpi_period,base.group_user,1,1,1,1
+access_kpi_evaluation_user,kpi.evaluation.user,model_kpi_evaluation,base.group_user,1,1,1,1
+access_kpi_evaluation_line_user,kpi.evaluation.line.user,model_kpi_evaluation_line,base.group_user,1,1,1,1
+access_kpi_evaluation_reason_wizard_user,kpi.evaluation.reason.wizard.user,model_kpi_evaluation_reason_wizard,base.group_user,1,1,1,1
