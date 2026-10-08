@@ -34,6 +34,7 @@ class TestKpiEvaluation(TransactionCase):
         """Giả lập engine: đặt thực tế và khối lượng đủ lớn cho mọi chỉ số."""
         for code, actual in actuals.items():
             self._line(ev, code).write({"actual": actual, "volume": 100})
+        ev.computed_date = "2026-10-31 12:00:00"
 
     def test_snapshot_from_template_and_employee(self):
         ev = self._evaluation()
@@ -90,6 +91,7 @@ class TestKpiEvaluation(TransactionCase):
     def test_insufficient_data_needs_manual_rating(self):
         ev = self._evaluation()
         self._line(ev, "D9").actual = 4  # chỉ D2, D8, D9 áp dụng: trọng số 25
+        ev.computed_date = "2026-10-31 12:00:00"
         self.assertTrue(ev.insufficient_data)
         self.assertFalse(ev.rating)
         with self.assertRaises(UserError):
@@ -110,6 +112,14 @@ class TestKpiEvaluation(TransactionCase):
         ev.write({"manager_adjustment": -10, "adjustment_note": "Thử ngưỡng"})
         self.assertAlmostEqual(ev.final_score, 90)
         self.assertEqual(ev.rating, "good")  # đúng 90 thuộc [90, 100)
+
+    def test_rating_uses_unrounded_score(self):
+        # D1 = 89.9964 → điểm 99.996 → KPI 99.9992. Nếu lưu làm tròn 2 số lẻ sẽ thành 100.00 (Xuất sắc)
+        ev = self._evaluation()
+        self._fill_all(ev, {"D1": 89.9964, "D2": 20, "D3": 0.3, "D4": 5, "D5": 80,
+                            "D6": 70, "D7": 24, "D8": 1, "D9": 4})
+        self.assertLess(ev.final_score, 100)
+        self.assertEqual(ev.rating, "good")
 
     def test_adjustment_rules(self):
         ev = self._evaluation()
@@ -165,6 +175,12 @@ class TestKpiEvaluation(TransactionCase):
         self._reason(ev, "reopen", "Duyệt nhầm")
         self.assertEqual(ev.state, "draft")
         self.assertIn("Duyệt nhầm", ev.message_ids[0].body)
+
+    def test_submit_requires_compute(self):
+        ev = self._evaluation()
+        self._line(ev, "D9").actual = 4
+        with self.assertRaises(UserError):
+            ev.action_submit()
 
     def test_approve_requires_submitted(self):
         ev = self._evaluation()

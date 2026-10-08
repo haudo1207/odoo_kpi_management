@@ -7,8 +7,10 @@
     "license": "LGPL-3",
     "depends": ["project", "hr", "calendar"],
     "data": [
+        "security/kpi_security.xml",
         "security/ir.model.access.csv",
         "data/kpi_metric_data.xml",
+        "data/kpi_calendar_data.xml",
         "data/kpi_template_data.xml",
         "data/ir_cron_data.xml",
         "views/kpi_metric_views.xml",

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- D8: sự kiện gắn nhãn này do nhân viên tổ chức được tính là một buổi chia sẻ kiến thức -->
+        <record id="calendar_event_type_knowledge_sharing" model="calendar.event.type">
+            <field name="name">Chia sẻ kiến thức</field>
+        </record>
+    </data>
+</odoo>

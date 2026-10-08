@@ -9,8 +9,8 @@
                 <field name="period_id"/>
                 <field name="job_id" optional="show"/>
                 <field name="department_id" optional="show"/>
-                <field name="kpi_score" optional="hide"/>
-                <field name="final_score"/>
+                <field name="kpi_score" optional="hide" digits="[16, 2]"/>
+                <field name="final_score" digits="[16, 2]"/>
                 <field name="final_rating"/>
                 <field name="insufficient_data" optional="show"/>
                 <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-warning="state == 'submitted'" decoration-success="state == 'approved'"/>
@@ -24,10 +24,18 @@
         <field name="arch" type="xml">
             <form>
                 <header>
-                    <button name="action_submit" string="Gửi duyệt" type="object" class="btn-primary" invisible="state != 'draft' or not id"/>
-                    <button name="action_approve" string="Duyệt" type="object" class="btn-primary" invisible="state != 'submitted'"/>
-                    <button name="action_return_draft" string="Trả về nháp" type="object" invisible="state != 'submitted'"/>
-                    <button name="action_reopen" string="Mở lại" type="object" invisible="state != 'approved'"/>
+                    <button name="action_compute_kpi" string="Tính KPI" type="object" class="btn-primary"
+                            invisible="state != 'draft' or not id or computed_date" groups="project_kpi_management.group_kpi_manager"/>
+                    <button name="action_compute_kpi" string="Tính lại KPI" type="object"
+                            invisible="state != 'draft' or not computed_date" groups="project_kpi_management.group_kpi_manager"/>
+                    <button name="action_submit" string="Gửi duyệt" type="object" class="btn-primary"
+                            invisible="state != 'draft' or not computed_date" groups="project_kpi_management.group_kpi_manager"/>
+                    <button name="action_approve" string="Duyệt" type="object" class="btn-primary"
+                            invisible="state != 'submitted'" groups="project_kpi_management.group_kpi_admin"/>
+                    <button name="action_return_draft" string="Trả về nháp" type="object"
+                            invisible="state != 'submitted'" groups="project_kpi_management.group_kpi_admin"/>
+                    <button name="action_reopen" string="Mở lại" type="object"
+                            invisible="state != 'approved'" groups="project_kpi_management.group_kpi_admin"/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
@@ -47,15 +55,16 @@
                         <group>
                             <field name="job_id"/>
                             <field name="department_id"/>
+                            <field name="computed_date" invisible="not computed_date"/>
                         </group>
                     </group>
                     <group invisible="not id">
                         <group string="Điểm">
-                            <field name="kpi_score"/>
+                            <field name="kpi_score" digits="[16, 2]"/>
                             <field name="manager_adjustment" readonly="state != 'draft'"/>
                             <field name="adjustment_note" readonly="state != 'draft'" required="manager_adjustment != 0"
                                    invisible="manager_adjustment == 0 and not adjustment_note"/>
-                            <field name="final_score" class="fw-bold"/>
+                            <field name="final_score" class="fw-bold" digits="[16, 2]"/>
                         </group>
                         <group string="Xếp loại">
                             <field name="rating" invisible="insufficient_data"/>
@@ -77,12 +86,12 @@
                                     <field name="unit"/>
                                     <field name="weight" readonly="1"/>
                                     <field name="min_volume" optional="hide" readonly="1"/>
-                                    <field name="volume" optional="show" readonly="1"/>
-                                    <field name="actual" readonly="compute_mode == 'auto'"/>
+                                    <field name="volume" optional="show" readonly="1" digits="[16, 2]"/>
+                                    <field name="actual" readonly="compute_mode == 'auto'" digits="[16, 4]"/>
                                     <field name="actual_entered" invisible="compute_mode != 'manual'"/>
                                     <field name="is_applicable"/>
-                                    <field name="score"/>
-                                    <field name="weighted_score" optional="show"/>
+                                    <field name="score" digits="[16, 2]"/>
+                                    <field name="weighted_score" optional="show" digits="[16, 2]"/>
                                     <field name="remark" optional="show"/>
                                 </list>
                             </field>

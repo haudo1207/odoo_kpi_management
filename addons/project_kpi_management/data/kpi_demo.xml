@@ -19,4 +19,7 @@
         <field name="date_from" eval="DateTime.today().replace(day=1).strftime('%Y-%m-%d')"/>
         <field name="date_to" eval="((DateTime.today().replace(day=28) + relativedelta(days=4)).replace(day=1) - relativedelta(days=1)).strftime('%Y-%m-%d')"/>
     </record>
+
+    <!-- Kịch bản 3 nhân viên ở tháng trước, dùng cho bảng tính tay và demo (models/kpi_demo.py) -->
+    <function model="kpi.demo" name="_load_scenario"/>
 </odoo>

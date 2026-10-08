@@ -1,7 +1,7 @@
 import pytz
 
 from odoo import api, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, ValidationError
 
 
 class ProjectTask(models.Model):
@@ -46,10 +46,20 @@ class ProjectTask(models.Model):
 
     # D5, D6
     review_reject_count = fields.Integer("Số lần bị trả về", readonly=True, copy=False)
+    review_approve_count = fields.Integer(
+        "Số lần được duyệt", readonly=True, copy=False,
+        help="Task có số lần được duyệt hoặc bị trả về > 0 là task đã qua review (mẫu số của D5).",
+    )
     has_unit_test = fields.Boolean("Có unit test", tracking=True)
+    kpi_can_review = fields.Boolean(compute="_compute_kpi_can_review")
 
     # D1: số ngày trễ, đo cả khi đã hoàn thành
     days_late = fields.Integer("Số ngày trễ", compute="_compute_days_late", store=True)
+
+    def _compute_kpi_can_review(self):
+        can_review = self.env.user.has_group("project_kpi_management.group_kpi_manager")
+        for task in self:
+            task.kpi_can_review = can_review
 
     @api.constrains("origin_task_id")
     def _check_origin_task(self):
@@ -82,17 +92,29 @@ class ProjectTask(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        if any(vals.get("has_unit_test") for vals in vals_list) and not self.env.su and \
+                not self.env.user.has_group("project_kpi_management.group_kpi_manager"):
+            raise AccessError("Chỉ quản lý KPI được xác nhận task có unit test.")
         tasks = super().create(vals_list)
         tasks._ensure_date_end()
         return tasks
 
     def write(self, vals):
-        rejected = self.browse()
+        # D6: has_unit_test là căn cứ chấm điểm, chỉ quản lý KPI được xác nhận
+        if "has_unit_test" in vals and not self.env.su and \
+                not self.env.user.has_group("project_kpi_management.group_kpi_manager"):
+            raise AccessError("Chỉ quản lý KPI được xác nhận task có unit test.")
+        # Lọc trước super(): sau khi ghi thì không còn biết trạng thái cũ
+        rejected = approved = self.browse()
         if vals.get("state") == "02_changes_requested":
             rejected = self.filtered(lambda t: t.state != "02_changes_requested")
+        elif vals.get("state") == "03_approved":
+            approved = self.filtered(lambda t: t.state != "03_approved")
         res = super().write(vals)
         for task in rejected:
             task.review_reject_count += 1
+        for task in approved:
+            task.review_approve_count += 1
         # Chạy sau super(): Odoo xoá date_end khi task sang stage không fold
         if {"state", "stage_id", "date_end"} & vals.keys():
             self._ensure_date_end()

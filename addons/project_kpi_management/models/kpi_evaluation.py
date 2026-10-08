@@ -1,5 +1,5 @@
 from odoo import api, fields, models
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
 
 RATINGS = [
     ("excellent", "Xuất sắc"),
@@ -22,6 +22,10 @@ PARAM_DEFAULTS = {
 def get_kpi_param(env, key):
     value = env["ir.config_parameter"].sudo().get_param(f"project_kpi_management.{key}")
     return float(value) if value else PARAM_DEFAULTS[key]
+
+
+# Điểm và giá trị thực tế lưu đủ độ chính xác (không khai báo digits): xếp loại so trên giá trị
+# chưa làm tròn, D3 (bug/SP) cần nhiều chữ số lẻ. Làm tròn chỉ ở view, bằng thuộc tính digits.
 
 
 class KpiEvaluation(models.Model):
@@ -52,12 +56,14 @@ class KpiEvaluation(models.Model):
         tracking=True,
     )
 
+    computed_date = fields.Datetime("Tính KPI lúc", readonly=True, copy=False)
+
     applicable_weight = fields.Integer("Trọng số được áp dụng", compute="_compute_kpi_score", store=True)
     insufficient_data = fields.Boolean("Không đủ dữ liệu đánh giá", compute="_compute_kpi_score", store=True)
-    kpi_score = fields.Float("Điểm KPI", digits=(16, 2), compute="_compute_kpi_score", store=True)
+    kpi_score = fields.Float("Điểm KPI", compute="_compute_kpi_score", store=True)
     manager_adjustment = fields.Float("Điều chỉnh của quản lý", digits=(16, 2), tracking=True)
     adjustment_note = fields.Text("Lý do điều chỉnh")
-    final_score = fields.Float("Điểm cuối", digits=(16, 2), compute="_compute_final_score", store=True, tracking=True)
+    final_score = fields.Float("Điểm cuối", compute="_compute_final_score", store=True, tracking=True)
     rating = fields.Selection(RATINGS, string="Xếp loại tự động", compute="_compute_final_score", store=True)
     manual_rating = fields.Selection(RATINGS, string="Xếp loại thủ công", tracking=True)
     manual_rating_note = fields.Text("Lý do xếp loại thủ công")
@@ -132,7 +138,8 @@ class KpiEvaluation(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        Employee = self.env["hr.employee"]
+        # sudo: quản lý KPI không thuộc nhóm HR vẫn cần đọc chức danh, phòng ban (nằm ở hr.version)
+        Employee = self.env["hr.employee"].sudo()
         for vals in vals_list:
             employee = Employee.browse(vals.get("employee_id"))
             vals.setdefault("job_id", employee.job_id.id)
@@ -168,12 +175,34 @@ class KpiEvaluation(models.Model):
             raise UserError("Chỉ xoá được phiếu ở trạng thái Nháp.")
         return super().unlink()
 
+    # ---- Tính KPI ----
+
+    def action_compute_kpi(self):
+        """Lấy số liệu thực tế cho các chỉ số tự động. Điểm tự tính lại qua compute."""
+        engine = self.env["kpi.engine"]
+        for ev in self:
+            if ev.state != "draft":
+                raise UserError(f"Phiếu {ev.name} không ở trạng thái Nháp, không tính lại được.")
+            for line in ev.line_ids.filtered(lambda l: l.compute_mode == "auto"):
+                actual, volume = engine.compute_actual(
+                    line.metric_id, ev.employee_id, ev.period_id.date_from, ev.period_id.date_to
+                )
+                line.write({"actual": actual, "volume": volume})
+            ev.computed_date = fields.Datetime.now()
+        return True
+
     # ---- Quy trình: Nháp → Đã gửi → Đã duyệt ----
+
+    def _check_kpi_admin(self):
+        if not self.env.su and not self.env.user.has_group("project_kpi_management.group_kpi_admin"):
+            raise AccessError("Chỉ KPI Administrator được duyệt, trả về hoặc mở lại phiếu.")
 
     def action_submit(self):
         for ev in self:
             if ev.state != "draft":
                 raise UserError("Chỉ gửi duyệt được phiếu ở trạng thái Nháp.")
+            if not ev.computed_date:
+                raise UserError(f"Phiếu {ev.name} chưa Tính KPI.")
             missing = ev.line_ids.filtered(lambda l: l.compute_mode == "manual" and not l.actual_entered)
             if missing:
                 raise UserError(
@@ -185,11 +214,14 @@ class KpiEvaluation(models.Model):
                     "Hãy chọn xếp loại thủ công và ghi lý do." % ev.applicable_weight
                 )
         self.write({"state": "submitted"})
+        return True
 
     def action_approve(self):
+        self._check_kpi_admin()
         if self.filtered(lambda e: e.state != "submitted"):
             raise UserError("Chỉ duyệt được phiếu đã gửi.")
         self.write({"state": "approved"})
+        return True
 
     def action_return_draft(self):
         return self._open_reason_wizard("return")
@@ -199,6 +231,7 @@ class KpiEvaluation(models.Model):
 
     def _open_reason_wizard(self, mode):
         self.ensure_one()
+        self._check_kpi_admin()
         return {
             "type": "ir.actions.act_window",
             "name": "Trả về nháp" if mode == "return" else "Mở lại phiếu",
@@ -225,12 +258,12 @@ class KpiEvaluationLine(models.Model):
     target = fields.Float("Mục tiêu", digits=(16, 2))
     weight = fields.Integer("Trọng số (%)")
     min_volume = fields.Float("Khối lượng tối thiểu", digits=(16, 2))
-    volume = fields.Float("Khối lượng", digits=(16, 2), help="Engine tính ở Phase 4. Dưới khối lượng tối thiểu thì Không áp dụng.")
-    actual = fields.Float("Thực tế", digits=(16, 2))
+    volume = fields.Float("Khối lượng", help="Engine tính ở Phase 4. Dưới khối lượng tối thiểu thì Không áp dụng.")
+    actual = fields.Float("Thực tế")
     actual_entered = fields.Boolean("Đã chấm", help="Chỉ số nhập tay đã được chấm. Tự bật khi sửa giá trị Thực tế.")
     is_applicable = fields.Boolean("Áp dụng", compute="_compute_score", store=True)
-    score = fields.Float("Điểm", digits=(16, 2), compute="_compute_score", store=True)
-    weighted_score = fields.Float("Điểm đóng góp", digits=(16, 2), compute="_compute_score", store=True)
+    score = fields.Float("Điểm", compute="_compute_score", store=True)
+    weighted_score = fields.Float("Điểm đóng góp", compute="_compute_score", store=True)
     remark = fields.Text("Ghi chú")
 
     @api.depends("actual", "target", "volume", "min_volume", "weight", "metric_id.direction")

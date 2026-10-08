@@ -47,6 +47,9 @@ class TestProjectTask(TransactionCase):
         task.write({"state": "01_in_progress"})
         task.write({"state": "02_changes_requested"})
         self.assertEqual(task.review_reject_count, 2)
+        task.write({"state": "03_approved"})
+        task.write({"state": "03_approved"})  # ghi lại cùng trạng thái: không đếm
+        self.assertEqual(task.review_approve_count, 1)
 
     def test_days_late(self):
         now = fields.Datetime.now()

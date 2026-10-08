@@ -13,6 +13,7 @@ class KpiEvaluationReasonWizard(models.TransientModel):
     def action_confirm(self):
         self.ensure_one()
         ev = self.evaluation_id
+        ev._check_kpi_admin()
         expected = "submitted" if self.mode == "return" else "approved"
         if ev.state != expected:
             raise UserError("Trạng thái phiếu đã thay đổi, hãy tải lại trang.")

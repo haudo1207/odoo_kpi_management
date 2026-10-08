@@ -11,10 +11,12 @@
                         <group string="Phân loại">
                             <field name="task_type" widget="radio" options="{'horizontal': true}"/>
                             <field name="story_points"/>
-                            <field name="has_unit_test" invisible="task_type != 'feature'"/>
+                            <field name="kpi_can_review" invisible="1"/>
+                            <field name="has_unit_test" invisible="task_type != 'feature'" readonly="not kpi_can_review"/>
                         </group>
                         <group string="Theo dõi">
                             <field name="days_late" decoration-danger="days_late &gt; 0"/>
+                            <field name="review_approve_count"/>
                             <field name="review_reject_count"/>
                         </group>
                     </group>
