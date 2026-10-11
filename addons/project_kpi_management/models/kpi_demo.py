@@ -45,10 +45,21 @@ class KpiDemo(models.AbstractModel):
         })
         xmlids.append(("demo_period_previous_month", period))
 
-        # Quản lý trực tiếp: Marc Demo (KPI Manager). Admin là KPI Administrator.
-        manager_user = self.env.ref("base.user_demo")
-        manager_user.group_ids = [(4, self.env.ref(XMLID % "group_kpi_manager").id)]
-        manager_employee = manager_user.employee_ids[:1]
+        # Quản lý trực tiếp: tự tạo, không mượn nhân viên demo gốc của Odoo (base.user_demo),
+        # để kịch bản mẫu của module KPI không lẫn tên/phòng ban tiếng Anh của Odoo.
+        dev_job = self.env.ref(XMLID % "hr_job_developer")
+        department = dev_job.department_id
+        manager_user = self.env["res.users"].create({
+            "name": "Phạm Quốc Việt", "login": "quocviet", "password": "quocviet", "tz": tz.zone,
+            "group_ids": [(4, self.env.ref(XMLID % "group_kpi_manager").id)],
+        })
+        manager_employee = self.env["hr.employee"].create({
+            "name": "Phạm Quốc Việt",
+            "user_id": manager_user.id,
+            "job_id": self.env.ref(XMLID % "hr_job_manager").id,
+            "department_id": department.id,
+        })
+        xmlids += [("demo_user_manager", manager_user), ("demo_employee_manager", manager_employee)]
 
         employees = {}
         for key, name, login in (("an", "Nguyễn Văn An", "an"), ("binh", "Trần Thị Bình", "binh"), ("chi", "Lê Minh Chi", "chi")):
@@ -58,8 +69,8 @@ class KpiDemo(models.AbstractModel):
             employee = self.env["hr.employee"].create({
                 "name": name,
                 "user_id": user.id,
-                "job_id": self.env.ref("hr.job_developer").id,
-                "department_id": self.env.ref("hr.dep_rd").id,
+                "job_id": dev_job.id,
+                "department_id": department.id,
                 "parent_id": manager_employee.id,
             })
             employees[key] = employee

@@ -3,8 +3,20 @@
     <!-- Chỉ nạp khi database có demo data. Các bản ghi demo của module khác có cờ noupdate,
          nên chỉ áp dụng khi cài mới (-i), lệnh -u bỏ qua -->
 
-    <!-- hr.job_developer là bản ghi demo của module hr -->
-    <record id="hr.job_developer" model="hr.job">
+    <!-- Phòng ban, chức danh riêng của module KPI — không mượn dữ liệu demo gốc (hr.dep_rd,
+         hr.job_developer), để kịch bản mẫu không lẫn tên tiếng Anh / nhân sự demo của Odoo -->
+    <record id="hr_department_dev" model="hr.department">
+        <field name="name">Phòng Phát triển phần mềm</field>
+    </record>
+
+    <record id="hr_job_manager" model="hr.job">
+        <field name="name">Trưởng nhóm phát triển</field>
+        <field name="department_id" ref="hr_department_dev"/>
+    </record>
+
+    <record id="hr_job_developer" model="hr.job">
+        <field name="name">Lập trình viên</field>
+        <field name="department_id" ref="hr_department_dev"/>
         <field name="kpi_template_id" ref="kpi_template_developer"/>
     </record>
 
@@ -61,7 +73,7 @@
     </record>
     <record id="hr_job_tester" model="hr.job">
         <field name="name">Kiểm thử phần mềm (QA)</field>
-        <field name="department_id" ref="hr.dep_rd"/>
+        <field name="department_id" ref="hr_department_dev"/>
         <field name="kpi_template_id" ref="kpi_template_tester"/>
     </record>
 
