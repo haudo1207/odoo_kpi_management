@@ -20,6 +20,51 @@
         <field name="date_to" eval="((DateTime.today().replace(day=28) + relativedelta(days=4)).replace(day=1) - relativedelta(days=1)).strftime('%Y-%m-%d')"/>
     </record>
 
+    <!-- Phase 8: vai trò Tester chỉ cấu hình bằng dữ liệu, không sửa code.
+         Chỉ số nhập tay (compute_mode = manual): engine bỏ qua, quản lý nhập số trên phiếu -->
+    <record id="kpi_metric_t1" model="kpi.metric">
+        <field name="code">T1</field>
+        <field name="name">Test case thực hiện</field>
+        <field name="category">delivery</field>
+        <field name="unit">test case</field>
+        <field name="direction">higher</field>
+        <field name="compute_mode">manual</field>
+        <field name="description">Số test case đã thực thi trong kỳ, lấy từ công cụ quản lý test.</field>
+    </record>
+    <record id="kpi_metric_t2" model="kpi.metric">
+        <field name="code">T2</field>
+        <field name="name">Bug phát hiện trước release</field>
+        <field name="category">quality</field>
+        <field name="unit">bug</field>
+        <field name="direction">higher</field>
+        <field name="compute_mode">manual</field>
+        <field name="description">Số bug hợp lệ do tester phát hiện trước khi phát hành.</field>
+    </record>
+    <record id="kpi_metric_t3" model="kpi.metric">
+        <field name="code">T3</field>
+        <field name="name">Bug lọt production do bỏ sót</field>
+        <field name="category">quality</field>
+        <field name="unit">bug</field>
+        <field name="direction">lower</field>
+        <field name="compute_mode">manual</field>
+        <field name="description">Số bug production thuộc phạm vi đã được giao kiểm thử.</field>
+    </record>
+    <record id="kpi_template_tester" model="kpi.template">
+        <field name="name">Tester</field>
+        <field name="description">Bộ KPI cho kiểm thử viên: toàn bộ chỉ số nhập tay.</field>
+        <field name="line_ids" eval="[
+            (0, 0, {'sequence': 1, 'metric_id': ref('kpi_metric_t1'), 'target': 150, 'weight': 30}),
+            (0, 0, {'sequence': 2, 'metric_id': ref('kpi_metric_t2'), 'target': 20, 'weight': 30}),
+            (0, 0, {'sequence': 3, 'metric_id': ref('kpi_metric_t3'), 'target': 1, 'weight': 30}),
+            (0, 0, {'sequence': 4, 'metric_id': ref('kpi_metric_d9'), 'target': 4, 'weight': 10}),
+        ]"/>
+    </record>
+    <record id="hr_job_tester" model="hr.job">
+        <field name="name">Kiểm thử phần mềm (QA)</field>
+        <field name="department_id" ref="hr.dep_rd"/>
+        <field name="kpi_template_id" ref="kpi_template_tester"/>
+    </record>
+
     <!-- Kịch bản 3 nhân viên ở tháng trước, dùng cho bảng tính tay và demo (models/kpi_demo.py) -->
     <function model="kpi.demo" name="_load_scenario"/>
 </odoo>

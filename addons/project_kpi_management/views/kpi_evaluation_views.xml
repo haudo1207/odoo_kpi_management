@@ -39,6 +39,12 @@
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_late_bugs" type="object" class="oe_stat_button" icon="fa-bug"
+                                invisible="late_bug_count == 0">
+                            <field name="late_bug_count" widget="statinfo" string="Bug phát sinh muộn"/>
+                        </button>
+                    </div>
                     <div class="alert alert-warning" role="alert" invisible="not insufficient_data or not id">
                         Không đủ dữ liệu đánh giá: trọng số được áp dụng là <field name="applicable_weight" class="oe_inline"/>%.
                         Hệ thống không tự xếp loại. Hãy chọn xếp loại thủ công và ghi lý do trước khi gửi duyệt.
@@ -56,6 +62,7 @@
                             <field name="job_id"/>
                             <field name="department_id"/>
                             <field name="computed_date" invisible="not computed_date"/>
+                            <field name="approved_date" invisible="not approved_date"/>
                         </group>
                     </group>
                     <group invisible="not id">
@@ -127,10 +134,71 @@
         </field>
     </record>
 
+    <record id="kpi_evaluation_view_pivot" model="ir.ui.view">
+        <field name="name">kpi.evaluation.pivot</field>
+        <field name="model">kpi.evaluation</field>
+        <field name="arch" type="xml">
+            <pivot string="Phân tích phiếu đánh giá" sample="1">
+                <field name="department_id" type="row"/>
+                <field name="employee_id" type="row"/>
+                <field name="period_id" type="col"/>
+                <field name="final_score" type="measure" widget="float" digits="[16, 2]"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="kpi_evaluation_view_graph" model="ir.ui.view">
+        <field name="name">kpi.evaluation.graph</field>
+        <field name="model">kpi.evaluation</field>
+        <field name="arch" type="xml">
+            <graph string="Xu hướng điểm cuối" type="line" sample="1">
+                <field name="period_id"/>
+                <field name="final_score" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="kpi_evaluation_view_graph_rating" model="ir.ui.view">
+        <field name="name">kpi.evaluation.graph.rating</field>
+        <field name="model">kpi.evaluation</field>
+        <field name="arch" type="xml">
+            <graph string="Phân bố xếp loại" type="bar" sample="1">
+                <field name="final_rating"/>
+            </graph>
+        </field>
+    </record>
+
     <record id="kpi_evaluation_action" model="ir.actions.act_window">
         <field name="name">Phiếu đánh giá</field>
         <field name="res_model">kpi.evaluation</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">list,form,pivot,graph</field>
+    </record>
+
+    <!-- Báo cáo tổng hợp: mở thẳng biểu đồ xu hướng, chuyển sang pivot để xem theo phòng ban/nhân viên -->
+    <record id="kpi_evaluation_analysis_action" model="ir.actions.act_window">
+        <field name="name">Phân tích phiếu đánh giá</field>
+        <field name="res_model">kpi.evaluation</field>
+        <field name="view_mode">graph,pivot,list,form</field>
+        <field name="view_id" ref="kpi_evaluation_view_graph"/>
+    </record>
+
+    <record id="kpi_evaluation_rating_action" model="ir.actions.act_window">
+        <field name="name">Phân bố xếp loại</field>
+        <field name="res_model">kpi.evaluation</field>
+        <field name="view_mode">graph,list,form</field>
+        <field name="view_id" ref="kpi_evaluation_view_graph_rating"/>
+        <field name="context">{'search_default_group_period': 1}</field>
+    </record>
+
+    <!-- Phase 7: tính lại KPI cho nhiều phiếu từ danh sách (bỏ qua phiếu không ở Nháp) -->
+    <record id="kpi_evaluation_action_recompute" model="ir.actions.server">
+        <field name="name">Tính lại KPI</field>
+        <field name="model_id" ref="model_kpi_evaluation"/>
+        <field name="binding_model_id" ref="model_kpi_evaluation"/>
+        <field name="binding_view_types">list</field>
+        <field name="group_ids" eval="[(4, ref('project_kpi_management.group_kpi_manager'))]"/>
+        <field name="state">code</field>
+        <field name="code">records.filtered(lambda r: r.state == 'draft').action_compute_kpi()</field>
     </record>
 
     <record id="kpi_evaluation_reason_wizard_view_form" model="ir.ui.view">

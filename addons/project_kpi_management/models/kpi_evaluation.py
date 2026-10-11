@@ -57,13 +57,15 @@ class KpiEvaluation(models.Model):
     )
 
     computed_date = fields.Datetime("Tính KPI lúc", readonly=True, copy=False)
+    approved_date = fields.Datetime("Duyệt lúc", readonly=True, copy=False)
+    late_bug_count = fields.Integer("Bug phát sinh muộn", compute="_compute_late_bug_count")
 
     applicable_weight = fields.Integer("Trọng số được áp dụng", compute="_compute_kpi_score", store=True)
     insufficient_data = fields.Boolean("Không đủ dữ liệu đánh giá", compute="_compute_kpi_score", store=True)
-    kpi_score = fields.Float("Điểm KPI", compute="_compute_kpi_score", store=True)
+    kpi_score = fields.Float("Điểm KPI", compute="_compute_kpi_score", store=True, aggregator="avg")
     manager_adjustment = fields.Float("Điều chỉnh của quản lý", digits=(16, 2), tracking=True)
     adjustment_note = fields.Text("Lý do điều chỉnh")
-    final_score = fields.Float("Điểm cuối", compute="_compute_final_score", store=True, tracking=True)
+    final_score = fields.Float("Điểm cuối", compute="_compute_final_score", store=True, tracking=True, aggregator="avg")
     rating = fields.Selection(RATINGS, string="Xếp loại tự động", compute="_compute_final_score", store=True)
     manual_rating = fields.Selection(RATINGS, string="Xếp loại thủ công", tracking=True)
     manual_rating_note = fields.Text("Lý do xếp loại thủ công")
@@ -189,9 +191,40 @@ class KpiEvaluation(models.Model):
                 )
                 line.write({"actual": actual, "volume": volume})
             ev.computed_date = fields.Datetime.now()
+        # Tính lại điểm kể cả khi số liệu không đổi: tham số trong Settings (trần, ngưỡng) có thể đã đổi.
+        # add_to_compute chỉ đánh dấu đúng field được truyền vào, nên phải liệt kê mọi field của từng hàm compute
+        lines = self.line_ids
+        for name in ("is_applicable", "score", "weighted_score"):
+            self.env.add_to_compute(lines._fields[name], lines)
+        for name in ("applicable_weight", "insufficient_data", "kpi_score", "final_score", "rating", "final_rating"):
+            self.env.add_to_compute(self._fields[name], self)
         return True
 
     # ---- Quy trình: Nháp → Đã gửi → Đã duyệt ----
+
+    # ---- Bug phát sinh muộn: bug tính KPI xuất hiện sau khi phiếu đã duyệt ----
+
+    def _late_bugs(self):
+        self.ensure_one()
+        if not self.approved_date or not self.employee_id.sudo().user_id:
+            return self.env["project.task"]
+        engine = self.env["kpi.engine"]
+        ctx = engine._context_for(self.employee_id, self.period_id.date_from, self.period_id.date_to)
+        return engine._counted_bugs(ctx).filtered(lambda b: b.create_date > self.approved_date)
+
+    def _compute_late_bug_count(self):
+        for ev in self:
+            ev.late_bug_count = len(ev._late_bugs())
+
+    def action_view_late_bugs(self):
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": f"Bug phát sinh muộn — {self.name}",
+            "res_model": "project.task",
+            "view_mode": "list,form",
+            "domain": [("id", "in", self._late_bugs().ids)],
+        }
 
     def _check_kpi_admin(self):
         if not self.env.su and not self.env.user.has_group("project_kpi_management.group_kpi_admin"):
@@ -220,7 +253,7 @@ class KpiEvaluation(models.Model):
         self._check_kpi_admin()
         if self.filtered(lambda e: e.state != "submitted"):
             raise UserError("Chỉ duyệt được phiếu đã gửi.")
-        self.write({"state": "approved"})
+        self.write({"state": "approved", "approved_date": fields.Datetime.now()})
         return True
 
     def action_return_draft(self):
@@ -248,7 +281,12 @@ class KpiEvaluationLine(models.Model):
     _order = "sequence, id"
 
     evaluation_id = fields.Many2one("kpi.evaluation", string="Phiếu", required=True, ondelete="cascade", index=True)
-    evaluation_state = fields.Selection(related="evaluation_id.state")
+    evaluation_state = fields.Selection(related="evaluation_id.state", store=True, string="Trạng thái phiếu")
+    employee_id = fields.Many2one(related="evaluation_id.employee_id", store=True, index=True)
+    period_id = fields.Many2one(related="evaluation_id.period_id", store=True, index=True)
+    department_id = fields.Many2one(related="evaluation_id.department_id", store=True)
+    job_id = fields.Many2one(related="evaluation_id.job_id", store=True)
+    category = fields.Selection(related="metric_id.category", store=True)
     sequence = fields.Integer(default=10)
     metric_id = fields.Many2one("kpi.metric", string="Chỉ số", required=True, ondelete="restrict")
     compute_mode = fields.Selection(related="metric_id.compute_mode")
@@ -259,10 +297,10 @@ class KpiEvaluationLine(models.Model):
     weight = fields.Integer("Trọng số (%)")
     min_volume = fields.Float("Khối lượng tối thiểu", digits=(16, 2))
     volume = fields.Float("Khối lượng", help="Engine tính ở Phase 4. Dưới khối lượng tối thiểu thì Không áp dụng.")
-    actual = fields.Float("Thực tế")
+    actual = fields.Float("Thực tế", aggregator="avg")
     actual_entered = fields.Boolean("Đã chấm", help="Chỉ số nhập tay đã được chấm. Tự bật khi sửa giá trị Thực tế.")
     is_applicable = fields.Boolean("Áp dụng", compute="_compute_score", store=True)
-    score = fields.Float("Điểm", compute="_compute_score", store=True)
+    score = fields.Float("Điểm", compute="_compute_score", store=True, aggregator="avg")
     weighted_score = fields.Float("Điểm đóng góp", compute="_compute_score", store=True)
     remark = fields.Text("Ghi chú")
 

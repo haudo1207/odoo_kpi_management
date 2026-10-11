@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Phase 7: tạo phiếu hàng loạt -->
+    <record id="kpi_evaluation_generate_wizard_view_form" model="ir.ui.view">
+        <field name="name">kpi.evaluation.generate.wizard.form</field>
+        <field name="model">kpi.evaluation.generate.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <group>
+                    <field name="period_id" options="{'no_create': True}"/>
+                    <field name="department_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                    <field name="compute"/>
+                    <field name="preview_count" invisible="not period_id"/>
+                </group>
+                <p class="text-muted">
+                    Tạo phiếu cho nhân viên có tài khoản người dùng và chức danh đã gắn bộ KPI.
+                    Nhân viên đã có phiếu trong kỳ được bỏ qua.
+                </p>
+                <footer>
+                    <button name="action_generate" string="Tạo phiếu" type="object" class="btn-primary"/>
+                    <button string="Huỷ" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="kpi_evaluation_generate_wizard_action" model="ir.actions.act_window">
+        <field name="name">Tạo phiếu cho kỳ</field>
+        <field name="res_model">kpi.evaluation.generate.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Phase 7: Settings -->
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.kpi</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="60"/>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="KPI" string="KPI" name="project_kpi_management" groups="project_kpi_management.group_kpi_admin">
+                    <block title="Tính điểm" name="kpi_scoring">
+                        <setting id="kpi_score_cap" string="Điểm trần" help="Điểm tối đa của mỗi chỉ số">
+                            <field name="kpi_score_cap"/>
+                        </setting>
+                        <setting id="kpi_min_applicable_weight" string="Trọng số áp dụng tối thiểu"
+                                 help="Dưới mức này phiếu bị gắn cờ Không đủ dữ liệu, quản lý xếp loại thủ công">
+                            <field name="kpi_min_applicable_weight"/>
+                        </setting>
+                        <setting id="kpi_adjustment_max" string="Biên độ điều chỉnh"
+                                 help="Quản lý được cộng/trừ tối đa bấy nhiêu điểm, bắt buộc ghi lý do">
+                            <field name="kpi_adjustment_max"/>
+                        </setting>
+                    </block>
+                    <block title="Ngưỡng xếp loại" name="kpi_rating">
+                        <setting id="kpi_rating" string="Xuất sắc / Tốt / Đạt"
+                                 help="Khoảng nửa mở: Xuất sắc ≥ ngưỡng 1; Tốt trong [ngưỡng 2, ngưỡng 1); Đạt trong [ngưỡng 3, ngưỡng 2)">
+                            <div class="content-group">
+                                <div class="row mt8">
+                                    <label for="kpi_rating_excellent" class="col-lg-4 o_light_label"/>
+                                    <field name="kpi_rating_excellent"/>
+                                </div>
+                                <div class="row">
+                                    <label for="kpi_rating_good" class="col-lg-4 o_light_label"/>
+                                    <field name="kpi_rating_good"/>
+                                </div>
+                                <div class="row">
+                                    <label for="kpi_rating_pass" class="col-lg-4 o_light_label"/>
+                                    <field name="kpi_rating_pass"/>
+                                </div>
+                            </div>
+                        </setting>
+                        <div class="text-muted px-3">
+                            Thay đổi áp dụng cho lần Tính KPI tiếp theo. Phiếu đã duyệt giữ nguyên điểm.
+                        </div>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="kpi_settings_action" model="ir.actions.act_window">
+        <field name="name">Thiết lập</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <!-- Odoo 19 bỏ target="inline" cho action Settings (xem project_config_settings_action) -->
+        <field name="context">{'module': 'project_kpi_management', 'bin_size': False}</field>
+    </record>
+
+    <!-- Phase 6: nút "Phiếu KPI" trên hồ sơ nhân viên -->
+    <record id="hr_employee_view_form_inherit_kpi" model="ir.ui.view">
+        <field name="name">hr.employee.form.inherit.kpi</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <div name="button_box" position="inside">
+                <button name="action_view_kpi_evaluations" type="object" class="oe_stat_button" icon="fa-line-chart"
+                        groups="project_kpi_management.group_kpi_user">
+                    <field name="kpi_evaluation_count" widget="statinfo" string="Phiếu KPI"/>
+                </button>
+            </div>
+        </field>
+    </record>
+</odoo>

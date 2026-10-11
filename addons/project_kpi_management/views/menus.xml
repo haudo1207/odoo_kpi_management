@@ -4,8 +4,17 @@
 
     <menuitem id="menu_kpi_evaluation_root" name="Đánh giá" parent="menu_kpi_root" sequence="10"/>
     <menuitem id="menu_kpi_evaluation" name="Phiếu đánh giá" parent="menu_kpi_evaluation_root" action="kpi_evaluation_action" sequence="10"/>
+    <menuitem id="menu_kpi_generate" name="Tạo phiếu cho kỳ" parent="menu_kpi_evaluation_root" action="kpi_evaluation_generate_wizard_action"
+              sequence="20" groups="group_kpi_admin"/>
+
+    <menuitem id="menu_kpi_report" name="Báo cáo" parent="menu_kpi_root" sequence="50" groups="group_kpi_manager"/>
+    <menuitem id="menu_kpi_report_evaluation" name="Xu hướng điểm" parent="menu_kpi_report" action="kpi_evaluation_analysis_action" sequence="10"/>
+    <menuitem id="menu_kpi_report_rating" name="Phân bố xếp loại" parent="menu_kpi_report" action="kpi_evaluation_rating_action" sequence="20"/>
+    <menuitem id="menu_kpi_report_metric" name="Phân tích theo chỉ số" parent="menu_kpi_report" action="kpi_evaluation_line_analysis_action" sequence="30"/>
+    <menuitem id="menu_kpi_report_data_quality" name="Kiểm tra dữ liệu" parent="menu_kpi_report" action="kpi_data_quality_report_action" sequence="40"/>
 
     <menuitem id="menu_kpi_config" name="Cấu hình" parent="menu_kpi_root" sequence="100" groups="group_kpi_manager"/>
+    <menuitem id="menu_kpi_settings" name="Thiết lập" parent="menu_kpi_config" action="kpi_settings_action" sequence="5" groups="group_kpi_admin"/>
     <menuitem id="menu_kpi_metric" name="Chỉ số KPI" parent="menu_kpi_config" action="kpi_metric_action" sequence="10"/>
     <menuitem id="menu_kpi_template" name="Bộ KPI" parent="menu_kpi_config" action="kpi_template_action" sequence="20"/>
     <menuitem id="menu_kpi_period" name="Kỳ đánh giá" parent="menu_kpi_config" action="kpi_period_action" sequence="30"/>

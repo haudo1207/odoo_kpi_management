@@ -22,9 +22,17 @@
                 <header>
                     <button name="action_close" string="Đóng kỳ" type="object" invisible="state != 'open'"/>
                     <button name="action_open" string="Mở lại kỳ" type="object" invisible="state != 'closed'"/>
+                    <button name="%(kpi_evaluation_generate_wizard_action)d" string="Tạo phiếu cho kỳ" type="action"
+                            invisible="state != 'open' or not id" context="{'default_period_id': id}"
+                            groups="project_kpi_management.group_kpi_admin"/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_evaluations" type="object" class="oe_stat_button" icon="fa-list-alt">
+                            <field name="evaluation_count" widget="statinfo" string="Phiếu"/>
+                        </button>
+                    </div>
                     <div class="oe_title">
                         <label for="name"/>
                         <h1><field name="name" placeholder="VD: Tháng 10/2026"/></h1>
