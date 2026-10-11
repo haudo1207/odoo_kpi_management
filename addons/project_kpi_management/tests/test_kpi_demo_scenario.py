@@ -1,3 +1,4 @@
+from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
 
 # Bảng tính tay (lộ trình, Phase 4): (actual, volume) mong đợi của từng chỉ số
@@ -73,3 +74,28 @@ class TestKpiDemoScenario(TransactionCase):
         ev.write({"manual_rating": "pass", "manual_rating_note": "Nhân viên mới vào giữa kỳ"})
         ev.action_submit()
         self.assertEqual((ev.state, ev.final_rating), ("submitted", "pass"))
+
+    def test_happy_path_full_approval_cycle(self):
+        """Luồng đầy đủ nối liền: dữ liệu task/bug/lịch thật → Engine tính →
+        Gửi duyệt → Duyệt → khoá. Các test khác kiểm từng khúc rời (dữ liệu
+        thật nhưng dừng ở compute/submit, hoặc đi hết submit/approve nhưng với
+        actual/volume chèn tay) — bài này ráp cả chuỗi lại để bắt lỗi chỉ lộ
+        ra khi ba bước ghép với nhau, ví dụ compute xong mà submit không nhận,
+        hoặc duyệt xong mà phiếu/dòng vẫn còn sửa được."""
+        ev = self._evaluate("an")
+        self.assertEqual(ev.state, "draft")
+        self.assertTrue(ev.computed_date)
+
+        ev.action_submit()
+        self.assertEqual(ev.state, "submitted")
+
+        ev.action_approve()
+        self.assertEqual(ev.state, "approved")
+        self.assertAlmostEqual(ev.final_score, KPI["an"], places=4)
+        self.assertEqual(ev.final_rating, "excellent")
+
+        # Phiếu đã duyệt: khoá cả phiếu lẫn từng dòng, không sửa được nữa
+        with self.assertRaises(UserError):
+            ev.write({"manager_adjustment": 1, "adjustment_note": "thử sửa sau khi duyệt"})
+        with self.assertRaises(UserError):
+            ev.line_ids[:1].write({"actual": 999})
