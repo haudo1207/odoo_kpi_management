@@ -12,6 +12,7 @@
         "data/kpi_metric_data.xml",
         "data/kpi_calendar_data.xml",
         "data/kpi_template_data.xml",
+        "data/kpi_org_data.xml",
         "data/ir_cron_data.xml",
         "views/kpi_metric_views.xml",
         "views/kpi_template_views.xml",
@@ -22,6 +23,7 @@
         "views/hr_job_views.xml",
         "views/project_task_views.xml",
         "views/menus.xml",
+        "data/kpi_demo_scenario_action.xml",
         "report/kpi_evaluation_report.xml",
     ],
     "demo": [

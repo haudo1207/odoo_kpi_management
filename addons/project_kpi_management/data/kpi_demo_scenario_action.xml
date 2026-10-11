@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Nạp kịch bản mẫu (An, Bình, Chi + quản lý Phạm Quốc Việt + task/bug/sự kiện) theo yêu cầu,
+         không tự động chạy khi cài module và không cần bật cờ cài demo. Nhờ vậy database cài mới
+         (kể cả không demo) không có nhân viên demo gốc của Odoo; bấm menu này khi cần dữ liệu
+         để tự học hoặc demo. Chạy lại không tạo trùng (xem KpiDemo._load_scenario). -->
+    <record id="ir_actions_server_load_demo_scenario" model="ir.actions.server">
+        <field name="name">Nạp dữ liệu mẫu (An, Bình, Chi)</field>
+        <field name="model_id" ref="model_kpi_demo"/>
+        <field name="state">code</field>
+        <field name="code">model._load_scenario()</field>
+    </record>
+
+    <menuitem id="menu_kpi_load_demo" name="Nạp dữ liệu mẫu" parent="menu_kpi_config"
+              action="ir_actions_server_load_demo_scenario" sequence="90" groups="group_kpi_admin"/>
+</odoo>

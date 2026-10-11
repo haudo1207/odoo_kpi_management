@@ -30,12 +30,10 @@ class TestKpiDemoScenario(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.period = cls.env.ref("project_kpi_management.demo_period_previous_month", raise_if_not_found=False)
-
-    def setUp(self):
-        super().setUp()
-        if not self.period:
-            self.skipTest("Database không có dữ liệu mẫu (cài không kèm demo).")
+        # Tự gọi, không còn phụ thuộc --with-demo: kịch bản không tự chạy khi cài module nữa
+        # (xem data/kpi_demo_scenario_action.xml), nên test phải nạp lấy để chạy độc lập.
+        cls.env["kpi.demo"]._load_scenario()
+        cls.period = cls.env.ref("project_kpi_management.demo_period_previous_month")
 
     def _evaluate(self, key):
         employee = self.env.ref(f"project_kpi_management.demo_employee_{key}")

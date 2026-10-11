@@ -76,13 +76,18 @@ class KpiDemo(models.AbstractModel):
             employees[key] = employee
             xmlids += [(f"demo_user_{key}", user), (f"demo_employee_{key}", employee)]
 
+        # Stage riêng của dự án mẫu, không mượn project.project_stage_0/1/2 (chỉ có khi cài
+        # --with-demo của module project) — nhờ vậy kịch bản này cài được mà không cần demo gốc.
+        Stage = self.env["project.task.type"]
+        stage_new, stage_doing, done_stage = Stage.create([
+            {"name": "Mới", "sequence": 1},
+            {"name": "Đang làm", "sequence": 2},
+            {"name": "Hoàn thành", "sequence": 3, "fold": True},
+        ])
         project = self.env["project.project"].create({
             "name": "Website bán hàng (dữ liệu mẫu KPI)",
-            "type_ids": [(6, 0, [self.env.ref("project.project_stage_0").id,
-                                 self.env.ref("project.project_stage_1").id,
-                                 self.env.ref("project.project_stage_2").id])],
+            "type_ids": [(6, 0, [stage_new.id, stage_doing.id, done_stage.id])],
         })
-        done_stage = self.env.ref("project.project_stage_2")
         Task = self.env["project.task"]
 
         def task(key, owner, name, sp=0, deadline=None, done=None, approve=0, reject=0, unit=False,
