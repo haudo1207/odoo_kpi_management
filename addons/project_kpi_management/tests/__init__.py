@@ -5,3 +5,4 @@ from . import test_kpi_engine
 from . import test_kpi_demo_scenario
 from . import test_kpi_security
 from . import test_kpi_reports
+from . import test_kpi_integration

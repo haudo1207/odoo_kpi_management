@@ -1,0 +1,47 @@
+# Triển khai production: Odoo 19 + PostgreSQL 16 sau nginx (HTTPS).
+# Chạy trong thư mục deploy/:  docker compose -f docker-compose.prod.yml --env-file .env up -d
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: postgres
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    # Không mở cổng 5432 ra ngoài: chỉ container odoo truy cập qua mạng nội bộ của compose
+
+  odoo:
+    image: odoo:19.0
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      HOST: db
+      USER: ${DB_USER}
+      PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - odoo-data:/var/lib/odoo
+      - ../addons:/mnt/extra-addons:ro
+      - ./odoo.conf:/etc/odoo/odoo.conf:ro
+    expose:
+      - "8069"   # HTTP
+      - "8072"   # websocket (workers > 0)
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      - odoo
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/odoo.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+
+volumes:
+  db-data:
+  odoo-data:

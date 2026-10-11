@@ -5,7 +5,7 @@
     "category": "Services/Project",
     "author": "Nam4",
     "license": "LGPL-3",
-    "depends": ["project", "hr", "calendar"],
+    "depends": ["project", "hr", "calendar", "web"],
     "data": [
         "security/kpi_security.xml",
         "security/ir.model.access.csv",
@@ -22,6 +22,7 @@
         "views/hr_job_views.xml",
         "views/project_task_views.xml",
         "views/menus.xml",
+        "report/kpi_evaluation_report.xml",
     ],
     "demo": [
         "data/kpi_demo.xml",

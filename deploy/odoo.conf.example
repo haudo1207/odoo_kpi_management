@@ -1,0 +1,28 @@
+; Cấu hình Odoo production. Sao chép thành odoo.conf rồi sửa các giá trị DOI_*.
+; Thông tin kết nối database lấy từ biến môi trường trong .env (HOST/USER/PASSWORD của image odoo).
+[options]
+addons_path = /mnt/extra-addons,/usr/lib/python3/dist-packages/odoo/addons
+data_dir = /var/lib/odoo
+
+; Mật khẩu master quản lý database: chuỗi ngẫu nhiên dài, KHÔNG dùng "admin" như máy dev
+admin_passwd = DOI_MAT_KHAU_MASTER
+
+; Chỉ phục vụ một database, ẩn màn hình quản lý database
+db_name = kpi
+dbfilter = ^kpi$
+list_db = False
+
+; Chạy sau nginx: tin header X-Forwarded-* để tạo URL https đúng
+proxy_mode = True
+
+; Đa tiến trình: workers > 0 thì websocket chạy ở gevent_port (nginx chuyển /websocket sang 8072)
+; Gợi ý: workers = 2 × số CPU + 1, VPS 2 vCPU → 2 đến 5
+workers = 2
+max_cron_threads = 1
+gevent_port = 8072
+limit_memory_soft = 671088640
+limit_memory_hard = 805306368
+limit_time_cpu = 120
+limit_time_real = 240
+
+log_level = info

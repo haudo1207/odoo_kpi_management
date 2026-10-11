@@ -1,4 +1,8 @@
-from odoo import fields, models
+import logging
+
+from odoo import api, fields, models
+
+_logger = logging.getLogger(__name__)
 
 
 class KpiPeriod(models.Model):
@@ -23,6 +27,10 @@ class KpiPeriod(models.Model):
     )
     evaluation_ids = fields.One2many("kpi.evaluation", "period_id", string="Phiếu đánh giá")
     evaluation_count = fields.Integer("Số phiếu", compute="_compute_evaluation_count")
+    auto_generated = fields.Boolean(
+        "Đã tạo phiếu tự động", readonly=True, copy=False,
+        help="Tác vụ cuối kỳ đã tạo phiếu cho kỳ này. Tác vụ chỉ chạy một lần mỗi kỳ.",
+    )
 
     _date_check = models.Constraint("CHECK(date_from <= date_to)", "Ngày bắt đầu phải trước ngày kết thúc.")
 
@@ -71,3 +79,21 @@ class KpiPeriod(models.Model):
         if compute and evaluations:
             evaluations.action_compute_kpi()
         return evaluations
+
+    @api.model
+    def _cron_generate_evaluations(self):
+        """Tác vụ hằng ngày: kỳ đang mở đã qua ngày kết thúc mà chưa tạo phiếu thì tạo và Tính KPI.
+        Mỗi kỳ chạy một lần (auto_generated). Lỗi ở một kỳ không chặn các kỳ khác."""
+        periods = self.search([
+            ("state", "=", "open"),
+            ("auto_generated", "=", False),
+            ("date_to", "<", fields.Date.context_today(self)),
+        ])
+        for period in periods:
+            try:
+                with self.env.cr.savepoint():
+                    evaluations = period._generate_evaluations(compute=True)
+                    period.auto_generated = True
+                _logger.info("KPI: kỳ %s, tạo tự động %s phiếu", period.name, len(evaluations))
+            except Exception:
+                _logger.exception("KPI: không tạo được phiếu cho kỳ %s", period.name)

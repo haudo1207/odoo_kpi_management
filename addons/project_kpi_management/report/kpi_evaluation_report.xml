@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_kpi_evaluation" model="ir.actions.report">
+        <field name="name">Phiếu đánh giá KPI</field>
+        <field name="model">kpi.evaluation</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">project_kpi_management.report_kpi_evaluation</field>
+        <field name="report_file">project_kpi_management.report_kpi_evaluation</field>
+        <field name="print_report_name">'Phieu KPI - %s' % object.name</field>
+        <field name="binding_model_id" ref="model_kpi_evaluation"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_kpi_evaluation">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h3>Phiếu đánh giá KPI</h3>
+                        <div class="text-muted mb-3">
+                            Trạng thái: <span t-field="doc.state"/>
+                            <t t-if="doc.approved_date"> · Duyệt lúc <span t-field="doc.approved_date"/></t>
+                        </div>
+
+                        <table class="table table-sm table-borderless mb-3" style="width: 100%;">
+                            <tr>
+                                <td class="w-25"><strong>Nhân viên</strong></td><td><span t-field="doc.employee_id"/></td>
+                                <td class="w-25"><strong>Kỳ đánh giá</strong></td><td><span t-field="doc.period_id"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Chức danh</strong></td><td><span t-field="doc.job_id"/></td>
+                                <td><strong>Phòng ban</strong></td><td><span t-field="doc.department_id"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Bộ KPI</strong></td><td><span t-field="doc.template_id"/></td>
+                                <td><strong>Quản lý trực tiếp</strong></td><td><span t-out="doc.employee_id.sudo().parent_id.name"/></td>
+                            </tr>
+                        </table>
+
+                        <table class="table table-sm table-bordered" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>Chỉ số</th>
+                                    <th class="text-end">Mục tiêu</th>
+                                    <th class="text-end">Thực tế</th>
+                                    <th class="text-end">Trọng số</th>
+                                    <th class="text-end">Điểm</th>
+                                    <th class="text-end">Đóng góp</th>
+                                    <th>Ghi chú</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="doc.line_ids" t-as="line" t-att-class="'text-muted' if not line.is_applicable else ''">
+                                    <td><span t-out="line.metric_id.display_name"/></td>
+                                    <td class="text-end"><t t-out="'%g' % line.target"/> <t t-out="line.unit or ''"/></td>
+                                    <td class="text-end"><t t-out="'%.4g' % line.actual"/></td>
+                                    <td class="text-end"><t t-out="line.weight"/>%</td>
+                                    <td class="text-end">
+                                        <t t-if="line.is_applicable" t-out="'%.2f' % line.score"/>
+                                        <t t-else="">Không áp dụng</t>
+                                    </td>
+                                    <td class="text-end"><t t-if="line.is_applicable" t-out="'%.2f' % line.weighted_score"/></td>
+                                    <td><span t-field="line.remark"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <table class="table table-sm" style="width: 55%; margin-left: auto;">
+                            <tr><td>Điểm KPI (trọng số áp dụng <t t-out="doc.applicable_weight"/>%)</td>
+                                <td class="text-end"><t t-out="'%.2f' % doc.kpi_score"/></td></tr>
+                            <tr><td>Điều chỉnh của quản lý</td>
+                                <td class="text-end"><t t-out="'%+.2f' % doc.manager_adjustment"/></td></tr>
+                            <tr t-if="doc.adjustment_note"><td colspan="2" class="text-muted">Lý do: <span t-field="doc.adjustment_note"/></td></tr>
+                            <tr class="fw-bold"><td>Điểm cuối</td>
+                                <td class="text-end"><t t-out="'%.2f' % doc.final_score"/></td></tr>
+                            <tr class="fw-bold"><td>Xếp loại</td>
+                                <td class="text-end"><span t-field="doc.final_rating"/></td></tr>
+                            <tr t-if="doc.insufficient_data"><td colspan="2" class="text-muted">
+                                Không đủ dữ liệu đánh giá, xếp loại thủ công. Lý do: <span t-field="doc.manual_rating_note"/>
+                            </td></tr>
+                        </table>
+
+                        <!-- Bảng thay cho lưới Bootstrap: giữ đúng 3 cột ký tên kể cả khi CSS không nạp được -->
+                        <table style="width: 100%; margin-top: 40px; text-align: center;">
+                            <tr>
+                                <td style="width: 33%;"><strong>Nhân viên</strong></td>
+                                <td style="width: 34%;"><strong>Quản lý trực tiếp</strong></td>
+                                <td style="width: 33%;"><strong>Người duyệt</strong></td>
+                            </tr>
+                            <tr><td style="height: 70px;"/><td/><td/></tr>
+                            <tr>
+                                <td><span t-field="doc.employee_id"/></td>
+                                <td><span t-out="doc.employee_id.sudo().parent_id.name"/></td>
+                                <td/>
+                            </tr>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

@@ -1,0 +1,5 @@
+# Bí mật và dữ liệu trên VPS, không commit
+.env
+/odoo.conf
+certbot/
+backup/
