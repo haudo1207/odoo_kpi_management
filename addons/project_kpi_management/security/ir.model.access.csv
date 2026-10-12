@@ -19,3 +19,4 @@ access_kpi_self_assessment_wizard_user,kpi.self.assessment.wizard.user,model_kpi
 access_kpi_self_assessment_wizard_line_user,kpi.self.assessment.wizard.line.user,model_kpi_self_assessment_wizard_line,group_kpi_user,1,1,1,1
 access_kpi_data_quality_report_manager,kpi.data.quality.report.manager,model_kpi_data_quality_report,group_kpi_manager,1,0,0,0
 access_kpi_team_report_manager,kpi.team.report.manager,model_kpi_team_report,group_kpi_manager,1,0,0,0
+access_kpi_metric_test_wizard_admin,kpi.metric.test.wizard.admin,model_kpi_metric_test_wizard,group_kpi_admin,1,1,1,1

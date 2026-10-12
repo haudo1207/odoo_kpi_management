@@ -4,6 +4,7 @@ import pytz
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError
+from odoo.tools.safe_eval import safe_eval
 
 BUG_RESOLUTIONS_COUNTED = ("valid", "wont_fix")
 HIGH_PRIORITIES = ("2", "3")  # High, Urgent
@@ -23,12 +24,50 @@ class KpiEngine(models.AbstractModel):
     @api.model
     def compute_actual(self, metric, employee, date_from, date_to):
         """Trả về (actual, volume) của một chỉ số, hoặc None nếu chỉ số nhập tay."""
-        if metric.compute_mode != "auto":
+        if metric.compute_mode == "manual":
             return None
+        if metric.compute_mode == "domain":
+            return self._compute_domain_metric(metric, employee, date_from, date_to)
         method = getattr(self, f"_metric_{metric.code.lower()}", None)
         if not method:
             raise UserError(f"Chưa có hàm tính cho chỉ số tự động {metric.code}.")
         return method(self._context_for(employee, date_from, date_to))
+
+    @api.model
+    def _compute_domain_metric(self, metric, employee, date_from, date_to):
+        """Bước 1 (Chương 9.1): chỉ số cấu hình thuần dữ liệu, không cần hàm _metric_<mã>().
+        Domain được safe_eval với biến user/start/end, rồi cộng thêm điều kiện người/kỳ nếu
+        metric có khai báo user_field_id/date_field_id (để trống thì domain phải tự viết đủ,
+        ví dụ dùng đường dẫn quan hệ như origin_task_id.user_ids — xem Chương 9.1 về giới hạn
+        domain không so sánh được hai field với nhau trên cùng bản ghi)."""
+        ctx = self._context_for(employee, date_from, date_to)
+        user, start, end = ctx["user"], ctx["start"], ctx["end"]
+        eval_ctx = {"user": user, "start": start, "end": end}
+        Model = self.env[metric.source_model_id.model].sudo()
+
+        def _domain(expr):
+            domain = list(safe_eval(expr or "[]", eval_ctx))
+            if metric.user_field_id:
+                domain = domain + [(metric.user_field_id.name, "=", user.id)]
+            if metric.date_field_id:
+                domain = domain + [(metric.date_field_id.name, ">=", start), (metric.date_field_id.name, "<", end)]
+            return domain
+
+        if metric.aggregation == "count":
+            count = Model.search_count(_domain(metric.numerator_domain))
+            return count, count
+        if metric.aggregation in ("sum", "avg"):
+            records = Model.search(_domain(metric.numerator_domain))
+            values = records.mapped(metric.value_field_id.name)
+            total = sum(values)
+            if metric.aggregation == "avg":
+                return (total / len(values) if values else 0.0), len(records)
+            return total, len(records)
+        if metric.aggregation == "ratio":
+            denominator = Model.search_count(_domain(metric.denominator_domain))
+            numerator = Model.search_count(_domain(metric.numerator_domain))
+            return self._ratio(numerator, denominator), denominator
+        raise UserError(f"Chỉ số \"{metric.name}\": chưa chọn phép tính hợp lệ.")
 
     @api.model
     def _context_for(self, employee, date_from, date_to):

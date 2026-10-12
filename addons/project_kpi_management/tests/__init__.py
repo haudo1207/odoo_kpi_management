@@ -1,4 +1,5 @@
 from . import test_kpi_config
+from . import test_kpi_domain_metric
 from . import test_kpi_target_override
 from . import test_project_task
 from . import test_kpi_evaluation

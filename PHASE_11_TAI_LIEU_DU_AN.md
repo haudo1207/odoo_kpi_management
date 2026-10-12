@@ -160,7 +160,7 @@ kpi.evaluation: Σ(score×weight)/Σweight ──▶ kpi_score ──+manager_ad
 addons/project_kpi_management/
 ├── controllers/api.py              REST API
 ├── models/
-│   ├── kpi_metric.py               Danh mục chỉ số
+│   ├── kpi_metric.py               Danh mục chỉ số + chỉ số cấu hình không cần code (Bước 1)
 │   ├── kpi_template.py             Bộ KPI + dòng + resolve mục tiêu riêng
 │   ├── kpi_target_override.py      Mục tiêu riêng theo nhân viên/phòng ban (Mục 4)
 │   ├── hr_job.py                   Mở rộng hr.job: kpi_template_id
@@ -168,7 +168,7 @@ addons/project_kpi_management/
 │   ├── project_task.py             Mở rộng project.task: field KPI
 │   ├── kpi_period.py               Kỳ đánh giá + sinh phiếu hàng loạt + cron
 │   ├── kpi_evaluation.py           Phiếu + dòng phiếu + công thức điểm + quy trình + PIP + tự đánh giá
-│   ├── kpi_engine.py               Tính D1–D8 (AbstractModel, không bảng)
+│   ├── kpi_engine.py               Tính D1–D8 + chỉ số cấu hình domain (AbstractModel, không bảng)
 │   ├── kpi_demo.py                 Kịch bản dữ liệu mẫu (AbstractModel)
 │   ├── kpi_data_quality.py         SQL view kiểm tra chất lượng dữ liệu
 │   ├── kpi_team_report.py          SQL view chỉ số cấp team/dự án (Mục 5)
@@ -176,12 +176,13 @@ addons/project_kpi_management/
 ├── wizard/
 │   ├── kpi_evaluation_reason_wizard.py      Lý do Trả về/Mở lại
 │   ├── kpi_evaluation_generate_wizard.py    Tạo phiếu hàng loạt
-│   └── kpi_self_assessment_wizard.py        Nhân viên tự đánh giá (Mục 6)
+│   ├── kpi_self_assessment_wizard.py        Nhân viên tự đánh giá (Mục 6)
+│   └── kpi_metric_test_wizard.py            Nút "Thử tính" chỉ số cấu hình (Bước 1)
 ├── security/                        3 nhóm quyền + record rule + CSV quyền model
 ├── data/                             Dữ liệu cấu hình chuẩn (D1–D9, bộ Developer/Tester, cron, loại nhắc việc PIP...)
 ├── views/                           View cho từng model + menu
 ├── report/                          Mẫu in PDF
-└── tests/                           9 file, 78 test
+└── tests/                           10 file, 86 test
 ```
 
 ### 2.4. Nguyên tắc thiết kế cốt lõi: không hardcode vai trò
@@ -253,6 +254,7 @@ bắt buộc: stage Done/Hoàn thành của mọi dự án phải bật **Folded
 | 16 | `kpi.target.override` | Bảng thật | Mục tiêu riêng theo nhân viên/phòng ban cho một dòng chỉ số |
 | 17 | `kpi.team.report` | **SQL view** (`_auto = False`) | Chỉ số cấp team (dự án): đúng hạn, mật độ lỗi, lỗi production, giờ sửa bug |
 | 18 | `kpi.self.assessment.wizard`(`.line`) | TransientModel | Nhân viên tự đánh giá (Mục 6) |
+| 19 | `kpi.metric.test.wizard` | TransientModel | Nút "Thử tính" cho chỉ số cấu hình (Bước 1, Chương 9.1) |
 
 ### 3.2. Sơ đồ quan hệ (ERD dạng văn bản)
 
@@ -283,11 +285,47 @@ kpi.data.quality.report  (SQL view, GROUP BY theo project.task.project_id — kh
 | `category` | Selection | required | delivery/quality/process/collaboration |
 | `unit` | Char | | Đơn vị hiển thị (%, giờ, SP...) |
 | `direction` | Selection | required, default `higher` | `higher` (cao tốt) / `lower` (thấp tốt) |
-| `compute_mode` | Selection | required, default `auto` | `auto` (Engine tính) / `manual` (nhập tay) |
+| `compute_mode` | Selection | required, default `auto` | `auto` (hàm Python `_metric_<mã>()`) / `domain` (cấu hình, không cần code — Chương 9.1) / `manual` (nhập tay) |
 | `description` | Text | | Mô tả công thức |
 | `active` | Boolean | default True | Ẩn (archive) bị **chặn** nếu còn bộ KPI đang dùng (`@api.constrains`) |
 
 `_rec_names_search = ["code", "name"]`, `display_name` tự ghép `"<code> — <name>"`.
+
+**Bước 1 (Chương 9.1, đã triển khai) — chỉ số cấu hình không cần code**, dùng khi `compute_mode = domain`:
+
+| Field | Kiểu | Ràng buộc | Ghi chú |
+|---|---|---|---|
+| `source_model_id` | Many2one → `ir.model` | domain chỉ cho `project.task`, `project.milestone`, `calendar.event` | Model lấy dữ liệu |
+| `user_field_id` | Many2one → `ir.model.fields` | phải thuộc `source_model_id` | Field người phụ trách — **để trống** nếu điều kiện người/kỳ đã viết sẵn trong domain bằng biến `user`/`start`/`end` (cần khi phải đi qua quan hệ, ví dụ `origin_task_id.user_ids`) |
+| `date_field_id` | Many2one → `ir.model.fields` | phải thuộc `source_model_id`, kiểu Date/Datetime | Field ngày để lọc theo kỳ |
+| `aggregation` | Selection | required khi `compute_mode = domain` | `count` (Đếm) / `sum` (Tổng) / `avg` (Trung bình) / `ratio` (Tỷ lệ) |
+| `value_field_id` | Many2one → `ir.model.fields` | bắt buộc nếu `aggregation` là sum/avg, kiểu Integer/Float/Monetary | Field số để Tổng/Trung bình |
+| `numerator_domain` | Char | required, phải `safe_eval` được | Domain Odoo chuẩn; có biến `user` (res.users), `start`, `end` (mốc kỳ, UTC) |
+| `denominator_domain` | Char | bắt buộc nếu `aggregation = ratio` | Domain mẫu số |
+
+Lấy nguyên mẫu từ `gamification.goal.definition` (Odoo 19 Community, đã kiểm tra trên source):
+model + field + domain + `computation_mode` (count/sum/python). **Chỉ lấy phần domain/count/sum/avg
+— không có lựa chọn chạy code Python tuỳ ý** như `gamification` (đó là lỗ hổng bảo mật nếu cho nhập
+qua giao diện). Validate khi lưu (`_check_domain_metric_config`, cùng cách `gamification` làm ở
+`_check_domain_validity`): model phải trong danh sách cho phép, field phải đúng model/kiểu, và thử
+chạy `search_count()` thật với domain để bắt lỗi cú pháp ngay khi lưu, không đợi tới lúc tính KPI.
+
+**Giới hạn đã biết:** domain không so sánh được hai field trên cùng bản ghi (ví dụ D1 cần
+`date_end <= date_deadline`) — phải giữ hàm Python cho các chỉ số kiểu này, hoặc thêm field compute
+stored dạng cờ (`is_on_time`) để domain chỉ cần so với giá trị cố định. Đi qua quan hệ (như D4 quy
+bug về task gốc) **không** thuộc giới hạn này — domain vẫn so sánh được field quan hệ với hằng số
+(`user.id`/`start`/`end`), chỉ cần để trống `user_field_id`/`date_field_id` và viết đủ điều kiện
+trong `numerator_domain`/`denominator_domain` (xem test `test_domain_metric_equivalent_to_d4`).
+
+`kpi.engine._compute_domain_metric()`: ghép domain cấu hình với điều kiện người/kỳ (nếu có khai báo
+`user_field_id`/`date_field_id`), rồi `search_count`/`search().mapped()` theo `aggregation`. Trả về
+`(actual, volume)` đúng khuôn với các hàm `_metric_<mã>()` hiện có — không cần sửa gì ở
+`kpi.evaluation`/`kpi.evaluation.line`, nơi gọi `kpi.engine.compute_actual()` không quan tâm chỉ số
+đến từ code hay cấu hình.
+
+Nút **"Thử tính"** trên form chỉ số (chỉ hiện khi `compute_mode = domain`, chỉ KPI Admin): mở wizard
+`kpi.metric.test.wizard`, chọn một nhân viên và một kỳ, xem ngay `actual`/`volume` — không cần tạo
+phiếu thật để biết domain viết có đúng không.
 
 #### `kpi.template` — Bộ KPI theo vai trò
 
@@ -566,7 +604,7 @@ docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management \
   --test-tags /project_kpi_management --stop-after-init --http-port 8070
 ```
 
-### 5.3. Danh sách test case (78 test, 9 file)
+### 5.3. Danh sách test case (86 test, 10 file)
 
 #### `tests/test_kpi_config.py` — 9 test (Phase 1: chỉ số, bộ KPI)
 
@@ -581,6 +619,18 @@ docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management \
 | `test_duplicate_metric_in_template` | Một chỉ số xuất hiện 2 lần trong cùng bộ KPI bị chặn |
 | `test_archive_metric_used_in_active_template` | Ẩn chỉ số đang dùng trong bộ KPI còn hoạt động bị chặn; chỉ số không dùng thì ẩn được |
 | `test_archive_template_linked_to_job` | Ẩn bộ KPI đang gắn chức danh bị chặn; gỡ gắn kết rồi ẩn được |
+
+#### `tests/test_kpi_domain_metric.py` — 7 test (Bước 1, Chương 9.1: chỉ số cấu hình không cần code)
+
+| Test | Kiểm tra |
+|---|---|
+| `test_model_outside_allowed_list_blocked` | Chọn model ngoài danh sách cho phép (`res.partner`) bị chặn khi lưu |
+| `test_field_from_other_model_blocked` | Chọn field không thuộc `source_model_id` bị chặn |
+| `test_invalid_domain_syntax_blocked` | Domain sai cú pháp (thiếu `]`) bị chặn — thử `search_count()` thật khi lưu |
+| `test_ratio_without_denominator_blocked` | Chọn Tỷ lệ mà không nhập domain mẫu số bị chặn |
+| `test_sum_without_value_field_blocked` | Chọn Tổng mà không chọn field số bị chặn |
+| `test_valid_config_saved` | Cấu hình hợp lệ lưu được bình thường |
+| `test_only_admin_writes_domain_config` | Chỉ KPI Admin tạo/sửa được chỉ số cấu hình |
 
 #### `tests/test_kpi_target_override.py` — 4 test (Mục tiêu riêng theo nhân viên/phòng ban)
 
@@ -623,13 +673,14 @@ docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management \
 | `test_approve_requires_submitted` | Chỉ duyệt được phiếu Đã gửi |
 | `test_target_editable_in_draft` | Mục tiêu sửa được khi còn Nháp |
 
-#### `tests/test_kpi_engine.py` — 9 test (Phase 4: Engine)
+#### `tests/test_kpi_engine.py` — 10 test (Phase 4: Engine)
 
 | Test | Kiểm tra |
 |---|---|
 | `test_d1_on_time` | D1: đúng hạn, trễ, quá hạn chưa xong, huỷ, chưa tới hạn, ngoài kỳ |
 | `test_d2_story_points` | D2: chỉ cộng SP của task Done trong kỳ |
 | `test_d3_d4_counted_bugs` | D3/D4: đúng quy tắc "bug tính KPI", task gốc nhiều người được giao thì tính cho cả hai |
+| `test_domain_metric_equivalent_to_d4` | Chỉ số cấu hình thuần domain (Bước 1) cho ra đúng kết quả như hàm Python `_metric_d4()` trên cùng dữ liệu |
 | `test_d5_d6_review_and_unit_test` | D5/D6: mẫu số đúng là task đã qua review / task Feature Done |
 | `test_d7_high_priority_bugs` | D7: chỉ tính bug High/Urgent, đúng trung bình giờ làm việc |
 | `test_d8_knowledge_sharing_events` | D8: chỉ đếm sự kiện đúng nhãn, đúng người tổ chức |
@@ -693,13 +744,14 @@ docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management \
 
 ### 5.4. Kết quả kiểm thử
 
-**78/78 test đạt (0 failed, 0 error)**, xác nhận trên database tạo mới hoàn toàn (không chỉ chạy
+**86/86 test đạt (0 failed, 0 error)**, xác nhận trên database tạo mới hoàn toàn (không chỉ chạy
 lại trên database cũ), lần gần nhất 2026-10-12 — sau khi bổ sung 6 mục ở Chương 9 cũ (màu xếp loại,
-chặn xung đột vai trò, nhắc việc PIP, mục tiêu theo phòng ban, chỉ số theo dự án, tự đánh giá) và vá
+chặn xung đột vai trò, nhắc việc PIP, mục tiêu theo phòng ban, chỉ số theo dự án, tự đánh giá), vá
 thêm các phát hiện khi kiểm tra qua đường đi thật (xem 5.6): quản lý ghi trực tiếp được
 `employee_comment`/`self_score` (cả qua `write()` lẫn `create()`), thiếu `copy=False` trên `self_score`
 (Nhân bản phiếu đã tự đánh giá sẽ bị chặn nhầm), cron ghi `write_date` thừa, bug trong
-`kpi.team.report` quy sai dự án (đã sửa ở Mục 5, Chương 3.3).
+`kpi.team.report` quy sai dự án (đã sửa ở Mục 5, Chương 3.3), và triển khai Bước 1 — chỉ số cấu hình
+không cần code (Chương 9.1, +8 test).
 
 **Quan trọng — hạn chế của `TransactionCase`:** unit test chạy bằng superuser (`env.su = True`),
 nên bỏ qua một số kiểm tra chỉ áp dụng cho người dùng thật (ví dụ chặn xung đột vai trò). Vì vậy 77
@@ -868,10 +920,13 @@ buộc lý do) và **chấm chỉ số định tính** (D9) — số liệu tự
 
 ## Chương 9 — Hướng phát triển
 
-**Hệ thống đã qua điểm dừng tính năng trước bảo vệ** (xem Chương 5.6). Toàn bộ nội dung chương này
-là đề xuất cho giai đoạn **sau bảo vệ**, chưa triển khai.
+**Hệ thống đã qua điểm dừng tính năng trước bảo vệ** (xem Chương 5.6) — bản dùng để bảo vệ đóng
+băng ở tag `v1.0-bao-ve` (Chương 10), không đổi. Nội dung chương này là kế hoạch mở rộng cho giai
+đoạn **sau bảo vệ**, phát triển trực tiếp trên `main` (không tách nhánh riêng — tag đã giữ đúng mốc
+bảo vệ nên không cần). **Bước 1 (9.1) đã triển khai** (+8 test, 86/86 đạt); **Bước 2–6 (9.2–9.4)
+chưa triển khai**, còn ở dạng thiết kế.
 
-### 9.1. Điểm nghẽn lớn nhất: chỉ số tự động phải viết code
+### 9.1. Điểm nghẽn lớn nhất: chỉ số tự động phải viết code — ĐÃ TRIỂN KHAI
 
 Hệ thống đã linh hoạt ở phần **cấu hình** (bộ KPI theo chức danh, chỉ số nhập tay, mục tiêu theo
 phòng ban/nhân viên, khối lượng tối thiểu — Chương 2.4, Chương 7). Nhưng mỗi chỉ số **tự động**
@@ -879,20 +934,26 @@ phòng ban/nhân viên, khối lượng tối thiểu — Chương 2.4, Chương
 (giới hạn tự nhiên đã nêu ở Chương 2.4). Hệ quả: thêm một bộ KPI tự động cho team mới (Tester, PM,
 BA...) vẫn phải nhờ lập trình viên, dù phần cấu hình (template, trọng số, mục tiêu) đã tự làm được.
 
-**Đề xuất gỡ điểm nghẽn — chỉ số cấu hình không cần code:** thêm cho `kpi.metric` một cách tính tự
-động theo kiểu **đếm/tổng trên domain**, không cần hàm Python riêng: chọn model dữ liệu nguồn, field
-người phụ trách (để lọc theo nhân viên), field ngày (để lọc theo kỳ), domain tử số và domain mẫu số;
-engine tính `đếm(tử số) / đếm(mẫu số)` hoặc tổng một field. Đây **không phải ý tưởng mới tự nghĩ ra**
-— Odoo Community đã làm đúng cách này trong module `gamification` (`gamification.goal.definition`,
-đã kiểm tra trên source 19.0): `model_id`, `field_id` (field để tổng), `field_date_id` (field ngày),
-`domain`, `computation_mode` (`count`/`sum`/`manually`, và cả `python` cho code tuỳ ý). **Chỉ nên
-dùng lại phần `domain` + `count`/`sum`** (dữ liệu, an toàn, không chạy được code tuỳ ý) — **không**
-dùng lại `computation_mode = python` của `gamification` vì cho nhập Python tuỳ ý qua giao diện là lỗ
-hổng bảo mật, đi ngược nguyên tắc "không hardcode nhưng vẫn kiểm soát được" của module này.
+**Gỡ điểm nghẽn — chỉ số cấu hình không cần code (`compute_mode = domain`, chi tiết ở Chương 3.3):**
+thêm cho `kpi.metric` một cách tính tự động theo kiểu **đếm/tổng/trung bình/tỷ lệ trên domain**,
+không cần hàm Python riêng: chọn model dữ liệu nguồn, field người phụ trách và field ngày (tuỳ
+chọn, để lọc theo nhân viên/kỳ), domain tử số và domain mẫu số (khi Tỷ lệ). Đây **không phải ý
+tưởng mới tự nghĩ ra** — Odoo Community đã làm đúng cách này trong module `gamification`
+(`gamification.goal.definition`, đã kiểm tra trên source 19.0): `model_id`, `field_id`,
+`field_date_id`, `domain`, `computation_mode` (`count`/`sum`/`manually`, và cả `python` cho code tuỳ
+ý). **Chỉ lấy lại phần `domain` + `count`/`sum`** (dữ liệu, an toàn, không chạy được code tuỳ ý) —
+**không** lấy lại `computation_mode = python` vì cho nhập Python tuỳ ý qua giao diện là lỗ hổng bảo
+mật, đi ngược nguyên tắc "không hardcode nhưng vẫn kiểm soát được" của module này. Thêm `avg`
+(trung bình) và `ratio` (tỷ lệ, hai domain riêng cho tử số/mẫu số) so với bản gốc của `gamification`
+— cần cho hầu hết chỉ số KPI (D1, D3–D6 đều là tỷ lệ hoặc trung bình, không chỉ đếm/tổng).
 
-Đây là nền móng: không có nó, mỗi team mới đều cần lập trình viên; có nó, Admin tự tạo chỉ số mới từ
-dữ liệu Odoo sẵn có hoàn toàn trên giao diện, mở khoá toàn bộ phần mở rộng team ở 9.2 mà không cần
-sửa `kpi_engine.py` thêm nữa.
+Bằng chứng đây là nền móng dùng được, không chỉ ý tưởng: test `test_domain_metric_equivalent_to_d4`
+cấu hình một chỉ số thuần domain (không viết dòng code nào) cho ra **đúng kết quả** như hàm Python
+`_metric_d4()` trên cùng dữ liệu — kể cả phần khó nhất của D4 (quy bug về task gốc qua quan hệ
+`origin_task_id.user_ids`), bằng cách để trống `user_field_id`/`date_field_id` và viết đủ điều kiện
+trong domain với biến `user`/`start`/`end`. Có nó, Admin tự tạo chỉ số mới từ dữ liệu Odoo sẵn có
+hoàn toàn trên giao diện (xem nút "Thử tính" trên form chỉ số), mở khoá toàn bộ phần mở rộng team ở
+9.2 mà không cần sửa `kpi_engine.py` thêm nữa.
 
 ### 9.2. Mở rộng sang team khác (theo thứ tự ưu tiên)
 
@@ -949,7 +1010,7 @@ việc dữ liệu có sạch hay không — không chỉ Dev mới bị ràng b
 
 | # | Tính năng | Vấn đề giải quyết | Cách làm | Giá trị |
 |---|---|---|---|---|
-| 1 | Chỉ số cấu hình không cần code | Xem 9.1 | Xem 9.1 | Rất cao — mở khoá 9.2 |
+| 1 | Chỉ số cấu hình không cần code | Xem 9.1 | Xem 9.1 — **đã triển khai** | Rất cao — mở khoá 9.2 |
 | 2 | Cách chấm điểm theo bậc | Hiện chỉ có tỷ lệ tuyến tính (`_score()`, Chương 3.3); nhiều công ty chấm theo bậc, ví dụ ≥90% → 100 điểm, 80–90% → 80 điểm | Mỗi dòng template chọn "Tuyến tính" hoặc "Theo bảng bậc"; bảng bậc là các dòng (từ, đến, điểm) | Cao |
 | 3 | Điểm team góp vào điểm cá nhân | Phần mềm là việc nhóm, nhưng điểm hiện hoàn toàn cá nhân | Một dòng template là "Điểm trung bình của team" (lấy từ `kpi.team.report`), trọng số 10–20% | Cao, đúng xu hướng ngành |
 | 4 | Kỳ đánh giá khác nhau theo bộ KPI | Dev hợp chu kỳ tháng; BA, PM hợp chu kỳ quý | Thêm `period_type` cho template; wizard tạo phiếu chỉ tạo cho template cùng loại kỳ | Trung bình |
@@ -959,7 +1020,7 @@ việc dữ liệu có sạch hay không — không chỉ Dev mới bị ràng b
 
 | Bước | Việc | Lý do thứ tự |
 |---|---|---|
-| 1 | Chỉ số cấu hình không cần code (9.1) | Nền cho mọi team sau |
+| 1 | ~~Chỉ số cấu hình không cần code (9.1)~~ | **Đã triển khai** — 86/86 test đạt, xem Chương 3.3 |
 | 2 | Bộ Tester tự động (9.2, Ưu tiên 1) | Dữ liệu sẵn, chỉ cần cấu hình nếu đã có bước 1 |
 | 3 | Chấm điểm theo bậc (9.3 #2) | Nhiều công ty cần ngay khi áp dụng thật |
 | 4 | Bộ Team Lead/PM + điểm team (9.2 Ưu tiên 2, 9.3 #3) | Cần dữ liệu milestone, timesheet |

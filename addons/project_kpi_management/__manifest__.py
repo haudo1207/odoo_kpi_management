@@ -16,6 +16,7 @@
         "data/kpi_activity_data.xml",
         "data/ir_cron_data.xml",
         "views/kpi_metric_views.xml",
+        "views/kpi_metric_test_wizard_views.xml",
         "views/kpi_template_views.xml",
         "views/kpi_target_override_views.xml",
         "views/kpi_wizard_settings_views.xml",

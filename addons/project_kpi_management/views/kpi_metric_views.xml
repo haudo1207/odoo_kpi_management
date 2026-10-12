@@ -20,6 +20,11 @@
         <field name="model">kpi.metric</field>
         <field name="arch" type="xml">
             <form>
+                <header>
+                    <button name="action_open_test_wizard" string="Thử tính" type="object"
+                            invisible="compute_mode != 'domain' or not id"
+                            groups="project_kpi_management.group_kpi_admin"/>
+                </header>
                 <sheet>
                     <widget name="web_ribbon" title="Đã ẩn" bg_color="text-bg-danger" invisible="active"/>
                     <div class="oe_title">
@@ -38,6 +43,19 @@
                             <field name="active" invisible="1"/>
                         </group>
                     </group>
+                    <group string="Cấu hình tự động (cách tính không cần code)" invisible="compute_mode != 'domain'">
+                        <group>
+                            <field name="source_model_id"/>
+                            <field name="aggregation"/>
+                            <field name="value_field_id" invisible="aggregation not in ('sum', 'avg')"/>
+                        </group>
+                        <group>
+                            <field name="user_field_id"/>
+                            <field name="date_field_id"/>
+                        </group>
+                        <field name="numerator_domain" string="Domain (tử số nếu Tỷ lệ)"/>
+                        <field name="denominator_domain" invisible="aggregation != 'ratio'"/>
+                    </group>
                     <field name="description" placeholder="Công thức tính, nguồn dữ liệu, quy tắc nghiệp vụ..."/>
                 </sheet>
             </form>
@@ -51,7 +69,8 @@
             <search>
                 <field name="code"/>
                 <field name="name"/>
-                <filter name="auto" string="Tự động" domain="[('compute_mode', '=', 'auto')]"/>
+                <filter name="auto" string="Tự động (code)" domain="[('compute_mode', '=', 'auto')]"/>
+                <filter name="domain_mode" string="Tự động (cấu hình)" domain="[('compute_mode', '=', 'domain')]"/>
                 <filter name="manual" string="Nhập tay" domain="[('compute_mode', '=', 'manual')]"/>
                 <separator/>
                 <filter name="higher" string="Cao là tốt" domain="[('direction', '=', 'higher')]"/>

@@ -72,6 +72,34 @@ class TestKpiEngine(TransactionCase):
         # Task gốc có 2 người được giao: bug tính cho cả hai
         self.assertEqual(self._compute("D4", self.other_employee), (50.0, 2))
 
+    def test_domain_metric_equivalent_to_d4(self):
+        """Bước 1 (Chương 9.1): chỉ số cấu hình thuần domain phải ra đúng kết quả như hàm Python
+        _metric_d4() trên cùng dữ liệu — bằng chứng mạnh nhất rằng cơ chế cấu hình không cần
+        code là đúng, không chỉ đúng về lý thuyết."""
+        both = self.user | self.other
+        feature = self._task(users=both, story_points=10, done=self._days(-5))
+        code = {"task_type": "bug", "bug_root_cause": "code"}
+        self._task(origin_task_id=feature.id, bug_resolution="valid", is_production_bug=True, **code)
+        self._task(origin_task_id=feature.id, bug_resolution="wont_fix", **code)
+
+        denominator_domain = (
+            "[('task_type', '=', 'bug'), ('bug_resolution', 'in', ['valid', 'wont_fix']),"
+            " ('bug_root_cause', '=', 'code'), ('origin_task_id.user_ids', 'in', [user.id]),"
+            " ('origin_task_id.state', '=', '1_done'),"
+            " ('origin_task_id.date_end', '>=', start), ('origin_task_id.date_end', '<', end)]"
+        )
+        numerator_domain = denominator_domain.rstrip("]") + ", ('is_production_bug', '=', True)]"
+        model_id = self.env["ir.model"].search([("model", "=", "project.task")], limit=1).id
+        metric = self.env["kpi.metric"].create({
+            "code": "DOMAIN_D4", "name": "D4 cấu hình (thử nghiệm)", "category": "quality",
+            "compute_mode": "domain", "source_model_id": model_id, "aggregation": "ratio",
+            "numerator_domain": numerator_domain, "denominator_domain": denominator_domain,
+        })
+        self.assertEqual(
+            self.engine.compute_actual(metric, self.employee, self.date_from, self.date_to),
+            self._compute("D4"),
+        )
+
     def test_d5_d6_review_and_unit_test(self):
         self._task(done=self._days(-3), review_approve_count=1, has_unit_test=True)
         self._task(done=self._days(-3), review_approve_count=1, review_reject_count=1)
