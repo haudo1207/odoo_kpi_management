@@ -120,4 +120,46 @@
             <p>Tỷ lệ dưới 80% được tô đỏ: KPI của dự án đó có thể chưa đáng tin vì dữ liệu nhập thiếu.</p>
         </field>
     </record>
+
+    <!-- Mục 5: chỉ số cấp team = dự án, không tính điểm cá nhân -->
+    <record id="kpi_team_report_view_list" model="ir.ui.view">
+        <field name="name">kpi.team.report.list</field>
+        <field name="model">kpi.team.report</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="project_id"/>
+                <field name="feature_done_count"/>
+                <field name="on_time_rate" digits="[16, 0]" decoration-danger="on_time_rate &lt; 80"/>
+                <field name="bug_count"/>
+                <field name="bug_density" digits="[16, 2]"/>
+                <field name="production_bug_count"/>
+                <field name="production_bug_rate" digits="[16, 0]" decoration-danger="production_bug_rate &gt; 20"/>
+                <field name="avg_bug_fix_hours" digits="[16, 1]" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="kpi_team_report_view_pivot" model="ir.ui.view">
+        <field name="name">kpi.team.report.pivot</field>
+        <field name="model">kpi.team.report</field>
+        <field name="arch" type="xml">
+            <pivot string="Chỉ số theo dự án">
+                <field name="project_id" type="row"/>
+                <field name="on_time_rate" type="measure"/>
+                <field name="bug_density" type="measure"/>
+                <field name="production_bug_rate" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="kpi_team_report_action" model="ir.actions.act_window">
+        <field name="name">Chỉ số theo dự án</field>
+        <field name="res_model">kpi.team.report</field>
+        <field name="view_mode">list,pivot</field>
+        <field name="help" type="html">
+            <p>Chỉ số cấp team (team = dự án): tỷ lệ đúng hạn, mật độ lỗi, tỷ lệ lỗi lọt production,
+               thời gian sửa bug trung bình. Không quy trách nhiệm cá nhân — dùng để phát hiện vấn đề
+               nằm ở quy trình hoặc dự án.</p>
+        </field>
+    </record>
 </odoo>

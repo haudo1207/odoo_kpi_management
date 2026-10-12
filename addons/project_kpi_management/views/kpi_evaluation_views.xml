@@ -11,7 +11,11 @@
                 <field name="department_id" optional="show"/>
                 <field name="kpi_score" optional="hide" digits="[16, 2]"/>
                 <field name="final_score" digits="[16, 2]"/>
-                <field name="final_rating"/>
+                <field name="final_rating" widget="badge"
+                       decoration-success="final_rating == 'excellent'"
+                       decoration-info="final_rating == 'good'"
+                       decoration-warning="final_rating == 'pass'"
+                       decoration-danger="final_rating == 'improve'"/>
                 <field name="insufficient_data" optional="show"/>
                 <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-warning="state == 'submitted'" decoration-success="state == 'approved'"/>
             </list>
@@ -36,9 +40,12 @@
                             invisible="state != 'submitted'" groups="project_kpi_management.group_kpi_admin"/>
                     <button name="action_reopen" string="Mở lại" type="object"
                             invisible="state != 'approved'" groups="project_kpi_management.group_kpi_admin"/>
+                    <button name="action_open_self_assessment" string="Tự đánh giá" type="object"
+                            invisible="not is_own_evaluation or state != 'draft' or not id"/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
+                    <field name="is_own_evaluation" invisible="1"/>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_view_late_bugs" type="object" class="oe_stat_button" icon="fa-bug"
                                 invisible="late_bug_count == 0">
@@ -77,8 +84,15 @@
                             <field name="rating" invisible="insufficient_data"/>
                             <field name="manual_rating" invisible="not insufficient_data" readonly="state != 'draft'"/>
                             <field name="manual_rating_note" invisible="not insufficient_data" readonly="state != 'draft'"/>
-                            <field name="final_rating" class="fw-bold"/>
+                            <field name="final_rating" widget="badge"
+                                   decoration-success="final_rating == 'excellent'"
+                                   decoration-info="final_rating == 'good'"
+                                   decoration-warning="final_rating == 'pass'"
+                                   decoration-danger="final_rating == 'improve'"/>
                         </group>
+                    </group>
+                    <group invisible="not employee_comment" string="Tự đánh giá của nhân viên (tham khảo)">
+                        <field name="employee_comment" readonly="1" nolabel="1"/>
                     </group>
                     <notebook invisible="not id">
                         <page string="Chỉ số" name="lines">
@@ -99,6 +113,8 @@
                                     <field name="is_applicable"/>
                                     <field name="score" digits="[16, 2]"/>
                                     <field name="weighted_score" optional="show" digits="[16, 2]"/>
+                                    <field name="self_score" readonly="1" optional="show"
+                                           invisible="compute_mode != 'manual'"/>
                                     <field name="remark" optional="show"/>
                                 </list>
                             </field>

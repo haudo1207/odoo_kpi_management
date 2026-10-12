@@ -8,6 +8,19 @@ RATINGS = [
     ("improve", "Cần cải thiện"),
 ]
 
+PIP_ACTIVITY_XMLID = "project_kpi_management.mail_activity_type_pip"
+
+
+def _check_self_assessment_field(vals_list, env, field, message):
+    """Mục 6: employee_comment/self_score chỉ được ghi bằng sudo() (qua wizard Tự đánh giá), dù
+    quản lý/admin có quyền ghi bình thường trên model (cho manager_adjustment, D9...). Phải chặn
+    cả create() lẫn write() — chặn một chỗ vẫn lách được qua chỗ kia (phát hiện khi rà lại sau khi
+    sửa write(), xem Chương 5.6: script pre_defense_check.py)."""
+    if env.su:
+        return
+    if any(field in vals for vals in vals_list):
+        raise UserError(message)
+
 # Giá trị mặc định, ghi đè được bằng ir.config_parameter (giao diện Settings làm ở Phase 7)
 PARAM_DEFAULTS = {
     "score_cap": 120.0,
@@ -74,6 +87,11 @@ class KpiEvaluation(models.Model):
         help="Dùng cho mọi báo cáo: xếp loại thủ công nếu thiếu dữ liệu, ngược lại là xếp loại tự động.",
     )
 
+    # Mục 6: nhân viên tự đánh giá — chỉ tham khảo, không cộng vào điểm, không thêm trạng thái.
+    # Ghi qua wizard kpi.self.assessment.wizard bằng sudo(), không nới quyền ghi trực tiếp.
+    employee_comment = fields.Text("Nhận xét của nhân viên", copy=False)
+    is_own_evaluation = fields.Boolean(compute="_compute_is_own_evaluation")
+
     _employee_period_unique = models.Constraint(
         "UNIQUE(employee_id, period_id)", "Mỗi nhân viên chỉ có một phiếu đánh giá trong một kỳ."
     )
@@ -118,6 +136,25 @@ class KpiEvaluation(models.Model):
         for ev in self:
             ev.final_rating = ev.manual_rating if ev.insufficient_data else ev.rating
 
+    def _compute_is_own_evaluation(self):
+        for ev in self:
+            ev.is_own_evaluation = ev.employee_id.sudo().user_id == self.env.user
+
+    def action_open_self_assessment(self):
+        self.ensure_one()
+        if not self.is_own_evaluation:
+            raise AccessError("Chỉ chính nhân viên trên phiếu mới tự đánh giá được.")
+        if self.state != "draft":
+            raise UserError("Chỉ tự đánh giá được khi phiếu ở trạng thái Nháp.")
+        return {
+            "type": "ir.actions.act_window",
+            "name": "Tự đánh giá",
+            "res_model": "kpi.self.assessment.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {"default_evaluation_id": self.id},
+        }
+
     @api.constrains("manager_adjustment", "adjustment_note")
     def _check_adjustment(self):
         max_adj = get_kpi_param(self.env, "adjustment_max")
@@ -140,6 +177,9 @@ class KpiEvaluation(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        _check_self_assessment_field(
+            vals_list, self.env, "employee_comment", "Chỉ ghi nhận xét của nhân viên qua wizard Tự đánh giá."
+        )
         # sudo: quản lý KPI không thuộc nhóm HR vẫn cần đọc chức danh, phòng ban (nằm ở hr.version)
         Employee = self.env["hr.employee"].sudo()
         for vals in vals_list:
@@ -154,12 +194,17 @@ class KpiEvaluation(models.Model):
             if not template.line_ids:
                 raise UserError(f"Bộ KPI \"{template.name}\" chưa có chỉ số nào, không tạo phiếu được.")
             if "line_ids" not in vals:
-                # Chụp dữ liệu từ template: sửa template sau này không ảnh hưởng phiếu đã tạo
+                overrides = self.env["kpi.target.override"].sudo().search([
+                    ("template_line_id", "in", template.line_ids.ids),
+                    "|", ("employee_id", "=", vals["employee_id"]), ("department_id", "=", vals["department_id"]),
+                ])
+                # Chụp dữ liệu từ template: sửa template hay mục tiêu riêng sau này không ảnh hưởng phiếu đã tạo.
+                # Thứ tự ưu tiên mục tiêu: nhân viên -> phòng ban -> template
                 vals["line_ids"] = [
                     fields.Command.create({
                         "sequence": line.sequence,
                         "metric_id": line.metric_id.id,
-                        "target": line.target,
+                        "target": line._resolve_target(overrides, vals["employee_id"], vals["department_id"]),
                         "weight": line.weight,
                         "min_volume": line.min_volume,
                     })
@@ -168,6 +213,12 @@ class KpiEvaluation(models.Model):
         return super().create(vals_list)
 
     def write(self, vals):
+        # employee_comment là lời của chính nhân viên: quản lý/admin vẫn có quyền ghi (group_kpi_manager
+        # write=1 trên cả model) nên _LOCKED_FIELDS (chỉ khoá khi hết Nháp) không đủ — chặn hẳn việc ghi
+        # trực tiếp ngoài wizard, bất kể trạng thái. Wizard ghi qua sudo() nên không bị chặn ở đây.
+        _check_self_assessment_field(
+            [vals], self.env, "employee_comment", "Chỉ ghi nhận xét của nhân viên qua wizard Tự đánh giá."
+        )
         if self._LOCKED_FIELDS & vals.keys() and self.filtered(lambda e: e.state != "draft"):
             raise UserError("Phiếu đã gửi hoặc đã duyệt, chỉ sửa được khi ở trạng thái Nháp.")
         return super().write(vals)
@@ -230,6 +281,21 @@ class KpiEvaluation(models.Model):
         if not self.env.su and not self.env.user.has_group("project_kpi_management.group_kpi_admin"):
             raise AccessError("Chỉ KPI Administrator được duyệt, trả về hoặc mở lại phiếu.")
 
+    def _check_no_role_conflict(self):
+        """Không cho một người vừa là nhân viên/quản lý trực tiếp vừa tự duyệt phiếu của chính họ
+        bằng vai trò KPI Administrator (Chương 8.3 cũ). Dựa vào self.env.user nên vẫn đúng khi gọi
+        qua sudo(); bỏ qua khi chạy bằng superuser (cron, script) vì đó không phải một người duyệt."""
+        if self.env.su:
+            return
+        user = self.env.user
+        for ev in self:
+            employee = ev.employee_id.sudo()
+            if user in (employee.user_id, employee.parent_id.user_id):
+                raise AccessError(
+                    f"{user.name} là chính nhân viên hoặc quản lý trực tiếp của {employee.name}, "
+                    f"không được duyệt, trả về hay mở lại phiếu {ev.name}."
+                )
+
     def action_submit(self):
         for ev in self:
             if ev.state != "draft":
@@ -251,10 +317,40 @@ class KpiEvaluation(models.Model):
 
     def action_approve(self):
         self._check_kpi_admin()
+        self._check_no_role_conflict()
         if self.filtered(lambda e: e.state != "submitted"):
             raise UserError("Chỉ duyệt được phiếu đã gửi.")
         self.write({"state": "approved", "approved_date": fields.Datetime.now()})
+        self._sync_pip_activity()
         return True
+
+    def _sync_pip_activity(self):
+        """Mục 3: phiếu duyệt với xếp loại Cần cải thiện thì nhắc quản lý trực tiếp lập kế hoạch
+        cải thiện. Không tạo trùng nếu đã có nhắc việc đang mở (ví dụ Mở lại rồi Duyệt lại)."""
+        pip_type = self.env.ref(PIP_ACTIVITY_XMLID, raise_if_not_found=False)
+        if not pip_type:
+            return
+        for ev in self:
+            if ev.final_rating != "improve":
+                continue
+            if ev.activity_ids.filtered(lambda a: a.activity_type_id == pip_type):
+                continue
+            manager_user = ev.employee_id.sudo().parent_id.user_id
+            ev.activity_schedule(
+                act_type_xmlid=PIP_ACTIVITY_XMLID,
+                user_id=(manager_user or self.env.user).id,
+                summary="Lập kế hoạch cải thiện",
+                note=f"Phiếu {ev.name} được duyệt với xếp loại Cần cải thiện. "
+                     "Hãy lập kế hoạch cải thiện cho nhân viên.",
+            )
+
+    def _cancel_pip_activity(self):
+        """Huỷ nhắc việc PIP khi phiếu không còn ở trạng thái Đã duyệt (Trả về/Mở lại), để lần
+        duyệt sau tự đánh giá lại đúng theo xếp loại mới, không để sót nhắc việc đã lỗi thời."""
+        pip_type = self.env.ref(PIP_ACTIVITY_XMLID, raise_if_not_found=False)
+        if not pip_type:
+            return
+        self.activity_ids.filtered(lambda a: a.activity_type_id == pip_type).unlink()
 
     def action_return_draft(self):
         return self._open_reason_wizard("return")
@@ -265,6 +361,7 @@ class KpiEvaluation(models.Model):
     def _open_reason_wizard(self, mode):
         self.ensure_one()
         self._check_kpi_admin()
+        self._check_no_role_conflict()
         return {
             "type": "ir.actions.act_window",
             "name": "Trả về nháp" if mode == "return" else "Mở lại phiếu",
@@ -303,6 +400,10 @@ class KpiEvaluationLine(models.Model):
     score = fields.Float("Điểm", compute="_compute_score", store=True, aggregator="avg")
     weighted_score = fields.Float("Điểm đóng góp", compute="_compute_score", store=True)
     remark = fields.Text("Ghi chú")
+    self_score = fields.Float(
+        "Tự chấm", copy=False,
+        help="Mục 6: nhân viên tự chấm (chỉ tham khảo, không cộng vào điểm chính thức).",
+    )
 
     @api.depends("actual", "target", "volume", "min_volume", "weight", "metric_id.direction")
     def _compute_score(self):
@@ -332,11 +433,17 @@ class KpiEvaluationLine(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        _check_self_assessment_field(
+            vals_list, self.env, "self_score", "Chỉ ghi tự chấm của nhân viên qua wizard Tự đánh giá."
+        )
         lines = super().create(vals_list)
         lines._check_evaluation_draft()
         return lines
 
     def write(self, vals):
+        _check_self_assessment_field(
+            [vals], self.env, "self_score", "Chỉ ghi tự chấm của nhân viên qua wizard Tự đánh giá."
+        )
         self._check_evaluation_draft()
         if "actual" in vals:
             manual = self.filtered(lambda l: l.compute_mode == "manual")

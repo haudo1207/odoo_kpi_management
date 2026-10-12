@@ -1,5 +1,6 @@
 from . import kpi_metric
 from . import kpi_template
+from . import kpi_target_override
 from . import hr_job
 from . import hr_employee
 from . import project_task
@@ -8,4 +9,5 @@ from . import kpi_evaluation
 from . import kpi_engine
 from . import kpi_demo
 from . import kpi_data_quality
+from . import kpi_team_report
 from . import res_config_settings

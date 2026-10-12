@@ -70,3 +70,16 @@ class KpiTemplateLine(models.Model):
     _min_volume_positive = models.Constraint(
         "CHECK(min_volume >= 0)", "Khối lượng tối thiểu không được âm."
     )
+
+    def _resolve_target(self, overrides, employee_id, department_id):
+        """Mục tiêu dùng khi chụp phiếu: ưu tiên mục tiêu riêng của nhân viên, rồi của phòng ban,
+        cuối cùng mới dùng mục tiêu mặc định trên template. `overrides` là tập kpi.target.override
+        đã lọc sẵn theo các dòng của template (tránh mỗi dòng tự search lại)."""
+        self.ensure_one()
+        own = overrides.filtered(lambda o: o.template_line_id == self and o.employee_id.id == employee_id)
+        if own:
+            return own.target
+        dept = overrides.filtered(lambda o: o.template_line_id == self and o.department_id.id == department_id)
+        if dept:
+            return dept.target
+        return self.target

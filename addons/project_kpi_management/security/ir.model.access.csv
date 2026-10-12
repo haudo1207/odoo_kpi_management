@@ -5,6 +5,8 @@ access_kpi_template_user,kpi.template.user,model_kpi_template,group_kpi_user,1,0
 access_kpi_template_admin,kpi.template.admin,model_kpi_template,group_kpi_admin,1,1,1,1
 access_kpi_template_line_user,kpi.template.line.user,model_kpi_template_line,group_kpi_user,1,0,0,0
 access_kpi_template_line_admin,kpi.template.line.admin,model_kpi_template_line,group_kpi_admin,1,1,1,1
+access_kpi_target_override_user,kpi.target.override.user,model_kpi_target_override,group_kpi_user,1,0,0,0
+access_kpi_target_override_admin,kpi.target.override.admin,model_kpi_target_override,group_kpi_admin,1,1,1,1
 access_kpi_period_user,kpi.period.user,model_kpi_period,group_kpi_user,1,0,0,0
 access_kpi_period_admin,kpi.period.admin,model_kpi_period,group_kpi_admin,1,1,1,1
 access_kpi_evaluation_user,kpi.evaluation.user,model_kpi_evaluation,group_kpi_user,1,0,0,0
@@ -13,4 +15,7 @@ access_kpi_evaluation_line_user,kpi.evaluation.line.user,model_kpi_evaluation_li
 access_kpi_evaluation_line_manager,kpi.evaluation.line.manager,model_kpi_evaluation_line,group_kpi_manager,1,1,1,1
 access_kpi_evaluation_reason_wizard_admin,kpi.evaluation.reason.wizard.admin,model_kpi_evaluation_reason_wizard,group_kpi_admin,1,1,1,1
 access_kpi_evaluation_generate_wizard_admin,kpi.evaluation.generate.wizard.admin,model_kpi_evaluation_generate_wizard,group_kpi_admin,1,1,1,1
+access_kpi_self_assessment_wizard_user,kpi.self.assessment.wizard.user,model_kpi_self_assessment_wizard,group_kpi_user,1,1,1,1
+access_kpi_self_assessment_wizard_line_user,kpi.self.assessment.wizard.line.user,model_kpi_self_assessment_wizard_line,group_kpi_user,1,1,1,1
 access_kpi_data_quality_report_manager,kpi.data.quality.report.manager,model_kpi_data_quality_report,group_kpi_manager,1,0,0,0
+access_kpi_team_report_manager,kpi.team.report.manager,model_kpi_team_report,group_kpi_manager,1,0,0,0

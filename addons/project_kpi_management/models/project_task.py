@@ -67,19 +67,24 @@ class ProjectTask(models.Model):
             if task.origin_task_id == task:
                 raise ValidationError("Task gốc không thể là chính nó.")
 
+    def _calc_days_late(self):
+        """Giá trị days_late của một task, dùng chung cho compute lẫn cron (so sánh trước khi ghi,
+        tránh ghi write_date mỗi ngày cho task mà giá trị không đổi — xem _cron_update_days_late)."""
+        self.ensure_one()
+        if not self.date_deadline or self.state == "1_canceled":
+            return 0
+        # Task chưa xong thì so với hôm nay (cron cập nhật hằng ngày)
+        now = fields.Datetime.now()
+        ref = self.date_end if self.state == "1_done" and self.date_end else now
+        tz = pytz.timezone(self.company_id.resource_calendar_id.tz or "UTC")
+        ref_day = pytz.utc.localize(ref).astimezone(tz).date()
+        deadline_day = pytz.utc.localize(self.date_deadline).astimezone(tz).date()
+        return max((ref_day - deadline_day).days, 0)
+
     @api.depends("date_deadline", "date_end", "state")
     def _compute_days_late(self):
-        now = fields.Datetime.now()
         for task in self:
-            if not task.date_deadline or task.state == "1_canceled":
-                task.days_late = 0
-                continue
-            # Task chưa xong thì so với hôm nay (cron cập nhật hằng ngày)
-            ref = task.date_end if task.state == "1_done" and task.date_end else now
-            tz = pytz.timezone(task.company_id.resource_calendar_id.tz or "UTC")
-            ref_day = pytz.utc.localize(ref).astimezone(tz).date()
-            deadline_day = pytz.utc.localize(task.date_deadline).astimezone(tz).date()
-            task.days_late = max((ref_day - deadline_day).days, 0)
+            task.days_late = task._calc_days_late()
 
     @api.model
     def _cron_update_days_late(self):
@@ -87,8 +92,10 @@ class ProjectTask(models.Model):
             ("date_deadline", "<", fields.Datetime.now()),
             ("state", "not in", ["1_done", "1_canceled"]),
         ])
-        self.env.add_to_compute(self._fields["days_late"], tasks)
-        tasks.flush_recordset(["days_late"])
+        for task in tasks:
+            new_value = task._calc_days_late()
+            if new_value != task.days_late:
+                task.days_late = new_value
 
     @api.model_create_multi
     def create(self, vals_list):

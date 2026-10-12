@@ -63,6 +63,53 @@ class TestProjectTask(TransactionCase):
         canceled = self._task(date_deadline=now - timedelta(days=4), state="1_canceled")
         self.assertEqual(canceled.days_late, 0)
 
+    def _db_write_date(self, task):
+        """Đọc write_date thẳng từ DB bằng SQL, không qua cache ORM — dùng để kiểm tra đúng dữ
+        liệu đã ghi xuống, không chỉ giá trị trong cache Python."""
+        self.env.cr.execute("SELECT write_date FROM project_task WHERE id = %s", (task.id,))
+        return self.env.cr.fetchone()[0]
+
+    def test_cron_only_writes_when_days_late_changes(self):
+        """Điểm 2 góp ý: cron không nên ghi write_date cho task mà days_late không đổi.
+
+        Lưu ý khi viết test này: phải flush_recordset() ngay sau create() trước khi can thiệp
+        bằng SQL thô. Nếu không, field compute+store (days_late) vừa tạo có thể vẫn còn "treo"
+        trong hàng đợi ghi của ORM, và lần flush tự động kế tiếp (do ORM kích hoạt, ví dụ trong
+        _cron_update_days_late) sẽ ghi đè giá trị SQL thô vừa chỉnh bằng giá trị cũ — khiến test
+        tưởng nhầm là cron ghi sai, trong khi thật ra là do thứ tự thao tác trong chính test."""
+        now = fields.Datetime.now()
+        unchanged = self._task(date_deadline=now - timedelta(days=3))
+        unchanged.flush_recordset()
+        self.assertEqual(unchanged.days_late, 3)
+        old_write_date = now - timedelta(days=1)
+        self.env.cr.execute(
+            "UPDATE project_task SET write_date = %s WHERE id = %s", (old_write_date, unchanged.id)
+        )
+        unchanged.invalidate_recordset(["write_date"])
+
+        self.env["project.task"]._cron_update_days_late()
+        unchanged.flush_recordset()
+        self.assertEqual(unchanged.days_late, 3)
+        self.assertEqual(self._db_write_date(unchanged), old_write_date)  # không đổi
+
+        changed = self._task(date_deadline=now - timedelta(days=1))
+        changed.flush_recordset()
+        self.env.cr.execute(
+            "UPDATE project_task SET date_deadline = %s, days_late = 0, write_date = %s WHERE id = %s",
+            (now - timedelta(days=4), old_write_date, changed.id),
+        )
+        changed.invalidate_recordset(["date_deadline", "days_late", "write_date"])
+        self.assertEqual(changed.days_late, 0)
+
+        self.env["project.task"]._cron_update_days_late()
+        changed.flush_recordset()
+        self.assertEqual(changed.days_late, 4)
+        self.assertNotEqual(self._db_write_date(changed), old_write_date)  # có đổi thật
+
+        self.env["project.task"]._cron_update_days_late()
+        self.assertEqual(changed.days_late, 4)
+        self.assertNotEqual(self._db_write_date(changed), old_write_date)  # có đổi thật
+
     def test_bug_link_to_origin(self):
         feature = self._task(task_type="feature", story_points=5)
         bug = self._task(task_type="bug", origin_task_id=feature.id,

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Mục 3: nhắc việc "Kế hoạch cải thiện" khi phiếu được duyệt với xếp loại Cần cải thiện.
+         Dùng mail.activity.mixin đã kế thừa sẵn trên kpi.evaluation nhưng chưa khai thác. -->
+    <record id="mail_activity_type_pip" model="mail.activity.type">
+        <field name="name">Kế hoạch cải thiện</field>
+        <field name="summary">Lập kế hoạch cải thiện</field>
+        <field name="res_model">kpi.evaluation</field>
+        <field name="category">default</field>
+        <field name="decoration_type">warning</field>
+        <field name="icon">fa-exclamation-triangle</field>
+    </record>
+</odoo>

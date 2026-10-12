@@ -140,6 +140,63 @@ class TestKpiReports(TransactionCase):
         self.assertEqual((row.origin_rate, row.classified_rate), (0.0, 50.0))
         self.assertEqual(row.done_without_date_end, 0)  # date_end luôn được ghi khi Done
 
+    def test_team_report_by_project(self):
+        """Mục 5: chỉ số cấp team = dự án, cùng cách làm với kpi.data.quality.report."""
+        Task = self.env["project.task"]
+        base = {"project_id": self.project.id}
+        on_time = Task.create({"name": "F đúng hạn", "task_type": "feature", **base})
+        on_time.write({"state": "1_done"})
+        late = Task.create({
+            "name": "F trễ", "task_type": "feature",
+            "date_deadline": fields.Datetime.now() - timedelta(days=5), **base,
+        })
+        late.write({"state": "1_done"})
+        self.assertGreater(late.days_late, 0)
+
+        bug1 = Task.create({
+            "name": "Bug production", "task_type": "bug", "bug_resolution": "valid",
+            "is_production_bug": True, **base,
+        })
+        bug1.write({"state": "1_done"})
+        bug2 = Task.create({"name": "Bug thường", "task_type": "bug", "bug_resolution": "valid", **base})
+        bug2.write({"state": "1_done"})
+
+        past = fields.Datetime.now() - timedelta(hours=2)
+        self.env.cr.execute("UPDATE project_task SET create_date = %s WHERE id IN %s", (past, (bug1.id, bug2.id)))
+        (bug1 + bug2).invalidate_recordset(["create_date"])
+        self.env.flush_all()
+
+        row = self.env["kpi.team.report"].search([("project_id", "=", self.project.id)])
+        self.assertEqual((row.feature_done_count, row.feature_on_time_count), (2, 1))
+        self.assertAlmostEqual(row.on_time_rate, 50.0, places=4)
+        self.assertEqual(row.bug_count, 2)
+        self.assertAlmostEqual(row.bug_density, 1.0, places=4)
+        self.assertEqual(row.production_bug_count, 1)
+        self.assertAlmostEqual(row.production_bug_rate, 50.0, places=4)
+        self.assertAlmostEqual(row.avg_bug_fix_hours, 2.0, places=1)
+
+    def test_team_report_attributes_bug_to_origin_project(self):
+        """Mục 5: bug nằm ở dự án "Bug tổng" nhưng task gốc thuộc dự án khác thì tính vào dự án
+        của task gốc, đúng quy ước D3/D4 (kpi_engine.py: "quy về ... task gốc"), không tính vào
+        dự án chứa bug. Bug không có task gốc thì vẫn giữ dự án của chính nó."""
+        Task = self.env["project.task"]
+        bug_project = self.env["project.project"].create({"name": "Bug tổng"})
+        feature = Task.create({"name": "Feature ở dự án báo cáo", "project_id": self.project.id})
+        cross_bug = Task.create({
+            "name": "Bug chéo dự án", "project_id": bug_project.id, "task_type": "bug",
+            "bug_resolution": "valid", "origin_task_id": feature.id,
+        })
+        orphan_bug = Task.create({
+            "name": "Bug không có task gốc", "project_id": bug_project.id, "task_type": "bug",
+            "bug_resolution": "valid",
+        })
+        self.env.flush_all()
+
+        report_project = self.env["kpi.team.report"].search([("project_id", "=", self.project.id)])
+        report_bug_project = self.env["kpi.team.report"].search([("project_id", "=", bug_project.id)])
+        self.assertEqual(report_project.bug_count, 1)  # cross_bug quy về đây, theo task gốc
+        self.assertEqual(report_bug_project.bug_count, 1)  # chỉ orphan_bug còn ở lại dự án của chính nó
+
     def test_line_report_fields_and_employee_button(self):
         employee = self._employee("rp1", self.dept_b)
         ev = self.env["kpi.evaluation"].create({"employee_id": employee.id, "period_id": self.period.id})

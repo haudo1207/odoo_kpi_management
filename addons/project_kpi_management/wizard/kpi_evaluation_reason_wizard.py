@@ -14,12 +14,14 @@ class KpiEvaluationReasonWizard(models.TransientModel):
         self.ensure_one()
         ev = self.evaluation_id
         ev._check_kpi_admin()
+        ev._check_no_role_conflict()
         expected = "submitted" if self.mode == "return" else "approved"
         if ev.state != expected:
             raise UserError("Trạng thái phiếu đã thay đổi, hãy tải lại trang.")
         if not self.reason.strip():
             raise UserError("Bắt buộc ghi lý do.")
         ev.write({"state": "draft"})
+        ev._cancel_pip_activity()
         label = dict(self._fields["mode"].selection)[self.mode]
         ev.message_post(body=f"{label}. Lý do: {self.reason}")
         return {"type": "ir.actions.act_window_close"}
