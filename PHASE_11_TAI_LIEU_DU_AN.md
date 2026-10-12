@@ -752,6 +752,27 @@ Chương 3.3) — cộng thêm 2 lỗi thao tác khi viết chính script (chạ
 lại code, và nhầm trạng thái phiếu sau khi Mở lại). Tất cả đã sửa và xác minh lại bằng cách chạy
 script nhiều lần liên tiếp, không còn cảnh báo dọn dẹp.
 
+### 5.7. Quy trình đúng ngày bảo vệ
+
+Container Odoo đọc code trực tiếp từ thư mục `addons` trên đĩa. Nếu phát triển tiếp trên `main` sau
+mốc `v1.0-bao-ve` (Chương 10) mà đến ngày bảo vệ quên chuyển về đúng tag, buổi demo sẽ chạy code
+đang làm dở — không phải bản đã kiểm chứng đủ 78 test và 8 bước `pre_defense_check.py`.
+
+```bash
+git stash                      # nếu còn thay đổi chưa commit trên main
+git checkout v1.0-bao-ve
+docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management --stop-after-init
+docker restart odoo19-web
+python scripts/pre_defense_check.py --db kpi_dev   # phải OK cả 8 bước
+# ... bảo vệ xong ...
+git checkout main
+git stash pop                  # nếu có stash ở bước đầu
+```
+
+Bước `-u project_kpi_management` + khởi động lại container là bắt buộc, không phải tuỳ chọn — lý do
+đã nêu ở Chương 5.6: sửa file trên đĩa (hoặc đổi nhánh/tag như ở đây) không tự áp dụng cho tiến
+trình Odoo đang chạy.
+
 ---
 
 ## Chương 6 — Hướng dẫn sử dụng
@@ -962,11 +983,19 @@ việc dữ liệu có sạch hay không — không chỉ Dev mới bị ràng b
 
 Đồ án đã xây dựng hoàn chỉnh module `project_kpi_management` trên Odoo 19, đáp ứng toàn bộ phạm vi
 MVP (31/31 hạng mục) và phần lớn phạm vi Nên có/Mở rộng (7/7 hạng mục), tổng cộng 38/38 hạng mục
-trong bảng thống kê triển khai. Hệ thống có 66 unit test tự động (0 lỗi) cộng với kiểm thử thủ công
-trên REST API, báo cáo PDF, phân quyền và luồng nghiệp vụ hoàn chỉnh trên dữ liệu thật. Nguyên tắc
-thiết kế cốt lõi — không hardcode vai trò — đã được kiểm chứng bằng demo trực tiếp (Chương 7),
-không chỉ dừng ở khẳng định lý thuyết. Các giới hạn còn tồn tại (Chương 8.3) đều đã được xác định
-rõ ràng, có hướng xử lý cụ thể (Chương 9), phù hợp để trình bày minh bạch trước hội đồng.
+trong bảng thống kê triển khai, cộng thêm 6 mục mở rộng sau khi đối chiếu với các hệ thống KPI tương
+tự (màu xếp loại, chặn xung đột vai trò, nhắc việc PIP, mục tiêu theo phòng ban, chỉ số theo dự án,
+tự đánh giá — Chương 9 cũ, nay đã triển khai). Hệ thống có 78 unit test tự động (0 lỗi) cộng với
+kiểm thử thủ công trên REST API, báo cáo PDF, phân quyền, luồng nghiệp vụ hoàn chỉnh trên dữ liệu
+thật, và kiểm tra qua đúng tài khoản thật bằng XML-RPC (`scripts/pre_defense_check.py`, Chương 5.6)
+— cách kiểm tra này tự nó đã bắt được một số lỗi mà unit test (chạy bằng superuser) không bắt được.
+Nguyên tắc thiết kế cốt lõi — không hardcode vai trò — đã được kiểm chứng bằng demo trực tiếp
+(Chương 7), không chỉ dừng ở khẳng định lý thuyết. Các giới hạn còn tồn tại (Chương 8.3) đều đã được
+xác định rõ ràng, có hướng xử lý cụ thể (Chương 9), phù hợp để trình bày minh bạch trước hội đồng.
+
+Bản dùng để bảo vệ được đóng băng ở tag Git `v1.0-bao-ve` — quy trình chuyển đúng về bản này vào
+ngày bảo vệ nằm ở Chương 5.7. Phát triển tiếp theo hướng Chương 9 (sau bảo vệ) đi trên `main`, không
+ảnh hưởng tag này.
 
 ---
 
