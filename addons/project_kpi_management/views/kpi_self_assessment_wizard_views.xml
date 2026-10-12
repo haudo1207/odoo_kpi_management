@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="kpi_self_assessment_wizard_view_form" model="ir.ui.view">
+        <field name="name">kpi.self.assessment.wizard.form</field>
+        <field name="model">kpi.self.assessment.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <field name="evaluation_id" invisible="1"/>
+                <group>
+                    <field name="employee_comment" placeholder="Nhận xét của bạn về kỳ đánh giá này (chỉ tham khảo)"/>
+                </group>
+                <field name="line_ids">
+                    <list editable="bottom">
+                        <field name="evaluation_line_id" column_invisible="1"/>
+                        <field name="metric_id" readonly="1"/>
+                        <field name="target" readonly="1"/>
+                        <field name="self_score"/>
+                    </list>
+                </field>
+                <footer>
+                    <button name="action_confirm" string="Gửi tự đánh giá" type="object" class="btn-primary"/>
+                    <button string="Huỷ" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
