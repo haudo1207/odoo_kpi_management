@@ -75,18 +75,23 @@ class TestKpiEngine(TransactionCase):
     def test_domain_metric_equivalent_to_d4(self):
         """Bước 1 (Chương 9.1): chỉ số cấu hình thuần domain phải ra đúng kết quả như hàm Python
         _metric_d4() trên cùng dữ liệu — bằng chứng mạnh nhất rằng cơ chế cấu hình không cần
-        code là đúng, không chỉ đúng về lý thuyết."""
+        code là đúng, không chỉ đúng về lý thuyết. Domain dùng chuỗi giữ chỗ $CURRENT_USER_ID/
+        $PERIOD_START/$PERIOD_END (đọc bằng ast.literal_eval, không phải safe_eval biến Python)."""
         both = self.user | self.other
         feature = self._task(users=both, story_points=10, done=self._days(-5))
         code = {"task_type": "bug", "bug_root_cause": "code"}
         self._task(origin_task_id=feature.id, bug_resolution="valid", is_production_bug=True, **code)
         self._task(origin_task_id=feature.id, bug_resolution="wont_fix", **code)
+        # Bước 0: 1 bug đã lưu trữ (active=False) — phải bị loại khỏi cả hai cách tính như nhau,
+        # vì search()/search_count() mặc định không thấy bản ghi đã lưu trữ.
+        archived = self._task(origin_task_id=feature.id, bug_resolution="valid", **code)
+        archived.active = False
 
         denominator_domain = (
             "[('task_type', '=', 'bug'), ('bug_resolution', 'in', ['valid', 'wont_fix']),"
-            " ('bug_root_cause', '=', 'code'), ('origin_task_id.user_ids', 'in', [user.id]),"
+            " ('bug_root_cause', '=', 'code'), ('origin_task_id.user_ids', 'in', ['$CURRENT_USER_ID']),"
             " ('origin_task_id.state', '=', '1_done'),"
-            " ('origin_task_id.date_end', '>=', start), ('origin_task_id.date_end', '<', end)]"
+            " ('origin_task_id.date_end', '>=', '$PERIOD_START'), ('origin_task_id.date_end', '<', '$PERIOD_END')]"
         )
         numerator_domain = denominator_domain.rstrip("]") + ", ('is_production_bug', '=', True)]"
         model_id = self.env["ir.model"].search([("model", "=", "project.task")], limit=1).id
@@ -99,6 +104,37 @@ class TestKpiEngine(TransactionCase):
             self.engine.compute_actual(metric, self.employee, self.date_from, self.date_to),
             self._compute("D4"),
         )
+
+    def _domain_metric(self, model_name, date_field_name, **vals):
+        model_id = self.env["ir.model"].search([("model", "=", model_name)], limit=1).id
+        date_field_id = self.env["ir.model.fields"].search(
+            [("model_id", "=", model_id), ("name", "=", date_field_name)], limit=1
+        ).id
+        return self.env["kpi.metric"].create({
+            "code": "DOMAIN_BOUND", "name": "Biên ngày (thử nghiệm)", "category": "delivery",
+            "compute_mode": "domain", "source_model_id": model_id, "aggregation": "count",
+            "date_field_id": date_field_id, "numerator_domain": "[]", **vals,
+        })
+
+    def test_domain_metric_datetime_field_includes_last_day_of_period(self):
+        """Bước 0: field Datetime (date_deadline) phải tính đúng nửa khoảng [đầu kỳ, đầu kỳ sau),
+        kể cả bản ghi nằm sát biên cuối kỳ — dùng đúng mốc UTC _period_bounds() đang dùng."""
+        start, end = self.engine._period_bounds(self.date_from, self.date_to)
+        self._task(date_deadline=end - timedelta(seconds=1))  # trong kỳ, sát biên cuối
+        self._task(date_deadline=end)                         # vừa ngoài kỳ
+        metric = self._domain_metric("project.task", "date_deadline")
+        actual, volume = self.engine.compute_actual(metric, self.employee, self.date_from, self.date_to)
+        self.assertEqual((actual, volume), (1, 1))
+
+    def test_domain_metric_date_field_includes_last_day_of_period(self):
+        """Bước 0: field Date (project.milestone.deadline) phải lọc theo chính kiểu Date (>= ngày
+        đầu kỳ, < ngày đầu kỳ sau) — không so Date với mốc UTC datetime, tránh lệch múi giờ."""
+        Milestone = self.env["project.milestone"]
+        Milestone.create({"name": "Trong kỳ", "project_id": self.project.id, "deadline": self.date_to})
+        Milestone.create({"name": "Ngoài kỳ", "project_id": self.project.id, "deadline": self.date_to + timedelta(days=1)})
+        metric = self._domain_metric("project.milestone", "deadline")
+        actual, volume = self.engine.compute_actual(metric, self.employee, self.date_from, self.date_to)
+        self.assertEqual((actual, volume), (1, 1))
 
     def test_d5_d6_review_and_unit_test(self):
         self._task(done=self._days(-3), review_approve_count=1, has_unit_test=True)

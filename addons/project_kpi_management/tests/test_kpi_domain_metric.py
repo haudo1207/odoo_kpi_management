@@ -53,3 +53,17 @@ class TestKpiDomainMetric(TransactionCase):
         user = new_test_user(self.env, login="kpi_domain_metric_user", groups="project_kpi_management.group_kpi_user")
         with self.assertRaises(AccessError):
             self.env["kpi.metric"].with_user(user).create(self._vals())
+
+    def test_only_admin_opens_test_wizard(self):
+        """Bước 0: nút "Thử tính" phải tự kiểm tra quyền, không chỉ ẩn ở view — gọi thẳng qua ORM
+        (bỏ qua nút) vẫn phải bị chặn với người không phải KPI Admin."""
+        metric = self.env["kpi.metric"].create(self._vals())
+        manager = new_test_user(
+            self.env, login="kpi_domain_metric_manager", groups="project_kpi_management.group_kpi_manager"
+        )
+        admin = new_test_user(
+            self.env, login="kpi_domain_metric_admin", groups="project_kpi_management.group_kpi_admin"
+        )
+        with self.assertRaises(AccessError):
+            metric.with_user(manager).action_open_test_wizard()
+        metric.with_user(admin).action_open_test_wizard()  # không raise

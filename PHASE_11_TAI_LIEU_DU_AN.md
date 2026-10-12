@@ -182,7 +182,7 @@ addons/project_kpi_management/
 ├── data/                             Dữ liệu cấu hình chuẩn (D1–D9, bộ Developer/Tester, cron, loại nhắc việc PIP...)
 ├── views/                           View cho từng model + menu
 ├── report/                          Mẫu in PDF
-└── tests/                           10 file, 86 test
+└── tests/                           10 file, 89 test
 ```
 
 ### 2.4. Nguyên tắc thiết kế cốt lõi: không hardcode vai trò
@@ -296,11 +296,11 @@ kpi.data.quality.report  (SQL view, GROUP BY theo project.task.project_id — kh
 | Field | Kiểu | Ràng buộc | Ghi chú |
 |---|---|---|---|
 | `source_model_id` | Many2one → `ir.model` | domain chỉ cho `project.task`, `project.milestone`, `calendar.event` | Model lấy dữ liệu |
-| `user_field_id` | Many2one → `ir.model.fields` | phải thuộc `source_model_id` | Field người phụ trách — **để trống** nếu điều kiện người/kỳ đã viết sẵn trong domain bằng biến `user`/`start`/`end` (cần khi phải đi qua quan hệ, ví dụ `origin_task_id.user_ids`) |
-| `date_field_id` | Many2one → `ir.model.fields` | phải thuộc `source_model_id`, kiểu Date/Datetime | Field ngày để lọc theo kỳ |
+| `user_field_id` | Many2one → `ir.model.fields` | phải thuộc `source_model_id` | Field người phụ trách — **để trống** nếu điều kiện người đã viết sẵn trong domain bằng `$CURRENT_USER_ID` (cần khi phải đi qua quan hệ, ví dụ `origin_task_id.user_ids`) |
+| `date_field_id` | Many2one → `ir.model.fields` | phải thuộc `source_model_id`, kiểu Date/Datetime | Field ngày để lọc theo kỳ — tự chọn mốc Date hay Datetime UTC đúng theo kiểu field (Bước 0) |
 | `aggregation` | Selection | required khi `compute_mode = domain` | `count` (Đếm) / `sum` (Tổng) / `avg` (Trung bình) / `ratio` (Tỷ lệ) |
 | `value_field_id` | Many2one → `ir.model.fields` | bắt buộc nếu `aggregation` là sum/avg, kiểu Integer/Float/Monetary | Field số để Tổng/Trung bình |
-| `numerator_domain` | Char | required, phải `safe_eval` được | Domain Odoo chuẩn; có biến `user` (res.users), `start`, `end` (mốc kỳ, UTC) |
+| `numerator_domain` | Char | required, phải `ast.literal_eval` được | Domain Odoo dạng literal thuần; dùng chuỗi `$CURRENT_USER_ID`/`$PERIOD_START`/`$PERIOD_END` làm giữ chỗ cho giá trị động |
 | `denominator_domain` | Char | bắt buộc nếu `aggregation = ratio` | Domain mẫu số |
 
 Lấy nguyên mẫu từ `gamification.goal.definition` (Odoo 19 Community, đã kiểm tra trên source):
@@ -310,12 +310,35 @@ qua giao diện). Validate khi lưu (`_check_domain_metric_config`, cùng cách 
 `_check_domain_validity`): model phải trong danh sách cho phép, field phải đúng model/kiểu, và thử
 chạy `search_count()` thật với domain để bắt lỗi cú pháp ngay khi lưu, không đợi tới lúc tính KPI.
 
+**Bước 0 (rà soát ngay sau khi triển khai Bước 1) — 4 điểm đã sửa:**
+
+1. **Đọc domain bằng `ast.literal_eval`**, không phải `safe_eval`: chỉ parse literal Python thuần
+   (list/tuple/str/số...), không chạy được bất kỳ biểu thức hay thuộc tính nào (`user.id` kiểu truy
+   cập thuộc tính sẽ KHÔNG còn hợp lệ) — an toàn hơn hẳn so với bản đầu dùng `safe_eval` + biến
+   `user`/`start`/`end`. Để vẫn tham chiếu được người/kỳ, domain dùng 3 chuỗi giữ chỗ cố định
+   (`$CURRENT_USER_ID`, `$PERIOD_START`, `$PERIOD_END`), được `substitute_domain_placeholders()`
+   thay bằng giá trị thật **sau khi** đã parse xong (không phải lúc parse) — xem
+   `models/kpi_metric.py`.
+2. **Lọc kỳ đúng kiểu field ngày:** field Date (ví dụ `project.milestone.deadline`) lọc bằng chính
+   kiểu Date (`>= ngày đầu kỳ`, `< ngày đầu kỳ sau`); field Datetime (ví dụ `project.task.date_deadline`)
+   dùng mốc UTC như các chỉ số Python hiện có (`_period_bounds()`). So Date với mốc UTC datetime
+   trực tiếp có thể lệch múi giờ đúng ở ngày biên — `kpi.engine._domain_field_bounds()` tự chọn
+   đúng loại mốc theo `date_field_id.ttype`. Có test cho cả hai kiểu, kiểm đúng bản ghi nằm sát
+   ngày cuối kỳ.
+3. **Nút "Thử tính" tự kiểm tra quyền** trong `action_open_test_wizard()` (`has_group`, giống
+   `_check_kpi_admin()`), không chỉ ẩn ở view — gọi thẳng qua RPC bỏ qua nút vẫn bị chặn đúng.
+4. **Dữ liệu test có 1 bản ghi đã lưu trữ** (`active = False`) trong `test_domain_metric_equivalent_to_d4`
+   — xác nhận domain cấu hình và hàm Python `_metric_d4()` xử lý **giống nhau** với bản ghi đã lưu
+   trữ (cả hai đều dùng `search()`/`search_count()` nên mặc định đều loại bản ghi đã lưu trữ), không
+   lệch kết quả.
+
 **Giới hạn đã biết:** domain không so sánh được hai field trên cùng bản ghi (ví dụ D1 cần
 `date_end <= date_deadline`) — phải giữ hàm Python cho các chỉ số kiểu này, hoặc thêm field compute
 stored dạng cờ (`is_on_time`) để domain chỉ cần so với giá trị cố định. Đi qua quan hệ (như D4 quy
 bug về task gốc) **không** thuộc giới hạn này — domain vẫn so sánh được field quan hệ với hằng số
-(`user.id`/`start`/`end`), chỉ cần để trống `user_field_id`/`date_field_id` và viết đủ điều kiện
-trong `numerator_domain`/`denominator_domain` (xem test `test_domain_metric_equivalent_to_d4`).
+(`$CURRENT_USER_ID`/`$PERIOD_START`/`$PERIOD_END`), chỉ cần để trống `user_field_id`/`date_field_id`
+và viết đủ điều kiện trong `numerator_domain`/`denominator_domain` (xem test
+`test_domain_metric_equivalent_to_d4`).
 
 `kpi.engine._compute_domain_metric()`: ghép domain cấu hình với điều kiện người/kỳ (nếu có khai báo
 `user_field_id`/`date_field_id`), rồi `search_count`/`search().mapped()` theo `aggregation`. Trả về
@@ -604,7 +627,7 @@ docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management \
   --test-tags /project_kpi_management --stop-after-init --http-port 8070
 ```
 
-### 5.3. Danh sách test case (86 test, 10 file)
+### 5.3. Danh sách test case (89 test, 10 file)
 
 #### `tests/test_kpi_config.py` — 9 test (Phase 1: chỉ số, bộ KPI)
 
@@ -620,7 +643,7 @@ docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management \
 | `test_archive_metric_used_in_active_template` | Ẩn chỉ số đang dùng trong bộ KPI còn hoạt động bị chặn; chỉ số không dùng thì ẩn được |
 | `test_archive_template_linked_to_job` | Ẩn bộ KPI đang gắn chức danh bị chặn; gỡ gắn kết rồi ẩn được |
 
-#### `tests/test_kpi_domain_metric.py` — 7 test (Bước 1, Chương 9.1: chỉ số cấu hình không cần code)
+#### `tests/test_kpi_domain_metric.py` — 8 test (Bước 1, Chương 9.1: chỉ số cấu hình không cần code)
 
 | Test | Kiểm tra |
 |---|---|
@@ -631,6 +654,7 @@ docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management \
 | `test_sum_without_value_field_blocked` | Chọn Tổng mà không chọn field số bị chặn |
 | `test_valid_config_saved` | Cấu hình hợp lệ lưu được bình thường |
 | `test_only_admin_writes_domain_config` | Chỉ KPI Admin tạo/sửa được chỉ số cấu hình |
+| `test_only_admin_opens_test_wizard` | Gọi thẳng `action_open_test_wizard()` qua ORM (bỏ qua nút) vẫn bị chặn đúng với người không phải KPI Admin (Bước 0) |
 
 #### `tests/test_kpi_target_override.py` — 4 test (Mục tiêu riêng theo nhân viên/phòng ban)
 
@@ -673,14 +697,16 @@ docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management \
 | `test_approve_requires_submitted` | Chỉ duyệt được phiếu Đã gửi |
 | `test_target_editable_in_draft` | Mục tiêu sửa được khi còn Nháp |
 
-#### `tests/test_kpi_engine.py` — 10 test (Phase 4: Engine)
+#### `tests/test_kpi_engine.py` — 12 test (Phase 4: Engine)
 
 | Test | Kiểm tra |
 |---|---|
 | `test_d1_on_time` | D1: đúng hạn, trễ, quá hạn chưa xong, huỷ, chưa tới hạn, ngoài kỳ |
 | `test_d2_story_points` | D2: chỉ cộng SP của task Done trong kỳ |
 | `test_d3_d4_counted_bugs` | D3/D4: đúng quy tắc "bug tính KPI", task gốc nhiều người được giao thì tính cho cả hai |
-| `test_domain_metric_equivalent_to_d4` | Chỉ số cấu hình thuần domain (Bước 1) cho ra đúng kết quả như hàm Python `_metric_d4()` trên cùng dữ liệu |
+| `test_domain_metric_equivalent_to_d4` | Chỉ số cấu hình thuần domain (Bước 1) cho ra đúng kết quả như hàm Python `_metric_d4()` trên cùng dữ liệu, kể cả khi có bản ghi đã lưu trữ (Bước 0) |
+| `test_domain_metric_datetime_field_includes_last_day_of_period` | Field Datetime (`date_deadline`) tính đúng nửa khoảng, kể cả bản ghi sát biên cuối kỳ (Bước 0) |
+| `test_domain_metric_date_field_includes_last_day_of_period` | Field Date (`project.milestone.deadline`) lọc đúng kiểu Date, không lệch múi giờ (Bước 0) |
 | `test_d5_d6_review_and_unit_test` | D5/D6: mẫu số đúng là task đã qua review / task Feature Done |
 | `test_d7_high_priority_bugs` | D7: chỉ tính bug High/Urgent, đúng trung bình giờ làm việc |
 | `test_d8_knowledge_sharing_events` | D8: chỉ đếm sự kiện đúng nhãn, đúng người tổ chức |
@@ -744,14 +770,14 @@ docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management \
 
 ### 5.4. Kết quả kiểm thử
 
-**86/86 test đạt (0 failed, 0 error)**, xác nhận trên database tạo mới hoàn toàn (không chỉ chạy
+**89/89 test đạt (0 failed, 0 error)**, xác nhận trên database tạo mới hoàn toàn (không chỉ chạy
 lại trên database cũ), lần gần nhất 2026-10-12 — sau khi bổ sung 6 mục ở Chương 9 cũ (màu xếp loại,
 chặn xung đột vai trò, nhắc việc PIP, mục tiêu theo phòng ban, chỉ số theo dự án, tự đánh giá), vá
 thêm các phát hiện khi kiểm tra qua đường đi thật (xem 5.6): quản lý ghi trực tiếp được
 `employee_comment`/`self_score` (cả qua `write()` lẫn `create()`), thiếu `copy=False` trên `self_score`
 (Nhân bản phiếu đã tự đánh giá sẽ bị chặn nhầm), cron ghi `write_date` thừa, bug trong
 `kpi.team.report` quy sai dự án (đã sửa ở Mục 5, Chương 3.3), và triển khai Bước 1 — chỉ số cấu hình
-không cần code (Chương 9.1, +8 test).
+không cần code và rà soát bảo mật/kỹ thuật Bước 0 (Chương 9.1, +11 test).
 
 **Quan trọng — hạn chế của `TransactionCase`:** unit test chạy bằng superuser (`env.su = True`),
 nên bỏ qua một số kiểm tra chỉ áp dụng cho người dùng thật (ví dụ chặn xung đột vai trò). Vì vậy 77
@@ -923,7 +949,7 @@ buộc lý do) và **chấm chỉ số định tính** (D9) — số liệu tự
 **Hệ thống đã qua điểm dừng tính năng trước bảo vệ** (xem Chương 5.6) — bản dùng để bảo vệ đóng
 băng ở tag `v1.0-bao-ve` (Chương 10), không đổi. Nội dung chương này là kế hoạch mở rộng cho giai
 đoạn **sau bảo vệ**, phát triển trực tiếp trên `main` (không tách nhánh riêng — tag đã giữ đúng mốc
-bảo vệ nên không cần). **Bước 1 (9.1) đã triển khai** (+8 test, 86/86 đạt); **Bước 2–6 (9.2–9.4)
+bảo vệ nên không cần). **Bước 0+1 (9.1) đã triển khai** (+11 test, 89/89 đạt); **Bước 2–6 (9.2–9.4)
 chưa triển khai**, còn ở dạng thiết kế.
 
 ### 9.1. Điểm nghẽn lớn nhất: chỉ số tự động phải viết code — ĐÃ TRIỂN KHAI
@@ -1020,7 +1046,7 @@ việc dữ liệu có sạch hay không — không chỉ Dev mới bị ràng b
 
 | Bước | Việc | Lý do thứ tự |
 |---|---|---|
-| 1 | ~~Chỉ số cấu hình không cần code (9.1)~~ | **Đã triển khai** — 86/86 test đạt, xem Chương 3.3 |
+| 1 | ~~Chỉ số cấu hình không cần code (9.1)~~ | **Đã triển khai** — 89/89 test đạt, xem Chương 3.3 |
 | 2 | Bộ Tester tự động (9.2, Ưu tiên 1) | Dữ liệu sẵn, chỉ cần cấu hình nếu đã có bước 1 |
 | 3 | Chấm điểm theo bậc (9.3 #2) | Nhiều công ty cần ngay khi áp dụng thật |
 | 4 | Bộ Team Lead/PM + điểm team (9.2 Ưu tiên 2, 9.3 #3) | Cần dữ liệu milestone, timesheet |

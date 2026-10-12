@@ -4,7 +4,8 @@ import pytz
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError
-from odoo.tools.safe_eval import safe_eval
+
+from .kpi_metric import parse_metric_domain, substitute_domain_placeholders
 
 BUG_RESOLUTIONS_COUNTED = ("valid", "wont_fix")
 HIGH_PRIORITIES = ("2", "3")  # High, Urgent
@@ -36,20 +37,26 @@ class KpiEngine(models.AbstractModel):
     @api.model
     def _compute_domain_metric(self, metric, employee, date_from, date_to):
         """Bước 1 (Chương 9.1): chỉ số cấu hình thuần dữ liệu, không cần hàm _metric_<mã>().
-        Domain được safe_eval với biến user/start/end, rồi cộng thêm điều kiện người/kỳ nếu
-        metric có khai báo user_field_id/date_field_id (để trống thì domain phải tự viết đủ,
-        ví dụ dùng đường dẫn quan hệ như origin_task_id.user_ids — xem Chương 9.1 về giới hạn
-        domain không so sánh được hai field với nhau trên cùng bản ghi)."""
-        ctx = self._context_for(employee, date_from, date_to)
-        user, start, end = ctx["user"], ctx["start"], ctx["end"]
-        eval_ctx = {"user": user, "start": start, "end": end}
+        Domain đọc bằng ast.literal_eval (an toàn tuyệt đối), chuỗi giữ chỗ $CURRENT_USER_ID/
+        $PERIOD_START/$PERIOD_END được thay bằng giá trị thật sau khi parse. Cộng thêm điều kiện
+        người/kỳ nếu metric có khai báo user_field_id/date_field_id (để trống thì domain phải tự
+        viết đủ, ví dụ dùng đường dẫn quan hệ như origin_task_id.user_ids — xem Chương 9.1 về giới
+        hạn domain không so sánh được hai field với nhau trên cùng bản ghi)."""
+        user = employee.sudo().user_id
+        if not user:
+            raise UserError(f"Nhân viên {employee.name} chưa gắn tài khoản người dùng, không lấy được số liệu.")
+        # Chuỗi giữ chỗ luôn dùng mốc kỳ datetime UTC (khớp _period_bounds); field ngày tự khai báo
+        # qua date_field_id thì tự chọn bounds đúng kiểu Date/Datetime của chính field đó bên dưới.
+        placeholder_start, placeholder_end = self._period_bounds(date_from, date_to)
         Model = self.env[metric.source_model_id.model].sudo()
 
         def _domain(expr):
-            domain = list(safe_eval(expr or "[]", eval_ctx))
+            domain = parse_metric_domain(expr)
+            domain = substitute_domain_placeholders(domain, user.id, placeholder_start, placeholder_end)
             if metric.user_field_id:
                 domain = domain + [(metric.user_field_id.name, "=", user.id)]
             if metric.date_field_id:
+                start, end = self._domain_field_bounds(metric.date_field_id, date_from, date_to)
                 domain = domain + [(metric.date_field_id.name, ">=", start), (metric.date_field_id.name, "<", end)]
             return domain
 
@@ -68,6 +75,15 @@ class KpiEngine(models.AbstractModel):
             numerator = Model.search_count(_domain(metric.numerator_domain))
             return self._ratio(numerator, denominator), denominator
         raise UserError(f"Chỉ số \"{metric.name}\": chưa chọn phép tính hợp lệ.")
+
+    @api.model
+    def _domain_field_bounds(self, date_field, date_from, date_to):
+        """Bước 0 (rà soát sau Bước 1): field Date thì lọc bằng chính kiểu Date (>= đầu kỳ, <
+        đầu kỳ sau) — so Date với Datetime UTC có thể lệch múi giờ ở đúng ngày biên. Field
+        Datetime thì dùng mốc UTC như các chỉ số Python hiện có (_period_bounds)."""
+        if date_field.ttype == "date":
+            return date_from, date_to + timedelta(days=1)
+        return self._period_bounds(date_from, date_to)
 
     @api.model
     def _context_for(self, employee, date_from, date_to):

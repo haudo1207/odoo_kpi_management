@@ -1,11 +1,60 @@
+import ast
+
 from odoo import api, fields, models
-from odoo.exceptions import ValidationError
-from odoo.tools.safe_eval import safe_eval
+from odoo.exceptions import AccessError, ValidationError
 
 # Bước 1 (Chương 9.1): chỉ cho chỉ số "domain" đọc trên các model này — domain nhập tự do nên phải
 # giới hạn model để không ai đọc được dữ liệu ngoài phạm vi KPI (nhân sự, kế toán...).
 DOMAIN_METRIC_ALLOWED_MODELS = ["project.task", "project.milestone", "calendar.event"]
 NUMERIC_FIELD_TYPES = ("integer", "float", "monetary")
+
+# Bước 0 (rà soát sau Bước 1): đọc domain bằng ast.literal_eval — chỉ parse literal Python
+# (list/tuple/str/số...), không chạy được bất kỳ biểu thức hay code nào, an toàn tuyệt đối. Biến
+# động (người phụ trách, mốc kỳ) không eval được bằng literal_eval nên dùng chuỗi giữ chỗ, thay giá
+# trị thật SAU khi đã parse xong (xem substitute_domain_placeholders trong kpi_engine.py).
+DOMAIN_PLACEHOLDER_USER_ID = "$CURRENT_USER_ID"
+DOMAIN_PLACEHOLDER_PERIOD_START = "$PERIOD_START"
+DOMAIN_PLACEHOLDER_PERIOD_END = "$PERIOD_END"
+
+
+def parse_metric_domain(expr):
+    """Đọc một domain cấu hình bằng ast.literal_eval. Lỗi cú pháp/không phải literal thì raise
+    ValueError (gọi nơi dùng tự quyết định bọc lại thành ValidationError hay không)."""
+    try:
+        domain = ast.literal_eval((expr or "[]").strip() or "[]")
+    except (ValueError, SyntaxError) as e:
+        raise ValueError(f"không phải cú pháp Python literal hợp lệ ({e})")
+    if not isinstance(domain, list):
+        raise ValueError("domain phải là một danh sách (list), ví dụ [('state', '=', 'done')]")
+    return domain
+
+
+def substitute_domain_placeholders(domain, user_id, period_start, period_end):
+    """Thay $CURRENT_USER_ID/$PERIOD_START/$PERIOD_END trong domain đã parse bằng giá trị thật.
+    Chỉ thay trong VALUE của từng điều kiện (phần tử thứ 3), không đụng tên field hay toán tử."""
+    mapping = {
+        DOMAIN_PLACEHOLDER_USER_ID: user_id,
+        DOMAIN_PLACEHOLDER_PERIOD_START: period_start,
+        DOMAIN_PLACEHOLDER_PERIOD_END: period_end,
+    }
+
+    def _sub_value(value):
+        if isinstance(value, str):
+            return mapping.get(value, value)
+        if isinstance(value, list):
+            return [_sub_value(v) for v in value]
+        if isinstance(value, tuple):
+            return tuple(_sub_value(v) for v in value)
+        return value
+
+    result = []
+    for item in domain:
+        if isinstance(item, (list, tuple)) and len(item) == 3:
+            field, operator, value = item
+            result.append((field, operator, _sub_value(value)))
+        else:
+            result.append(item)  # '|', '&', '!'
+    return result
 
 
 class KpiMetric(models.Model):
@@ -52,7 +101,7 @@ class KpiMetric(models.Model):
     user_field_id = fields.Many2one(
         "ir.model.fields", string="Field người phụ trách",
         domain="[('model_id', '=', source_model_id)]",
-        help="Để trống nếu điều kiện người/kỳ đã viết sẵn trong domain (dùng biến user/start/end).",
+        help="Để trống nếu điều kiện người đã viết sẵn trong domain bằng $CURRENT_USER_ID.",
     )
     date_field_id = fields.Many2one(
         "ir.model.fields", string="Field ngày lọc theo kỳ",
@@ -68,8 +117,9 @@ class KpiMetric(models.Model):
     )
     numerator_domain = fields.Char(
         "Domain (tử số nếu Tỷ lệ)", default="[]",
-        help="Domain Odoo chuẩn. Có thể dùng biến 'user' (res.users của nhân viên), 'start', 'end' "
-             "(mốc đầu/cuối kỳ, datetime UTC) — ví dụ [('origin_task_id.user_ids', 'in', [user.id])].",
+        help="Domain Odoo dạng literal thuần (đọc bằng ast.literal_eval, không chạy được code). Dùng "
+             "chuỗi giữ chỗ $CURRENT_USER_ID / $PERIOD_START / $PERIOD_END khi cần điều kiện người/kỳ "
+             "qua quan hệ — ví dụ [('origin_task_id.user_ids', 'in', ['$CURRENT_USER_ID'])].",
     )
     denominator_domain = fields.Char("Domain mẫu số (khi Tỷ lệ)")
 
@@ -103,18 +153,25 @@ class KpiMetric(models.Model):
             if metric.aggregation == "ratio" and not (metric.denominator_domain or "").strip():
                 raise ValidationError(f"Chỉ số \"{metric.name}\": Tỷ lệ cần nhập domain mẫu số.")
             # Thử chạy domain thật để bắt lỗi cú pháp/field sai ngay khi lưu, cùng cách
-            # gamification.goal.definition._check_domain_validity() đang làm.
+            # gamification.goal.definition._check_domain_validity() đang làm. Giá trị thử chỉ để
+            # kiểm tra cú pháp/field hợp lệ — không lưu kết quả nên dùng giá trị giả cũng được.
             Model = self.env[metric.source_model_id.model].sudo()
-            ctx = {"user": self.env.user, "start": fields.Datetime.now(), "end": fields.Datetime.now()}
+            now = fields.Datetime.now()
+            exprs = [metric.numerator_domain]
+            if metric.aggregation == "ratio":
+                exprs.append(metric.denominator_domain)
             try:
-                Model.search_count(safe_eval(metric.numerator_domain or "[]", ctx))
-                if metric.aggregation == "ratio":
-                    Model.search_count(safe_eval(metric.denominator_domain or "[]", ctx))
+                for expr in exprs:
+                    domain = parse_metric_domain(expr)
+                    domain = substitute_domain_placeholders(domain, self.env.user.id, now, now)
+                    Model.search_count(domain)
             except Exception as e:
                 raise ValidationError(f"Chỉ số \"{metric.name}\": domain không hợp lệ — {e}")
 
     def action_open_test_wizard(self):
         self.ensure_one()
+        if not self.env.su and not self.env.user.has_group("project_kpi_management.group_kpi_admin"):
+            raise AccessError("Chỉ KPI Administrator được thử tính chỉ số.")
         return {
             "type": "ir.actions.act_window",
             "name": "Thử tính chỉ số",
