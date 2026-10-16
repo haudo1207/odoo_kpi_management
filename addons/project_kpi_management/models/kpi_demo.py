@@ -174,9 +174,19 @@ class KpiDemo(models.AbstractModel):
         })
         dung_employee = self.env["hr.employee"].create({
             "name": "Đỗ Thị Dung", "user_id": dung_user.id, "job_id": tester_job.id,
-            "department_id": department.id, "parent_id": manager_employee.id,
+            "department_id": department.id, "parent_id": pm_employee.id,
         })
-        xmlids += [("demo_user_dung", dung_user), ("demo_employee_dung", dung_employee)]
+        # Khoa: tester mới vào, chưa log bug nào. Cùng Dung là 2 cấp dưới của PM Phúc — để demo P2 chuyển từ
+        # "Không áp dụng" sang có số khi cả hai phiếu được Gửi duyệt (P2 cần ≥ 2 phiếu cấp dưới đã chốt).
+        khoa_user = self.env["res.users"].create({"name": "Vũ Minh Khoa", "login": "khoa", "password": "khoa", "tz": tz.zone})
+        khoa_employee = self.env["hr.employee"].create({
+            "name": "Vũ Minh Khoa", "user_id": khoa_user.id, "job_id": tester_job.id,
+            "department_id": department.id, "parent_id": pm_employee.id,
+        })
+        xmlids += [
+            ("demo_user_dung", dung_user), ("demo_employee_dung", dung_employee),
+            ("demo_user_khoa", khoa_user), ("demo_employee_khoa", khoa_employee),
+        ]
         origins = [t1, t2, t3, t5, t6, t7, t9, t1]
         # (kết quả xử lý, nguyên nhân, có task gốc, lỗi production)
         dung_bugs = [("valid", "requirement")] * 5 + [

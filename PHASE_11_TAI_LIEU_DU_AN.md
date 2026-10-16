@@ -182,7 +182,7 @@ addons/project_kpi_management/
 ├── data/                             Dữ liệu cấu hình chuẩn (D1–D9, bộ Developer/Tester, cron, loại nhắc việc PIP...)
 ├── views/                           View cho từng model + menu
 ├── report/                          Mẫu in PDF
-└── tests/                           14 file, 130 test
+└── tests/                           14 file, 131 test
 
 addons/project_kpi_timesheet/            Module cầu nối (Bước 4): P4 + bộ "Team Lead / PM (có giờ làm)", 6 test riêng
 ```
@@ -632,7 +632,7 @@ docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management \
   --test-tags /project_kpi_management --stop-after-init --http-port 8070
 ```
 
-### 5.3. Danh sách test case (130 test, 14 file)
+### 5.3. Danh sách test case (131 test, 14 file)
 
 #### `tests/test_kpi_config.py` — 9 test (Phase 1: chỉ số, bộ KPI)
 
@@ -825,7 +825,7 @@ Mọi đường tính KPI đều đi về `kpi.evaluation.action_compute_kpi()`,
 | `test_p3_clean_ratio_of_lead_projects` | Tỷ lệ bản ghi sạch đúng bảng tính tay (5/8), loại dự án khác |
 | `test_template_and_click_compute` | Chức danh PM gắn bộ P1–P5; nút Tính KPI ra điểm đúng khi P2, P3 không áp dụng |
 
-(`tests/test_kpi_demo_scenario.py` có thêm `test_phuc_pm_evaluation`: PM mẫu Phúc, P1 = 33,33%, P3 = 56/60, điểm 81,54 — tính tay trước khi chạy.)
+(`tests/test_kpi_demo_scenario.py` có thêm `test_phuc_pm_evaluation`: PM mẫu Phúc, P1 = 33,33%, P3 = 56/60, điểm 81,54 — tính tay trước khi chạy; và `test_phuc_p2_applicable_after_subordinates_submit`: kịch bản demo P2 — Phúc có 2 cấp dưới mẫu (Dung, Khoa), P2 "Không áp dụng" khi họ chưa chốt phiếu, sau khi cả hai Gửi duyệt và Tính lại phiếu Phúc thì P2 = (55,875 + 37,5) / 2 = 46,6875, tính tay trước khi chạy.)
 
 **Module `project_kpi_timesheet` — 6 test riêng** (`tests/test_kpi_timesheet.py`, chạy bằng `-i project_kpi_timesheet --test-tags /project_kpi_timesheet`): cài đặt P4 và bộ có giờ làm, lệch cả hai chiều đều bị phạt, bỏ dự án không có giờ kế hoạch hoặc của Lead khác, bỏ timesheet sau cuối kỳ, nút Tính KPI (130/100 giờ → lệch 30% → 50 điểm).
 
@@ -844,7 +844,7 @@ Mọi đường tính KPI đều đi về `kpi.evaluation.action_compute_kpi()`,
 
 ### 5.4. Kết quả kiểm thử
 
-**130/130 test đạt (0 failed, 0 error)**, xác nhận trên database tạo mới hoàn toàn (không chỉ chạy
+**131/131 test đạt (0 failed, 0 error)**, xác nhận trên database tạo mới hoàn toàn (không chỉ chạy
 lại trên database cũ), lần gần nhất 2026-10-12 — sau khi bổ sung 6 mục ở Chương 9 cũ (màu xếp loại,
 chặn xung đột vai trò, nhắc việc PIP, mục tiêu theo phòng ban, chỉ số theo dự án, tự đánh giá), vá
 thêm các phát hiện khi kiểm tra qua đường đi thật (xem 5.6): quản lý ghi trực tiếp được
@@ -876,7 +876,7 @@ Lý do cần script riêng: sửa code trên đĩa không tự áp dụng cho m�
 phải nạp lại module hoặc khởi động lại tiến trình trước, nếu không hệ thống đang chạy vẫn sai dù
 code đã đúng và test đã đạt (đúng loại lỗi đã gặp khi viết script này, xem dưới).
 
-Kiểm tra 8 bước (4 nhóm), tự tạo kỳ/phiếu test riêng và tự dọn sạch ở cuối (kể cả khi có bước FAIL),
+Kiểm tra 11 bước (8 nhóm), tự tạo kỳ/phiếu test riêng và tự dọn sạch ở cuối (kể cả khi có bước FAIL),
 không ảnh hưởng dữ liệu demo dùng để trình bày:
 
 1. Chặn xung đột vai trò (Mục 2): quản lý được gán thêm quyền Admin vẫn bị chặn khi duyệt phiếu
@@ -887,6 +887,10 @@ không ảnh hưởng dữ liệu demo dùng để trình bày:
    `write()`) lẫn `self_score` (qua cả `write()` và `create()` dòng phiếu mới), và không tạo được
    phiếu mới kèm sẵn `employee_comment`.
 4. Mục tiêu theo phòng ban (Mục 4): phiếu mới nhận đúng mục tiêu riêng.
+5. Bộ Tester (Bước 2, 2 bước): đăng nhập tester xác nhận không sửa được `bug_reporter_id`; Admin tính phiếu Tester ra đúng 71,0 điểm (tính tay trước).
+6. Chấm theo bậc (Bước 3): nút Tính KPI ra 60 điểm với 50% đạt mục tiêu (tuyến tính sẽ ra 50).
+7. Bộ Lead/PM (Bước 4): phiếu PM tự tạo ra đúng 82,95 điểm (P1 = 50%, P2 và P3 Không áp dụng).
+8. P4 giờ so với kế hoạch (Bước 4): chỉ chạy khi module cầu nối `project_kpi_timesheet` đã cài (130/100 giờ → 50 điểm); chưa cài thì in `[SKIP]`. Tuỳ chọn `--skip-demo-checks` chỉ chạy các bước tự tạo dữ liệu, dùng cho database không có dữ liệu mẫu.
 
 Cách chạy trước khi bảo vệ:
 
@@ -920,15 +924,22 @@ Mật khẩu `admin` cũ của dev vẫn còn trong lịch sử Git; môi trư�
 ### 5.7. Quy trình đúng ngày bảo vệ
 
 Container Odoo đọc code trực tiếp từ thư mục `addons` trên đĩa. Nếu phát triển tiếp trên `main` sau
-mốc `v1.0-bao-ve` (Chương 10) mà đến ngày bảo vệ quên chuyển về đúng tag, buổi demo sẽ chạy code
-đang làm dở — không phải bản đã kiểm chứng đủ 78 test và 8 bước `pre_defense_check.py`.
+mốc tag bảo vệ (Chương 10) mà đến ngày bảo vệ quên chuyển về đúng tag, buổi demo sẽ chạy code
+đang làm dở — không phải bản đã kiểm chứng đủ 131 test, 6 test của module cầu nối và các bước `pre_defense_check.py`.
+
+**Bản được chọn để bảo vệ: `v1.1-bao-ve`** (Bước 1–4: chỉ số cấu hình không cần code, bộ KPI Developer/Tester/Lead-PM,
+chấm theo bậc, module cầu nối). `v1.0-bao-ve` vẫn còn nguyên làm bản dự phòng gọn hơn (chưa có Bước 1–4).
+Nếu Bước 5 (BA) xong kịp và qua đủ kiểm tra thì gắn `v1.2-bao-ve` và đổi quy trình dưới đây sang tag mới.
+
+**Ngày dừng:** đặt một ngày dừng cho bản bảo vệ (đề xuất 1 tuần trước buổi bảo vệ). Sau ngày đó, mọi thay đổi
+(Bước 5, Bước 6...) chỉ nằm trên `main`, không gộp vào tag dùng để bảo vệ, dù xong hay chưa.
 
 ```bash
 git stash                      # nếu còn thay đổi chưa commit trên main
-git checkout v1.0-bao-ve
+git checkout v1.1-bao-ve
 docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management --stop-after-init
 docker restart odoo19-web
-python scripts/pre_defense_check.py --db kpi_dev   # phải OK cả 8 bước
+python scripts/pre_defense_check.py --db kpi_dev   # phải in "tất cả OK"; bước P4 in [SKIP] vì không cài hr_timesheet
 # ... bảo vệ xong ...
 git checkout main
 git stash pop                  # nếu có stash ở bước đầu
@@ -936,7 +947,22 @@ git stash pop                  # nếu có stash ở bước đầu
 
 Bước `-u project_kpi_management` + khởi động lại container là bắt buộc, không phải tuỳ chọn — lý do
 đã nêu ở Chương 5.6: sửa file trên đĩa (hoặc đổi nhánh/tag như ở đây) không tự áp dụng cho tiến
-trình Odoo đang chạy.
+trình Odoo đang chạy. Lần `-u` đầu trên database còn ở bản cũ sẽ chạy script nâng cấp `migrations/19.0.1.1.0/` đúng một lần.
+
+### 5.8. Kịch bản demo (10–15 phút, chọn lọc)
+
+Không demo hết được — chọn 5 phần, thứ tự từ nền tảng tới mở rộng. Dữ liệu mẫu: kỳ "Tháng ... (dữ liệu mẫu)", tài khoản
+`admin`, `quocviet` (quản lý), `an`, `binh`, `phuc` (PM), `dung`, `khoa` (tester); mật khẩu trùng tên đăng nhập.
+
+| # | Phần (thời gian) | Thao tác | Điều cần nói |
+|---|---|---|---|
+| 1 | Luồng chính Developer (4') | Vào kỳ mẫu → Tạo phiếu cho kỳ → Tính KPI. An 113,31 Xuất sắc, Bình 73,90 Cần cải thiện; điều chỉnh +2 có lý do cho Bình; Gửi duyệt; `quocviet` (được gán thêm quyền Admin) bị chặn khi duyệt phiếu nhân viên mình quản lý | Số liệu tự tính từ task/bug thật; điểm có thể truy vết; điều chỉnh phải có lý do; tách người quản lý khỏi người duyệt |
+| 2 | Tạo chỉ số bằng cấu hình (3') | KPI → Cấu hình → Chỉ số KPI → tạo mới: Cách tính "Tự động (cấu hình)", model `project.task`, người = `user_ids`, ngày = `date_end`, Đếm, domain `[('state', '=', '1_done')]` → bấm **Thử tính** cho An: ra 7 | Thêm chỉ số không cần viết code, domain đọc bằng `ast.literal_eval` nên không chạy được mã tuỳ ý; chỉ Admin dùng được |
+| 3 | Bộ Tester không cần code (2') | Mở bộ "Tester (tự động)" (QA1–QA3 là bản ghi cấu hình); Tạo phiếu cho `dung`, nhập QA5 = 4, Tính KPI → QA1 = 7, điểm 55,875 | Một vai trò mới chỉ bằng dữ liệu; `bug_reporter_id` chỉ Manager sửa được để không tự gán bug cho mình |
+| 4 | Phụ thuộc giữa các phiếu: P2 (3') | Tạo + Tính phiếu của `phuc`: P2 "Không áp dụng" → tạo phiếu `dung` và `khoa`, nhập QA5 = 4 cho cả hai, Tính KPI (phiếu `khoa` thiếu dữ liệu nên chọn xếp loại tay + lý do) → Gửi duyệt cả hai → Tính lại phiếu `phuc`: P2 ra 46,69 | Không cần sắp thứ tự trong wizard — phiếu cấp dưới chưa chốt thì P2 không ra số sai |
+| 5 | (nếu còn thời gian, 2') Chấm theo bậc | Bộ KPI → gắn "Bậc 4 mức (mẫu)" vào một dòng → tạo phiếu mới → cột "% đạt mục tiêu" và bậc hiển thị | Phiếu cũ không đổi vì bảng bậc được chụp lúc tạo phiếu |
+
+Trước buổi demo chạy `pre_defense_check.py` (5.6). Không cài `hr_timesheet` trên `kpi_dev`; P4 chỉ nói bằng lời nếu hội đồng hỏi, kèm bằng chứng là test của module cầu nối.
 
 ---
 
@@ -1027,6 +1053,9 @@ buộc lý do) và **chấm chỉ số định tính** (D9) — số liệu tự
 | Stage Done phải cấu hình đúng | Nếu stage "Done" của một dự án không bật `Folded`, D1 và D7 của nhân viên làm việc trong dự án đó sẽ sai **mà không có cảnh báo** — đây là phụ thuộc vào hành vi nội bộ của Odoo (`date_end` chỉ ghi khi fold), không kiểm soát được hoàn toàn từ phía module | Cao nếu bị bỏ sót lúc cấu hình dự án mới |
 | Chỉ số tự động mới cần code | Thêm chỉ số *Tự động* hoàn toàn mới (ví dụ tính từ `sale.order`) cần viết thêm hàm `_metric_<mã>()` trong `kpi_engine.py` — không thể cấu hình thuần dữ liệu như chỉ số nhập tay | Thấp — là giới hạn tự nhiên, đã nêu rõ ở Chương 2.4 |
 | REST API phụ thuộc cấu hình multi-database | Môi trường có nhiều database và chưa đặt `dbfilter` cần thêm header `X-Odoo-Database` khi gọi API — môi trường production (`deploy/`) đã cấu hình `dbfilter` cố định, không gặp vấn đề này | Thấp — chỉ ảnh hưởng môi trường dev |
+| P3 (Lead/PM) lấy **ảnh chụp hiện tại**, không theo kỳ | Báo cáo kiểm tra dữ liệu không lọc theo kỳ, nên mở lại rồi Tính lại phiếu Lead của kỳ cũ có thể ra P3 khác (dữ liệu đã được dọn sau đó). Cách xử lý hiện tại: chốt phiếu Lead sau khi dữ liệu đã dọn. Hướng cải thiện ở Chương 9.2 | Thấp — chỉ ảnh hưởng 1 chỉ số của bộ Lead/PM |
+| P1 chưa chốt kỳ thì milestone chưa tới hạn tính là chưa đạt | Milestone có deadline trong kỳ nhưng kỳ chưa kết thúc bị tính là chưa đúng hạn | Thấp — chốt phiếu Lead sau khi kỳ kết thúc |
+| P4 dùng tổng giờ tới hết kỳ so với giờ kế hoạch cả dự án | `allocated_hours` là của cả dự án, không chia theo kỳ; cần module cầu nối + `hr_timesheet` | Thấp — chỉ khi cài cầu nối |
 | Cron cập nhật `days_late` ghi `write_date` dù giá trị không đổi | Đã kiểm chứng bằng script thật (không suy luận): `_cron_update_days_late()` gọi `flush_recordset(["days_late"])` cho mọi task quá hạn chưa xong mỗi ngày, và Odoo luôn ghi `write_date`/`write_uid` cùng lúc flush một field, kể cả khi `days_late` ra cùng giá trị cũ | Thấp — chỉ ảnh hưởng cách sắp xếp "mới cập nhật gần đây" ở các view khác, không ảnh hưởng điểm KPI |
 
 ---
@@ -1036,7 +1065,7 @@ buộc lý do) và **chấm chỉ số định tính** (D9) — số liệu tự
 **Hệ thống đã qua điểm dừng tính năng trước bảo vệ** (xem Chương 5.6) — bản dùng để bảo vệ đóng
 băng ở tag `v1.0-bao-ve` (Chương 10), không đổi. Nội dung chương này là kế hoạch mở rộng cho giai
 đoạn **sau bảo vệ**, phát triển trực tiếp trên `main` (không tách nhánh riêng — tag đã giữ đúng mốc
-bảo vệ nên không cần). **Bước 0+1 (9.1), Bước 2 (9.2, Tester) và Bước 3 (chấm điểm theo bậc) và Bước 4 (Team Lead/PM) đã triển khai** (130/130 test đạt); **Bước 5–6
+bảo vệ nên không cần). **Bước 0+1 (9.1), Bước 2 (9.2, Tester) và Bước 3 (chấm điểm theo bậc) và Bước 4 (Team Lead/PM) đã triển khai** (131/131 test đạt); **Bước 5–6
 chưa triển khai**, còn ở dạng thiết kế.
 
 ### 9.1. Điểm nghẽn lớn nhất: chỉ số tự động phải viết code — ĐÃ TRIỂN KHAI
@@ -1128,6 +1157,7 @@ tra trên source 19.0) có `deadline`, `is_reached`, `reached_date`.
 - **P2 — tránh phải sắp xếp thứ tự trong wizard:** chỉ lấy phiếu cấp dưới **đã Gửi hoặc Đã duyệt trong cùng kỳ**; số phiếu là khối lượng, dưới `min_volume` thì "Không áp dụng" thay vì ra số sai. Quy trình tự nhiên đã đúng (cấp dưới chốt trước, Lead tính sau), và vì không tính phiếu của chính Lead nên không có vòng lặp. Điều đó thay cho ràng buộc "P2 phải tính sau phiếu cấp dưới" đề xuất trước đó.
 - **P3:** quy về một tỷ lệ `(Feature xong có SP + task xong có ngày hoàn thành + bug có task gốc + bug đủ phân loại) / (Feature xong + task xong + 2 × bug)` để dùng chiều "Cao tốt" sẵn có. Giới hạn: báo cáo kiểm tra dữ liệu là ảnh chụp hiện tại, không theo kỳ.
 - **P4 — không thêm chiều "gần 100% tốt":** giá trị thực tế định nghĩa là độ lệch tuyệt đối, chiều "Thấp tốt", nên engine không phải sửa. Giờ thực tế là tổng timesheet tới hết kỳ (giờ kế hoạch là của cả dự án, không chia theo kỳ).
+- **Hướng cải thiện P3 (sau bảo vệ):** giới hạn bản ghi xét trong kỳ (ví dụ task có `date_end` trong kỳ, bug tạo trong kỳ) thay vì ảnh chụp toàn dự án, để mở lại và tính lại phiếu kỳ cũ cho cùng kết quả. Hiện chưa làm vì báo cáo kiểm tra dữ liệu (SQL view) không có chiều kỳ.
 - **Module cầu nối `project_kpi_timesheet`:** `depends: project_kpi_management, hr_timesheet`, `auto_install: True`; P4 và bộ "Team Lead / PM (có giờ làm)" (P1–P5, trọng số 20/20/15/15/30) nằm hoàn toàn trong module này, test riêng trong module này. Khi chưa cài, bộ "Team Lead / PM" gốc vẫn chạy với P1–P3 và P5. Bộ có P4 là bộ riêng, không sửa bộ gốc, để gỡ cầu nối không làm lệch tổng trọng số.
 - **Quyết định về `kpi_dev`:** **không** cài `hr_timesheet`/cầu nối trên `kpi_dev` (cài sẽ thêm app Timesheet vào database demo). P4 được kiểm chứng bằng 6 test của module cầu nối trên một database riêng (`-i project_kpi_timesheet`) và bằng bước P4 của `scripts/pre_defense_check.py` (bước này tự bỏ qua nếu cầu nối chưa cài).
 
@@ -1175,8 +1205,8 @@ tra trên source 19.0) có `deadline`, `is_reached`, `reached_date`.
 |---|---|---|
 | 1 | ~~Chỉ số cấu hình không cần code (9.1)~~ | **Đã triển khai** — xem Chương 3.3 |
 | 2 | ~~Bộ Tester tự động (9.2, Ưu tiên 1)~~ | **Đã triển khai** — 109/109 test đạt, xem 9.2 |
-| 3 | ~~Chấm điểm theo bậc (9.3 #2)~~ | **Đã triển khai** — 130/130 test đạt, xem 9.3 #2 |
-| 4 | ~~Bộ Team Lead/PM + điểm team (9.2 Ưu tiên 2, 9.3 #3)~~ | **Đã triển khai** — 130/130 test đạt + 6 test module cầu nối, xem 9.2 |
+| 3 | ~~Chấm điểm theo bậc (9.3 #2)~~ | **Đã triển khai** — 131/131 test đạt, xem 9.3 #2 |
+| 4 | ~~Bộ Team Lead/PM + điểm team (9.2 Ưu tiên 2, 9.3 #3)~~ | **Đã triển khai** — 131/131 test đạt + 6 test module cầu nối, xem 9.2 |
 | 5 | Bộ BA (9.2 Ưu tiên 3) | Cần thêm loại task Requirement |
 | 6 | Kỳ khác nhau theo bộ KPI, kiêm nhiệm (9.3 #4, #5) | Chỉ cần khi đã có nhiều bộ KPI chạy song song |
 
@@ -1199,7 +1229,7 @@ tra trên source 19.0) có `deadline`, `is_reached`, `reached_date`.
 MVP (31/31 hạng mục) và phần lớn phạm vi Nên có/Mở rộng (7/7 hạng mục), tổng cộng 38/38 hạng mục
 trong bảng thống kê triển khai, cộng thêm 6 mục mở rộng sau khi đối chiếu với các hệ thống KPI tương
 tự (màu xếp loại, chặn xung đột vai trò, nhắc việc PIP, mục tiêu theo phòng ban, chỉ số theo dự án,
-tự đánh giá — Chương 9 cũ, nay đã triển khai). Hệ thống có 78 unit test tự động (0 lỗi) cộng với
+tự đánh giá — Chương 9 cũ, nay đã triển khai). Hệ thống có 131 unit test tự động trong module chính cộng 6 test của module cầu nối (0 lỗi) cộng với
 kiểm thử thủ công trên REST API, báo cáo PDF, phân quyền, luồng nghiệp vụ hoàn chỉnh trên dữ liệu
 thật, và kiểm tra qua đúng tài khoản thật bằng XML-RPC (`scripts/pre_defense_check.py`, Chương 5.6)
 — cách kiểm tra này tự nó đã bắt được một số lỗi mà unit test (chạy bằng superuser) không bắt được.
@@ -1207,9 +1237,9 @@ Nguyên tắc thiết kế cốt lõi — không hardcode vai trò — đã đư
 (Chương 7), không chỉ dừng ở khẳng định lý thuyết. Các giới hạn còn tồn tại (Chương 8.3) đều đã được
 xác định rõ ràng, có hướng xử lý cụ thể (Chương 9), phù hợp để trình bày minh bạch trước hội đồng.
 
-Bản dùng để bảo vệ được đóng băng ở tag Git `v1.0-bao-ve` — quy trình chuyển đúng về bản này vào
-ngày bảo vệ nằm ở Chương 5.7. Phát triển tiếp theo hướng Chương 9 (sau bảo vệ) đi trên `main`, không
-ảnh hưởng tag này.
+Bản dùng để bảo vệ được đóng băng ở tag Git `v1.1-bao-ve` (bản dự phòng gọn hơn: `v1.0-bao-ve`) — quy trình
+chuyển đúng về bản này vào ngày bảo vệ và kịch bản demo nằm ở Chương 5.7, 5.8. Phát triển tiếp theo hướng
+Chương 9 đi trên `main`, không ảnh hưởng các tag này.
 
 ---
 
