@@ -529,6 +529,8 @@ giữ nguyên dự án của chính nó.
 | Model | Field | Ghi chú |
 |---|---|---|
 | `hr.job` | `kpi_template_id` (Many2one, `ondelete=restrict`) | Trung tâm của nguyên tắc "không hardcode vai trò" |
+| `project.milestone` | `is_reached_on_time` (Boolean, compute, store) | P1 (Bước 4) — đã đạt và `reached_date ≤ deadline` |
+| `kpi.template.line` / `kpi.evaluation.line` | `scale_id` / `scale_json`, `scale_name`, `achievement_pct` | Bước 3 — bảng bậc điểm, chụp vào dòng phiếu |
 | `hr.employee` | `kpi_evaluation_count` (Integer, compute) | Cho smart button "Phiếu KPI" |
 | `res.config.settings` | `kpi_score_cap`, `kpi_adjustment_max`, `kpi_min_applicable_weight`, `kpi_rating_excellent`, `kpi_rating_good`, `kpi_rating_pass` (đều Float, `config_parameter=...`) | Lưu ở `ir.config_parameter`, đọc qua `get_kpi_param()` |
 
