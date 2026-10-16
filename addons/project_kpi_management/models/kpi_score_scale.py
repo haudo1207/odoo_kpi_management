@@ -32,10 +32,27 @@ class KpiScoreScale(models.Model):
                     f"Bảng bậc \"{scale.name}\": bậc thấp nhất phải bắt đầu từ 0% để phủ liên tục, không để hở khoảng."
                 )
 
+    @api.constrains("active")
+    def _check_archive_in_active_template(self):
+        # Cùng quy tắc với chỉ số: không ẩn khi bộ KPI đang hoạt động còn dùng (phiếu tạo mới vẫn chụp nó).
+        # Xoá thì ondelete="restrict" trên kpi.template.line.scale_id đã chặn.
+        archived = self.filtered(lambda s: not s.active)
+        lines = self.env["kpi.template.line"].search([
+            ("scale_id", "in", archived.ids), ("template_id.active", "=", True),
+        ]) if archived else self.env["kpi.template.line"]
+        if lines:
+            raise ValidationError(
+                "Không thể ẩn bảng bậc đang được dùng trong bộ KPI: %s.\n"
+                "Hãy gỡ bảng bậc khỏi các bộ KPI này trước." % ", ".join(lines.template_id.mapped("name"))
+            )
+
     def _snapshot(self):
         """JSON chụp vào dòng phiếu: danh sách [% từ, điểm] tăng dần theo % từ. Phiếu đã tạo giữ nguyên
-        bảng bậc này, sửa bảng bậc sau đó không đổi điểm phiếu cũ (giống mục tiêu)."""
+        bảng bậc này, sửa bảng bậc sau đó không đổi điểm phiếu cũ (giống mục tiêu).
+        Kiểm tra lại tính hợp lệ NGAY lúc dùng: dù bảng bị ghi sai bằng đường bỏ qua form (API ghi thẳng vào
+        từng bậc) thì cũng không tạo được phiếu, sai số không đi vào điểm."""
         self.ensure_one()
+        self._check_steps()
         return json.dumps([[s.pct_from, s.score] for s in self.step_ids.sorted("pct_from")])
 
     @staticmethod

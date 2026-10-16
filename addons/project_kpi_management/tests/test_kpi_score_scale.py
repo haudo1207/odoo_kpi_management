@@ -120,3 +120,27 @@ class TestKpiScoreScale(TransactionCase):
         new_line = self._evaluation(template, other).line_ids
         new_line.write({"actual": 17, "volume": 17})
         self.assertEqual(new_line.score, 90)                                  # phiếu mới nhận bảng mới
+
+    def test_invalid_scale_written_around_the_form_blocks_evaluation(self):
+        """Lớp chặn thứ hai: bảng bị sửa thẳng từng bậc (bỏ qua kiểm tra khi lưu bảng) không tạo được phiếu."""
+        template = self._template("D2", 20, self.scale)
+        self.scale.step_ids.filtered(lambda s: s.pct_from == 0).write({"pct_from": 10})  # hở từ 0
+        with self.assertRaises(ValidationError):
+            self._evaluation(template)
+
+    def test_cannot_archive_scale_in_active_template(self):
+        template = self._template("D2", 20, self.scale)
+        with self.assertRaises(ValidationError):
+            self.scale.active = False
+        template.active = False
+        self.scale.active = False  # không còn bộ KPI hoạt động nào dùng
+        self.assertFalse(self.scale.active)
+
+    def test_percent_and_scale_name_shown_on_pdf_and_api(self):
+        ev = self._evaluation(self._template("D2", 20, self.scale))
+        ev.line_ids.write({"actual": 17, "volume": 17})
+        self.assertEqual(ev.line_ids.scale_name, "Bậc chuẩn")
+        html, _ = self.env["ir.actions.report"]._render_qweb_html("project_kpi_management.action_report_kpi_evaluation", ev.ids)
+        html = html.decode()
+        self.assertIn("85.0% mục tiêu", html)
+        self.assertIn("Bậc chuẩn", html)

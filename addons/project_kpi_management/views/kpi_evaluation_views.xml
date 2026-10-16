@@ -111,7 +111,8 @@
                                     <field name="actual" readonly="compute_mode != 'manual'" digits="[16, 4]"/>
                                     <field name="actual_entered" invisible="compute_mode != 'manual'"/>
                                     <field name="is_applicable"/>
-                                    <field name="achievement_pct" optional="hide" digits="[16, 2]"/>
+                                    <field name="achievement_pct" optional="show" digits="[16, 2]"/>
+                                    <field name="scale_name" optional="show"/>
                                     <field name="score" digits="[16, 2]"/>
                                     <field name="weighted_score" optional="show" digits="[16, 2]"/>
                                     <field name="self_score" readonly="1" optional="show"

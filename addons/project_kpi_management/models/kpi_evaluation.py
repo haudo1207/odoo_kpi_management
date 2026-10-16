@@ -208,6 +208,7 @@ class KpiEvaluation(models.Model):
                         "weight": line.weight,
                         "min_volume": line.min_volume,
                         "scale_json": line.scale_id._snapshot() if line.scale_id else False,
+                        "scale_name": line.scale_id.name or False,
                     })
                     for line in template.line_ids
                 ]
@@ -398,6 +399,7 @@ class KpiEvaluationLine(models.Model):
         "Bảng bậc (chụp)", copy=False, readonly=True,
         help="Bước 3: bảng bậc điểm chụp từ bộ KPI lúc tạo phiếu, dạng JSON [[% từ, điểm], ...]. Trống = tính tuyến tính.",
     )
+    scale_name = fields.Char("Bảng bậc", copy=False, readonly=True, help="Tên bảng bậc lúc chụp (để hiển thị).")
     achievement_pct = fields.Float("% đạt mục tiêu", compute="_compute_score", store=True, digits=(16, 2))
     volume = fields.Float("Khối lượng", help="Engine tính ở Phase 4. Dưới khối lượng tối thiểu thì Không áp dụng.")
     actual = fields.Float("Thực tế", aggregator="avg")

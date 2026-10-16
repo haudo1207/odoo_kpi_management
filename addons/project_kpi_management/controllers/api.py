@@ -63,6 +63,8 @@ def _detail(ev):
         "volume": line.volume,
         "is_applicable": line.is_applicable,
         "score": round(line.score, 2),
+        "achievement_pct": round(line.achievement_pct, 2),
+        "scale": line.scale_name or None,
         "remark": line.remark or None,
     } for line in ev.line_ids]
     return data

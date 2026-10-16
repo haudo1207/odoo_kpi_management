@@ -58,6 +58,9 @@
                                     <td class="text-end">
                                         <t t-if="line.is_applicable" t-out="'%.2f' % line.score"/>
                                         <t t-else="">Không áp dụng</t>
+                                        <div t-if="line.is_applicable and line.scale_name" class="small text-muted">
+                                            đạt <t t-out="'%.1f' % line.achievement_pct"/>% mục tiêu · bậc "<t t-out="line.scale_name"/>"
+                                        </div>
                                     </td>
                                     <td class="text-end"><t t-if="line.is_applicable" t-out="'%.2f' % line.weighted_score"/></td>
                                     <td><span t-field="line.remark"/></td>
