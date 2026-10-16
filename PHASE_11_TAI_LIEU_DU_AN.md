@@ -1061,7 +1061,7 @@ Container Odoo đọc code trực tiếp từ thư mục `addons` trên đĩa. N
 mốc tag bảo vệ (Chương 10) mà đến ngày bảo vệ quên chuyển về đúng tag, buổi demo sẽ chạy code
 đang làm dở — không phải bản đã kiểm chứng đủ 205 test (182 + 6 + 9 + 8 của ba module cầu nối) và các bước `pre_defense_check.py`.
 
-**Bản được chọn để bảo vệ: `v1.7.1-bao-ve`** (Bước 1–5 + Đợt A, B, C, D — toàn bộ kế hoạch ở Chương 9.6; giống `v1.7-bao-ve` về code, thêm `prepare_defense.sh`, test kiểm tra quyền của wizard 360 và tài liệu đã rà nhất quán — `v1.7-bao-ve` không có script nên không dùng được quy trình dưới đây). Dự phòng theo thứ tự: `v1.7-bao-ve` (chỉ khác ở chỗ trên), `v1.6-bao-ve` (đến D2), `v1.5-bao-ve` (đến Đợt C), `v1.4-bao-ve` (đến Đợt B), `v1.3-bao-ve` (đến Đợt A), `v1.2-bao-ve` (Bước 1–5), `v1.1.1-bao-ve` (Bước 1–4), `v1.0-bao-ve` (bản gọn nhất, chưa có Bước 1–4). `v1.1-bao-ve` có lỗi P2 tính cả phiếu thiếu dữ liệu — **không dùng**. Mọi tag cũ giữ nguyên để truy vết, không di chuyển.
+**Bản được chọn để bảo vệ: `v1.7.3-bao-ve`** (Bước 1–5 + Đợt A, B, C, D — toàn bộ kế hoạch ở Chương 9.6; giống `v1.7-bao-ve` về chức năng; thêm `prepare_defense.sh`, `backup_defense.sh`, `restore_defense.sh`, PM Phúc thuộc nhóm KPI Manager trong dữ liệu mẫu và tài liệu đã rà nhất quán — các tag trước không có đủ công cụ mà quy trình dưới đây gọi tới). Dự phòng theo thứ tự: `v1.7.2-bao-ve`, `v1.7.1-bao-ve`, `v1.7-bao-ve`, `v1.6-bao-ve` (đến D2), `v1.5-bao-ve` (đến Đợt C), `v1.4-bao-ve` (đến Đợt B), `v1.3-bao-ve` (đến Đợt A), `v1.2-bao-ve` (Bước 1–5), `v1.1.1-bao-ve` (Bước 1–4), `v1.0-bao-ve` (bản gọn nhất, chưa có Bước 1–4). `v1.1-bao-ve` có lỗi P2 tính cả phiếu thiếu dữ liệu — **không dùng**. Mọi tag cũ giữ nguyên để truy vết, không di chuyển.
 
 **Ngày dừng:** đặt một ngày dừng cho bản bảo vệ (đề xuất 1 tuần trước buổi bảo vệ). Sau ngày đó, mọi thay đổi
 (các việc còn lại ở Chương 9, ví dụ Bước 6) chỉ nằm trên `main`, không gộp vào tag dùng để bảo vệ, dù xong hay chưa.
@@ -1072,7 +1072,7 @@ và nạp lại thì bị bỏ qua vì kỳ mẫu đã tồn tại. Chỉ lấy 
 
 ```bash
 git stash                      # nếu còn thay đổi chưa commit trên main
-git checkout v1.7.1-bao-ve
+git checkout v1.7.3-bao-ve
 docker exec odoo19-db dropdb -U odoo --force --if-exists kpi_defense
 docker exec odoo19-web odoo -d kpi_defense -i project_kpi_skills,project_kpi_survey --stop-after-init   # cài module (kéo theo project_kpi_management, hr_skills, survey)
 docker exec odoo19-web sh -c "echo 'env[\"kpi.demo\"]._load_scenario(); env.cr.commit()' | odoo shell -d kpi_defense --max-cron-threads=0 --http-port=8072"
@@ -1083,6 +1083,15 @@ git checkout main
 git stash pop                  # nếu có stash ở bước đầu
 ```
 
+**Sao lưu và khôi phục `kpi_defense` (bắt buộc trước ngày bảo vệ).** Mỗi lần tổng duyệt demo sẽ tạo phiếu, tính điểm, duyệt, xác nhận — database không còn ở trạng thái "thẻ kỳ trống" như kịch bản mở đầu. Vì vậy sao lưu khi database còn sạch rồi khôi phục sau mỗi lần tổng duyệt và sáng ngày bảo vệ:
+
+```bash
+bash addons/project_kpi_management/scripts/backup_defense.sh clean     # sao lưu (database + filestore) vào backups/ — thư mục không đưa vào Git
+bash addons/project_kpi_management/scripts/restore_defense.sh clean    # khôi phục, rồi tự chạy prepare_defense.sh
+```
+
+Đường dẫn filestore là `/var/lib/odoo/.local/share/Odoo/filestore` (kiểm bằng `odoo.tools.config['data_dir']` trong image `odoo:19.0` — **không** phải `/var/lib/odoo/filestore`). Đã chạy thử khôi phục thật hai lần (từ bản `clean` rồi bản `seeded`), cả hai đều qua `prepare_defense.sh` với kết quả tất cả OK. Hai bản sao lưu hiện có: `clean` (vừa dựng, 4 kỳ lịch sử đã duyệt, kỳ mẫu chưa có phiếu và đã đánh dấu `auto_generated` để tác vụ cuối kỳ không tạo sẵn phiếu — nên bước "Tạo phiếu cho kỳ" của kịch bản chạy thật) và `seeded` (có sẵn 8 phiếu ở các trạng thái, kỳ năng lực + 360 với lời mời chưa trả lời — để xem các màn hình).
+
 **Khoá database cho buổi bảo vệ.** Màn hình đăng nhập có ô chọn database khi có nhiều database (`kpi_dev`, `kpi_defense`...); chọn nhầm `kpi_dev` (thiếu Phúc, Lan, Hà...) thì kịch bản demo hỏng ngay từ đầu. Trong `config/odoo.conf` (file thật, không nằm trong Git) thêm rồi khởi động lại container:
 
 ```ini
@@ -1090,7 +1099,7 @@ dbfilter = ^kpi_defense$
 list_db = False
 ```
 
-Sau buổi bảo vệ xoá hai dòng này. Lưu ý: khi đang khoá, `pre_defense_check.py` qua XML-RPC chỉ chạy được với `kpi_defense` (lệnh `odoo -d ...` trên dòng lệnh vẫn dùng được database khác). `config/odoo.conf.example` có sẵn hai dòng này dạng chú thích.
+Hai dòng này **đã được đặt** trong `config/odoo.conf` của máy này (mỗi lần chạy test trên database mới sẽ tạo thêm database; có `dbfilter` thì màn hình đăng nhập không bao giờ hiện ô chọn). Chạy test bằng lệnh `odoo -d <db tạm> -i ...` vẫn dùng bình thường vì dòng lệnh không đi qua `dbfilter`; xoá database tạm sau khi chạy. Sau buổi bảo vệ xoá hai dòng này nếu cần dùng nhiều database. Lưu ý: khi đang khoá, `pre_defense_check.py` qua XML-RPC chỉ chạy được với `kpi_defense` (lệnh `odoo -d ...` trên dòng lệnh vẫn dùng được database khác). `config/odoo.conf.example` có sẵn hai dòng này dạng chú thích.
 
 **Module cầu nối cài trên `kpi_defense`:** `project_kpi_skills` (thêm tab Kỹ năng vào hồ sơ nhân viên, ít xáo trộn) và `project_kpi_survey` (thêm app Surveys; khảo sát 360 mẫu nằm trong đó). **Không** cài `hr_timesheet`/`project_kpi_timesheet` (thêm app Timesheet). Các bước tương ứng trong `pre_defense_check.py` tự bỏ qua khi module chưa cài.
 
@@ -1106,6 +1115,8 @@ Sau buổi bảo vệ xoá hai dòng này. Lưu ý: khi đang khoá, `pre_defens
 | `an`, `binh`, `chi`, `ha` | Nguyễn Văn An, Trần Thị Bình, Lê Minh Chi, Lý Thanh Hà | KPI User — Lập trình viên | Xem phiếu của mình, Tự đánh giá (Nháp), Xác nhận kết quả (Đã duyệt), trả lời khảo sát 360 khi được mời |
 | `dung`, `khoa` | Đỗ Thị Dung, Vũ Minh Khoa | KPI User — Tester (QA) | Bộ Tester tự động; Khoa là tester mới (thiếu dữ liệu) |
 | `lan` | Trịnh Thu Lan | KPI User — BA | Bộ Business Analyst (B1–B4) |
+
+**Lưu ý cho phần P2 của kịch bản (Chương 5.8):** vì Phúc là KPI Manager nên nhắc việc "Hoàn tất phiếu KPI" của Dung, Khoa, Hà đi tới **Phúc** (không còn chuyển cho admin). Khi demo, mở các phiếu đó từ menu **KPI › Đánh giá**, hoặc đăng nhập `phuc` rồi mở từ chuông nhắc việc.
 
 Mọi quản lý trực tiếp trong dữ liệu mẫu đều thuộc nhóm KPI Manager (có test `test_demo_managers_all_have_kpi_manager_group`); Phúc được thêm nhóm này ở bản `v1.7.2-bao-ve` — trước đó Dung, Khoa, Hà có quản lý không đọc được phiếu của họ và nhắc việc chuyển cho người duyệt mặc định.
 Khi đã có database dựng từ bản này: `git checkout` tag rồi chạy lại `prepare_defense.sh <tên database>` (script tự tìm các module KPI đã cài để nạp lại).
@@ -1242,7 +1253,7 @@ buộc lý do) và **chấm chỉ số định tính** (D9) — số liệu tự
 
 ## Chương 9 — Hướng phát triển
 
-**Trạng thái:** mọi tính năng trong kế hoạch này đã được triển khai trừ **Bước 6** (kỳ khác nhau theo bộ KPI đã làm ở Đợt B1; còn lại nhân viên kiêm nhiệm — xem 9.6 "Không làm"). Bản dùng để bảo vệ là tag `v1.7.1-bao-ve` (Chương 5.7, 10), phát triển trực tiếp trên `main` (không tách nhánh riêng — tag đã giữ đúng từng mốc, không di chuyển). Các Bước 0–5 ở 9.1–9.4 là kế hoạch ban đầu và nay đều đã triển khai; 9.6 ghi các đợt hoàn thiện sau đó.
+**Trạng thái:** mọi tính năng trong kế hoạch này đã được triển khai trừ **Bước 6** (kỳ khác nhau theo bộ KPI đã làm ở Đợt B1; còn lại nhân viên kiêm nhiệm — xem 9.6 "Không làm"). Bản dùng để bảo vệ là tag `v1.7.3-bao-ve` (Chương 5.7, 10), phát triển trực tiếp trên `main` (không tách nhánh riêng — tag đã giữ đúng từng mốc, không di chuyển). Các Bước 0–5 ở 9.1–9.4 là kế hoạch ban đầu và nay đều đã triển khai; 9.6 ghi các đợt hoàn thiện sau đó.
 
 ### 9.1. Điểm nghẽn lớn nhất: chỉ số tự động phải viết code — ĐÃ TRIỂN KHAI
 
@@ -1478,7 +1489,7 @@ Nguyên tắc thiết kế cốt lõi — không hardcode vai trò — đã đư
 (Chương 7), không chỉ dừng ở khẳng định lý thuyết. Các giới hạn còn tồn tại (Chương 8.3) đều đã được
 xác định rõ ràng, có hướng xử lý cụ thể (Chương 9), phù hợp để trình bày minh bạch trước hội đồng.
 
-Bản dùng để bảo vệ được đóng băng ở tag Git `v1.7.1-bao-ve` (dự phòng: `v1.7-bao-ve`, `v1.6-bao-ve`, `v1.5-bao-ve`, `v1.4-bao-ve`, `v1.3-bao-ve`, `v1.2-bao-ve`, `v1.1.1-bao-ve`; gọn nhất: `v1.0-bao-ve`) — quy trình
+Bản dùng để bảo vệ được đóng băng ở tag Git `v1.7.3-bao-ve` (dự phòng: `v1.7.2-bao-ve`, `v1.7.1-bao-ve`, `v1.7-bao-ve`, `v1.6-bao-ve`, `v1.5-bao-ve`, `v1.4-bao-ve`, `v1.3-bao-ve`, `v1.2-bao-ve`, `v1.1.1-bao-ve`; gọn nhất: `v1.0-bao-ve`) — quy trình
 chuyển đúng về bản này vào ngày bảo vệ và kịch bản demo nằm ở Chương 5.7, 5.8. Phát triển tiếp theo hướng
 Chương 9 đi trên `main`, không ảnh hưởng các tag này.
 
