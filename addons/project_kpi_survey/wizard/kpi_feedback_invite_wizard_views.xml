@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="kpi_feedback_invite_wizard_view_form" model="ir.ui.view">
+        <field name="name">kpi.feedback.invite.wizard.form</field>
+        <field name="model">kpi.feedback.invite.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <field name="evaluation_id" invisible="1"/>
+                <field name="survey_id" invisible="1"/>
+                <group>
+                    <field name="reviewer_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                </group>
+                <p class="text-muted">
+                    Mỗi người nhận một nhắc việc kèm link khảo sát riêng (không gửi email). Điểm chỉ được tổng hợp thành điểm trung bình
+                    khi có ít nhất 3 câu trả lời; người quản lý không xem được từng câu trả lời.
+                </p>
+                <footer>
+                    <button name="action_invite" string="Mời đánh giá" type="object" class="btn-primary"/>
+                    <button string="Huỷ" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

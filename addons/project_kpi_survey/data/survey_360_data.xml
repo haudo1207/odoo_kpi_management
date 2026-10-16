@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Đợt D1: khảo sát 360 mẫu. Mỗi câu chọn 1 đáp án, đáp án có điểm 1-5 (answer_score), bật chấm điểm, chỉ người được mời
+         và bắt buộc đăng nhập. scoring_percentage của câu trả lời = tổng điểm / điểm tối đa (20) nên 4/5 mỗi câu = 80%. -->
+    <data noupdate="1">
+        <record id="survey_360" model="survey.survey">
+            <field name="title">Phản hồi 360 độ</field>
+            <field name="access_mode">token</field>
+            <field name="users_login_required" eval="True"/>
+            <field name="scoring_type">scoring_without_answers</field>
+            <field name="questions_layout">one_page</field>
+            <field name="description" type="html"><p>Đánh giá đồng nghiệp theo thang 1–5. Kết quả chỉ được tổng hợp thành điểm trung bình, người quản lý không xem từng câu trả lời.</p></field>
+        </record>
+        <record id="survey_360_q1" model="survey.question">
+            <field name="survey_id" ref="survey_360"/>
+            <field name="sequence">1</field>
+            <field name="title">Chất lượng công việc</field>
+            <field name="question_type">simple_choice</field>
+            <field name="constr_mandatory" eval="True"/>
+            <field name="description" type="html"><p>Sản phẩm bàn giao đúng yêu cầu, ít phải sửa lại.</p></field>
+        </record>
+        <record id="survey_360_q1_s5" model="survey.question.answer">
+            <field name="question_id" ref="survey_360_q1"/>
+            <field name="sequence">1</field>
+            <field name="value">5 — Rất tốt</field>
+            <field name="answer_score">5</field>
+        </record>
+        <record id="survey_360_q1_s4" model="survey.question.answer">
+            <field name="question_id" ref="survey_360_q1"/>
+            <field name="sequence">2</field>
+            <field name="value">4 — Tốt</field>
+            <field name="answer_score">4</field>
+        </record>
+        <record id="survey_360_q1_s3" model="survey.question.answer">
+            <field name="question_id" ref="survey_360_q1"/>
+            <field name="sequence">3</field>
+            <field name="value">3 — Đạt yêu cầu</field>
+            <field name="answer_score">3</field>
+        </record>
+        <record id="survey_360_q1_s2" model="survey.question.answer">
+            <field name="question_id" ref="survey_360_q1"/>
+            <field name="sequence">4</field>
+            <field name="value">2 — Cần cải thiện</field>
+            <field name="answer_score">2</field>
+        </record>
+        <record id="survey_360_q1_s1" model="survey.question.answer">
+            <field name="question_id" ref="survey_360_q1"/>
+            <field name="sequence">5</field>
+            <field name="value">1 — Yếu</field>
+            <field name="answer_score">1</field>
+        </record>
+        <record id="survey_360_q2" model="survey.question">
+            <field name="survey_id" ref="survey_360"/>
+            <field name="sequence">2</field>
+            <field name="title">Phối hợp và giao tiếp</field>
+            <field name="question_type">simple_choice</field>
+            <field name="constr_mandatory" eval="True"/>
+            <field name="description" type="html"><p>Trao đổi rõ ràng, kịp thời với đồng nghiệp.</p></field>
+        </record>
+        <record id="survey_360_q2_s5" model="survey.question.answer">
+            <field name="question_id" ref="survey_360_q2"/>
+            <field name="sequence">1</field>
+            <field name="value">5 — Rất tốt</field>
+            <field name="answer_score">5</field>
+        </record>
+        <record id="survey_360_q2_s4" model="survey.question.answer">
+            <field name="question_id" ref="survey_360_q2"/>
+            <field name="sequence">2</field>
+            <field name="value">4 — Tốt</field>
+            <field name="answer_score">4</field>
+        </record>
+        <record id="survey_360_q2_s3" model="survey.question.answer">
+            <field name="question_id" ref="survey_360_q2"/>
+            <field name="sequence">3</field>
+            <field name="value">3 — Đạt yêu cầu</field>
+            <field name="answer_score">3</field>
+        </record>
+        <record id="survey_360_q2_s2" model="survey.question.answer">
+            <field name="question_id" ref="survey_360_q2"/>
+            <field name="sequence">4</field>
+            <field name="value">2 — Cần cải thiện</field>
+            <field name="answer_score">2</field>
+        </record>
+        <record id="survey_360_q2_s1" model="survey.question.answer">
+            <field name="question_id" ref="survey_360_q2"/>
+            <field name="sequence">5</field>
+            <field name="value">1 — Yếu</field>
+            <field name="answer_score">1</field>
+        </record>
+        <record id="survey_360_q3" model="survey.question">
+            <field name="survey_id" ref="survey_360"/>
+            <field name="sequence">3</field>
+            <field name="title">Chủ động và trách nhiệm</field>
+            <field name="question_type">simple_choice</field>
+            <field name="constr_mandatory" eval="True"/>
+            <field name="description" type="html"><p>Chủ động nhận việc và chịu trách nhiệm đến cùng.</p></field>
+        </record>
+        <record id="survey_360_q3_s5" model="survey.question.answer">
+            <field name="question_id" ref="survey_360_q3"/>
+            <field name="sequence">1</field>
+            <field name="value">5 — Rất tốt</field>
+            <field name="answer_score">5</field>
+        </record>
+        <record id="survey_360_q3_s4" model="survey.question.answer">
+            <field name="question_id" ref="survey_360_q3"/>
+            <field name="sequence">2</field>
+            <field name="value">4 — Tốt</field>
+            <field name="answer_score">4</field>
+        </record>
+        <record id="survey_360_q3_s3" model="survey.question.answer">
+            <field name="question_id" ref="survey_360_q3"/>
+            <field name="sequence">3</field>
+            <field name="value">3 — Đạt yêu cầu</field>
+            <field name="answer_score">3</field>
+        </record>
+        <record id="survey_360_q3_s2" model="survey.question.answer">
+            <field name="question_id" ref="survey_360_q3"/>
+            <field name="sequence">4</field>
+            <field name="value">2 — Cần cải thiện</field>
+            <field name="answer_score">2</field>
+        </record>
+        <record id="survey_360_q3_s1" model="survey.question.answer">
+            <field name="question_id" ref="survey_360_q3"/>
+            <field name="sequence">5</field>
+            <field name="value">1 — Yếu</field>
+            <field name="answer_score">1</field>
+        </record>
+        <record id="survey_360_q4" model="survey.question">
+            <field name="survey_id" ref="survey_360"/>
+            <field name="sequence">4</field>
+            <field name="title">Hỗ trợ đồng nghiệp</field>
+            <field name="question_type">simple_choice</field>
+            <field name="constr_mandatory" eval="True"/>
+            <field name="description" type="html"><p>Sẵn sàng chia sẻ kiến thức và giúp đỡ khi cần.</p></field>
+        </record>
+        <record id="survey_360_q4_s5" model="survey.question.answer">
+            <field name="question_id" ref="survey_360_q4"/>
+            <field name="sequence">1</field>
+            <field name="value">5 — Rất tốt</field>
+            <field name="answer_score">5</field>
+        </record>
+        <record id="survey_360_q4_s4" model="survey.question.answer">
+            <field name="question_id" ref="survey_360_q4"/>
+            <field name="sequence">2</field>
+            <field name="value">4 — Tốt</field>
+            <field name="answer_score">4</field>
+        </record>
+        <record id="survey_360_q4_s3" model="survey.question.answer">
+            <field name="question_id" ref="survey_360_q4"/>
+            <field name="sequence">3</field>
+            <field name="value">3 — Đạt yêu cầu</field>
+            <field name="answer_score">3</field>
+        </record>
+        <record id="survey_360_q4_s2" model="survey.question.answer">
+            <field name="question_id" ref="survey_360_q4"/>
+            <field name="sequence">4</field>
+            <field name="value">2 — Cần cải thiện</field>
+            <field name="answer_score">2</field>
+        </record>
+        <record id="survey_360_q4_s1" model="survey.question.answer">
+            <field name="question_id" ref="survey_360_q4"/>
+            <field name="sequence">5</field>
+            <field name="value">1 — Yếu</field>
+            <field name="answer_score">1</field>
+        </record>
+    </data>
+</odoo>

@@ -186,6 +186,7 @@ addons/project_kpi_management/
 
 addons/project_kpi_timesheet/            Module cầu nối (Bước 4): P4 + bộ "Team Lead / PM (có giờ làm)", 6 test riêng
 addons/project_kpi_skills/               Module cầu nối (Đợt D2): S1 mức đáp ứng kỹ năng + bộ "Developer (có năng lực)", 9 test riêng
+addons/project_kpi_survey/               Module cầu nối (Đợt D1): F1 phản hồi 360 độ qua survey + bộ "Developer (có phản hồi 360)", 7 test riêng
 ```
 
 ### 2.4. Nguyên tắc thiết kế cốt lõi: không hardcode vai trò
@@ -262,6 +263,7 @@ bắt buộc: stage Done/Hoàn thành của mọi dự án phải bật **Folded
 | 21 | `kpi.score.scale.step` | Model | Một bậc: `pct_from` (% đạt mục tiêu bắt đầu), `score`, `pct_to` (compute) |
 | 22 | `kpi.acknowledge.wizard` | TransientModel | Nhân viên xác nhận kết quả sau khi phiếu Đã duyệt (Đợt A2, Chương 9.6) |
 | 23 | `kpi.manager.issue` | TransientModel | Danh sách "Quản lý chưa có quyền KPI" (lỗi cấu hình cần sửa tận gốc, Đợt B) |
+| — | `kpi.feedback.request`, `kpi.feedback.invite.wizard` | Model, TransientModel | Chỉ có khi cài `project_kpi_survey` (Đợt D1): lời mời đánh giá 360 (ai được mời, đã trả lời chưa) và wizard "Mời đánh giá 360" |
 
 ### 3.2. Sơ đồ quan hệ (ERD dạng văn bản)
 
@@ -838,6 +840,18 @@ Mọi đường tính KPI đều đi về `kpi.evaluation.action_compute_kpi()`,
 | `test_click_compute_on_evaluation` | Qua nút Tính KPI: S1 66,67% so với mục tiêu 80% → điểm dòng 83,33; bộ "Developer (có năng lực)" đủ trọng số 100 |
 | `test_demo_skills_scenario` | Dữ liệu mẫu: An Python 100, Odoo 50, SQL 25 → 2/3 |
 
+**Module `project_kpi_survey` — 7 test riêng** (`tests/test_kpi_feedback.py`, chạy bằng `-i project_kpi_survey --test-tags /project_kpi_survey`; cần `survey`). Trả lời khảo sát đi đúng đường controller dùng (`_save_lines` rồi `_mark_done`); mỗi câu trả lời chấm theo tổng điểm / tối đa 20 (4 câu × 5):
+
+| Test | Kiểm tra |
+|---|---|
+| `test_below_three_answers_not_applicable_and_hidden` | 2 câu trả lời: F1 "Không áp dụng", giá trị 0 và phiếu không hiện điểm trung bình (không lộ ai chấm bao nhiêu) |
+| `test_three_answers_average_matches_hand_calculation` | 3 người chấm toàn 5, toàn 4, toàn 3 → 100%, 80%, 60% → trung bình 80%; mục tiêu 80 → điểm dòng 100; bộ có F1 đủ trọng số 100 |
+| `test_unfinished_and_test_entries_ignored` | Câu trả lời dở dang và bản test (`test_entry`) không tính |
+| `test_late_answer_does_not_change_submitted_evaluation` | Phiếu đã gửi: câu trả lời đến muộn không đổi điểm (phiếu đã khoá, không tính lại) |
+| `test_invite_rules` | Chặn: mời chính nhân viên, không chọn ai, mời trùng, quản lý không phải của nhân viên, phiếu không còn Nháp |
+| `test_reminder_per_reviewer_and_done_when_answered` | Mỗi người được mời một nhắc việc kèm link khảo sát riêng; trả lời xong nhắc việc tự đánh dấu xong |
+| `test_manager_sees_invitees_but_not_answers` | Quản lý thấy ai được mời và đã trả lời chưa, nhưng không đọc được `survey.user_input` (nội dung, điểm từng người); người được mời chỉ thấy lời mời của mình |
+
 #### `tests/test_kpi_dashboard.py` — 7 test (Đợt C1: màn hình tổng quan)
 
 Dữ liệu cố định, số đếm tính tay trước khi chạy: team của quản lý Q1 có Nháp, Đã gửi (75), Đã duyệt 100 (đã xác nhận), Đã duyệt 50 (Cần cải thiện), Đã duyệt thiếu dữ liệu (100); team của Q2 có Đã duyệt 75.
@@ -982,7 +996,7 @@ Lý do cần script riêng: sửa code trên đĩa không tự áp dụng cho m�
 phải nạp lại module hoặc khởi động lại tiến trình trước, nếu không hệ thống đang chạy vẫn sai dù
 code đã đúng và test đã đạt (đúng loại lỗi đã gặp khi viết script này, xem dưới).
 
-Kiểm tra 22 mục (14 nhóm, thêm hai bước tuỳ chọn S1 và P4), tự tạo kỳ/phiếu test riêng và tự dọn sạch ở cuối (kể cả khi có bước FAIL),
+Kiểm tra 23 mục (15 nhóm, thêm ba bước tuỳ chọn S1, F1 và P4), tự tạo kỳ/phiếu test riêng và tự dọn sạch ở cuối (kể cả khi có bước FAIL),
 không ảnh hưởng dữ liệu demo dùng để trình bày:
 
 1. Chặn xung đột vai trò (Mục 2): quản lý được gán thêm quyền Admin vẫn bị chặn khi duyệt phiếu
@@ -1002,7 +1016,8 @@ không ảnh hưởng dữ liệu demo dùng để trình bày:
 11. Kỳ riêng theo bộ KPI và gợi ý mục tiêu (Đợt B, 2 mục): không đổi được loại kỳ khi còn phiếu ở kỳ đang mở; 3 kỳ đã duyệt D2 = 10, 20, 30 → gợi ý Dễ 15 / Vừa 20 / Khó 25 (tính tay trước).
 12. Màn hình tổng quan (Đợt C1): Admin đọc số liệu kỳ qua XML-RPC (2 phiếu = 1 Nháp + 1 Đã duyệt, điểm TB = điểm phiếu đã duyệt), nút "Đã duyệt" mở đúng 1 phiếu.
 13. S1 mức đáp ứng kỹ năng (Đợt D2): chỉ chạy khi module `project_kpi_skills` đã cài (chức danh yêu cầu Python 75, Odoo 50, SQL 50; nhân viên Python 100, Odoo 50, SQL 25 → 66,67%, điểm dòng 83,33); chưa cài thì in `[SKIP]`.
-14. P4 giờ so với kế hoạch (Bước 4): chỉ chạy khi module cầu nối `project_kpi_timesheet` đã cài (130/100 giờ → 50 điểm); chưa cài thì in `[SKIP]`. Tuỳ chọn `--skip-demo-checks` chỉ chạy các bước tự tạo dữ liệu, dùng cho database không có dữ liệu mẫu.
+14. F1 phản hồi 360 (Đợt D1): chỉ chạy khi module `project_kpi_survey` đã cài. Quản lý đăng nhập mời 3 người: mỗi người đúng 1 nhắc việc kèm link, người được mời chỉ thấy lời mời của mình, quản lý đọc `survey.user_input` bị từ chối, nhân viên không mời được, F1 chưa có câu trả lời thì Không áp dụng. Việc trả lời khảo sát đi qua controller của module survey nên kiểm bằng unit test, không qua XML-RPC.
+15. P4 giờ so với kế hoạch (Bước 4): chỉ chạy khi module cầu nối `project_kpi_timesheet` đã cài (130/100 giờ → 50 điểm); chưa cài thì in `[SKIP]`. Tuỳ chọn `--skip-demo-checks` chỉ chạy các bước tự tạo dữ liệu, dùng cho database không có dữ liệu mẫu.
 
 Cách chạy trước khi bảo vệ:
 
@@ -1039,7 +1054,7 @@ Container Odoo đọc code trực tiếp từ thư mục `addons` trên đĩa. N
 mốc tag bảo vệ (Chương 10) mà đến ngày bảo vệ quên chuyển về đúng tag, buổi demo sẽ chạy code
 đang làm dở — không phải bản đã kiểm chứng đủ 181 test, 6 test của module cầu nối và các bước `pre_defense_check.py`.
 
-**Bản được chọn để bảo vệ: `v1.6-bao-ve`** (Bước 1–5 + Đợt A, B, C, D2). Dự phòng: `v1.5-bao-ve` (đến Đợt C), `v1.4-bao-ve` (đến Đợt B), `v1.3-bao-ve` (đến Đợt A), `v1.2-bao-ve` (Bước 1–5), `v1.1.1-bao-ve` (Bước 1–4); `v1.1-bao-ve` có lỗi P2 tính cả phiếu thiếu dữ liệu — không dùng; mọi tag cũ giữ nguyên để truy vết, không di chuyển (Bước 1–4: chỉ số cấu hình không cần code, bộ KPI Developer/Tester/Lead-PM,
+**Bản được chọn để bảo vệ: `v1.7-bao-ve`** (Bước 1–5 + Đợt A, B, C, D). Dự phòng: `v1.6-bao-ve` (đến D2), `v1.5-bao-ve` (đến Đợt C), `v1.4-bao-ve` (đến Đợt B), `v1.3-bao-ve` (đến Đợt A), `v1.2-bao-ve` (Bước 1–5), `v1.1.1-bao-ve` (Bước 1–4); `v1.1-bao-ve` có lỗi P2 tính cả phiếu thiếu dữ liệu — không dùng; mọi tag cũ giữ nguyên để truy vết, không di chuyển (Bước 1–4: chỉ số cấu hình không cần code, bộ KPI Developer/Tester/Lead-PM,
 chấm theo bậc, module cầu nối). `v1.0-bao-ve` vẫn còn nguyên làm bản dự phòng gọn hơn (chưa có Bước 1–4).
 Nếu Bước 5 (BA) xong kịp và qua đủ kiểm tra thì gắn `v1.2-bao-ve` và đổi quy trình dưới đây sang tag mới.
 
@@ -1052,9 +1067,9 @@ và nạp lại thì bị bỏ qua vì kỳ mẫu đã tồn tại. Chỉ lấy 
 
 ```bash
 git stash                      # nếu còn thay đổi chưa commit trên main
-git checkout v1.6-bao-ve
+git checkout v1.7-bao-ve
 docker exec odoo19-db dropdb -U odoo --force --if-exists kpi_defense
-docker exec odoo19-web odoo -d kpi_defense -i project_kpi_skills --stop-after-init        # cài module (kéo theo project_kpi_management và hr_skills)
+docker exec odoo19-web odoo -d kpi_defense -i project_kpi_skills,project_kpi_survey --stop-after-init   # cài module (kéo theo project_kpi_management, hr_skills, survey)
 docker exec odoo19-web sh -c "echo 'env[\"kpi.demo\"]._load_scenario(); env.cr.commit()' | odoo shell -d kpi_defense --max-cron-threads=0 --http-port=8072"
 docker restart odoo19-web
 python scripts/pre_defense_check.py --db kpi_defense   # phải in "tất cả OK"; bước P4 in [SKIP] vì không cài hr_timesheet
@@ -1072,7 +1087,7 @@ list_db = False
 
 Sau buổi bảo vệ xoá hai dòng này. Lưu ý: khi đang khoá, `pre_defense_check.py` qua XML-RPC chỉ chạy được với `kpi_defense` (lệnh `odoo -d ...` trên dòng lệnh vẫn dùng được database khác). `config/odoo.conf.example` có sẵn hai dòng này dạng chú thích.
 
-**Module cầu nối cài trên `kpi_defense`:** `project_kpi_skills` (thêm tab Kỹ năng vào hồ sơ nhân viên, ít xáo trộn). **Không** cài `hr_timesheet`/`project_kpi_timesheet` (thêm app Timesheet). Các bước tương ứng trong `pre_defense_check.py` tự bỏ qua khi module chưa cài.
+**Module cầu nối cài trên `kpi_defense`:** `project_kpi_skills` (thêm tab Kỹ năng vào hồ sơ nhân viên, ít xáo trộn) và `project_kpi_survey` (thêm app Surveys; khảo sát 360 mẫu nằm trong đó). **Không** cài `hr_timesheet`/`project_kpi_timesheet` (thêm app Timesheet). Các bước tương ứng trong `pre_defense_check.py` tự bỏ qua khi module chưa cài.
 
 Tài khoản demo trên `kpi_defense`: `admin`/`admin` và các tài khoản ở Chương 5.8 (mật khẩu trùng tên đăng nhập).
 Cách thay thế khi đã có database dựng từ bản này: `git checkout` tag, `-u project_kpi_management` rồi khởi động lại container như trên.
@@ -1095,8 +1110,9 @@ Không demo hết được — chọn 5 phần, thứ tự từ nền tảng t�
 | 5 | (nếu còn thời gian, 2') Quy trình có nhắc việc | Thiết lập › Quy trình: đặt người duyệt mặc định → Gửi duyệt một phiếu, chuông nhắc việc của người duyệt hiện "Duyệt phiếu KPI" → Duyệt → đăng nhập nhân viên: nhắc "Xác nhận kết quả KPI" → bấm Xác nhận kết quả | Mỗi bước tự giao đúng người và tự đánh dấu xong; xác nhận không đổi điểm, không thêm trạng thái |
 | 6 | (nếu còn thời gian, 2') Gợi ý mục tiêu từ lịch sử | Mục tiêu riêng › tạo mới: dòng D2 của bộ Developer, phòng "Phòng Kỹ thuật (lịch sử mẫu)" → hiện Dễ 13,5 / Vừa 15 / Khó 16,5 → bấm "Áp dụng mức Vừa" | Chỉ gợi ý (phân vị 25/50/75 của 4 kỳ đã duyệt), quản lý vẫn sửa được; nhãn theo độ khó nên đúng cả với chỉ số "thấp là tốt" |
 | 7 | (nếu còn thời gian, 2') Năng lực: S1 | Kỳ khác → tạo phiếu thủ công cho `an`, chọn bộ "Developer (có năng lực)" → Tính KPI: dòng S1 = 66,67% (Python 100 ≥ 75, Odoo 50 ≥ 50, SQL 25 < 50). Mở hồ sơ `an` tab Kỹ năng để đối chiếu | So kỹ năng với chức danh *đã chụp trên phiếu*; kỹ năng theo ngày hiệu lực nên nâng mức sau kỳ không đổi kết quả kỳ cũ |
-| 8 | (nếu còn thời gian, 2') Một bug, hai trách nhiệm | Phiếu `lan` (BA): B2 = 2/3 vì bug "yêu cầu sai" của task t6 quy về BA; mở phiếu `binh`: D3 không tính bug đó | Một lần phân loại bug (`bug_root_cause`), trách nhiệm quy đúng người |
-| 9 | (nếu còn thời gian, 2') Chấm theo bậc | Bộ KPI → gắn "Bậc 4 mức (mẫu)" vào một dòng → tạo phiếu mới → cột "% đạt mục tiêu" và bậc hiển thị | Phiếu cũ không đổi vì bảng bậc được chụp lúc tạo phiếu |
+| 8 | (nếu còn thời gian, 3') Phản hồi 360 | Phiếu Nháp (bộ "Developer (có phản hồi 360)") → **Mời đánh giá 360** → chọn 3 người → đăng nhập một người được mời: nhắc việc "Đánh giá 360" có link, trả lời khảo sát → nhắc việc tự xong. Quay lại phiếu: số người đã trả lời; dưới 3 người thì chưa hiện điểm | Điểm là trung bình, quản lý không xem được từng câu trả lời; ngưỡng 3 để không lộ ai chấm bao nhiêu |
+| 9 | (nếu còn thời gian, 2') Một bug, hai trách nhiệm | Phiếu `lan` (BA): B2 = 2/3 vì bug "yêu cầu sai" của task t6 quy về BA; mở phiếu `binh`: D3 không tính bug đó | Một lần phân loại bug (`bug_root_cause`), trách nhiệm quy đúng người |
+| 10 | (nếu còn thời gian, 2') Chấm theo bậc | Bộ KPI → gắn "Bậc 4 mức (mẫu)" vào một dòng → tạo phiếu mới → cột "% đạt mục tiêu" và bậc hiển thị | Phiếu cũ không đổi vì bảng bậc được chụp lúc tạo phiếu |
 
 Trước buổi demo chạy `pre_defense_check.py` (5.6). Không cài `hr_timesheet` trên `kpi_dev`; P4 chỉ nói bằng lời nếu hội đồng hỏi, kèm bằng chứng là test của module cầu nối.
 
@@ -1199,6 +1215,7 @@ buộc lý do) và **chấm chỉ số định tính** (D9) — số liệu tự
 | Mục tiêu không tự co giãn theo độ dài kỳ | Bộ KPI theo quý cần mục tiêu riêng (20 SP/tháng khác 60 SP/quý); hệ thống không tự nhân | Thấp — nhắc ở hướng dẫn cấu hình (Chương 6.4) |
 | P2 chỉ tính phiếu cấp dưới có kỳ nằm trọn trong kỳ của Lead | Kỳ cấp dưới dài hơn hoặc lệch kỳ của Lead (ví dụ Lead theo tháng, cấp dưới theo quý) thì không tính, P2 "Không áp dụng" | Thấp — chọn loại kỳ của Lead dài hơn hoặc bằng cấp dưới |
 | "Lỗi dữ liệu" trên thẻ Tổng quan là ảnh chụp hiện tại | Báo cáo Kiểm tra dữ liệu tính theo dự án, không theo kỳ, nên con số này giống nhau trên mọi thẻ; chỉ hiện trên kỳ đang mở và ghi rõ "hiện tại, toàn hệ thống, không theo kỳ" | Thấp |
+| Phản hồi 360 **không đảm bảo ẩn danh tuyệt đối** | Quản trị viên Surveys vẫn xem được từng câu trả lời của từng người (survey.user_input); hệ thống chỉ **giảm khả năng nhận diện người chấm** — quản lý KPI không đọc được câu trả lời, phiếu chỉ hiện điểm trung bình, và dưới 3 câu trả lời thì F1 "Không áp dụng" và không hiện số. Ở công ty nhỏ, ngưỡng 3 người chỉ có ý nghĩa khi team đủ đông | Trung bình — cần nói rõ với người tham gia |
 | S1 (mức đáp ứng kỹ năng) chỉ có khi cài `hr_skills` + `project_kpi_skills`, và chỉ đúng khi hồ sơ kỹ năng được cập nhật | Kỹ năng và kỹ năng yêu cầu của chức danh do nhân sự/quản lý nhập; so theo mức tiến độ (level_progress) nên các mức của hai bên phải cùng loại kỹ năng | Thấp |
 | Gợi ý mục tiêu cần ≥ 3 kỳ đã duyệt cùng loại kỳ | Ít hơn thì hiện "Chưa đủ dữ liệu"; phiếu thiếu dữ liệu và dòng Không áp dụng không tham gia | Thấp |
 | Cron cập nhật `days_late` ghi `write_date` dù giá trị không đổi | Đã kiểm chứng bằng script thật (không suy luận): `_cron_update_days_late()` gọi `flush_recordset(["days_late"])` cho mọi task quá hạn chưa xong mỗi ngày, và Odoo luôn ghi `write_date`/`write_uid` cùng lúc flush một field, kể cả khi `days_late` ra cùng giá trị cũ | Thấp — chỉ ảnh hưởng cách sắp xếp "mới cập nhật gần đây" ở các view khác, không ảnh hưởng điểm KPI |
@@ -1383,7 +1400,7 @@ Sau Bước 5 các tính năng còn lại được chia theo giá trị cho báo
 | A (vận hành) | A1 nhắc việc theo quy trình; A2 nhân viên xác nhận kết quả; A3 tạm tính giữa kỳ; A4 P3 theo kỳ; A5 báo cáo theo phòng ban | **Đã triển khai** | `v1.3-bao-ve` |
 | B (linh hoạt cấu hình) | B1 kỳ riêng theo bộ KPI; B2 gợi ý mục tiêu từ lịch sử | **Đã triển khai** | `v1.4-bao-ve` |
 | C (trình bày) | C1 màn hình tổng quan KPI (kanban theo kỳ) | **Đã triển khai** | `v1.5-bao-ve` |
-| D (đánh giá đa chiều) | D2 đánh giá năng lực (`hr_skills`) → `v1.6-bao-ve`; D1 phản hồi 360 độ (`survey`) → `v1.7-bao-ve` | D2 **đã triển khai**; D1 đang làm | `v1.6-bao-ve`, `v1.7-bao-ve` |
+| D (đánh giá đa chiều) | D2 đánh giá năng lực (`hr_skills`) → `v1.6-bao-ve`; D1 phản hồi 360 độ (`survey`) → `v1.7-bao-ve` | **Đã triển khai cả hai** | `v1.6-bao-ve`, `v1.7-bao-ve` |
 
 **Quyết định thiết kế của Đợt A:**
 
@@ -1415,10 +1432,19 @@ Sau Bước 5 các tính năng còn lại được chia theo giá trị cho báo
 
 - **Nguồn dữ liệu có thật:** `hr.employee.skill` (kỹ năng của nhân viên) và `hr.job.skill` (kỹ năng yêu cầu của chức danh) dùng chung `hr.individual.skill.mixin` — cùng `skill_id`, `skill_level_id`, `level_progress` (0–100), `valid_from`, `valid_to`. So mức bằng `level_progress` nên đúng cho mọi loại kỹ năng, không phụ thuộc thứ tự mức.
 - **Module cầu nối `project_kpi_skills`** (`depends: project_kpi_management, hr_skills`, `auto_install: True`): chỉ số **S1 "Mức đáp ứng kỹ năng"** (`_metric_s1()` kế thừa `kpi.engine`) và bộ riêng **"Developer (có năng lực)"** (trọng số D4 và D9 giảm để thêm S1 10%); bộ Developer gốc không đổi, nên số liệu kịch bản demo giữ nguyên.
-- **Chức danh đã chụp trên phiếu:** `compute_actual(..., job=ev.job_id)` — S1 so theo chức danh lúc tạo phiếu chứ không phải chức danh hiện tại, cùng nguyên tắc chụp như mục tiêu và bảng bậc.
+- **Chức danh đã chụp trên phiếu:** `compute_actual(..., evaluation=ev)` (chức danh lấy từ `ev.job_id`; vẫn nhận `job=` riêng cho nơi không có phiếu) — S1 so theo chức danh lúc tạo phiếu chứ không phải chức danh hiện tại, cùng nguyên tắc chụp như mục tiêu và bảng bậc.
 - **Hiệu lực theo ngày cuối kỳ:** chỉ xét bản ghi có `valid_from ≤ ngày cuối kỳ` và (`valid_to` trống hoặc `≥ ngày cuối kỳ`). Odoo tự đóng bản cũ (`valid_to` = hôm qua) khi nâng mức, nên tính lại phiếu kỳ cũ cho cùng kết quả. Nhiều bản ghi cùng kỹ năng còn hiệu lực thì lấy mức cao nhất.
 - **Kết quả:** kỹ năng đạt / kỹ năng yêu cầu × 100; khối lượng = số kỹ năng yêu cầu; chức danh không yêu cầu kỹ năng nào → "Không áp dụng". Thiếu kỹ năng tính là không đạt.
 - **Dữ liệu mẫu** (nạp bởi `kpi.demo._load_skills_scenario`, idempotent): loại kỹ năng "Kỹ năng kỹ thuật" 4 mức 25/50/75/100; Lập trình viên yêu cầu Python 75, Odoo 50, SQL 50; An có Python 100, Odoo 50, SQL 25 → 2/3.
+
+**Quyết định thiết kế của Đợt D1 (đã đọc source `survey` 19.0 trước khi thiết kế):**
+
+- **Module cầu nối `project_kpi_survey`** (`depends: project_kpi_management, survey`, `auto_install: True`): khảo sát mẫu "Phản hồi 360 độ" nằm trong data — 4 câu chọn 1 đáp án, mỗi đáp án có điểm 1–5 (`answer_score`), bật chấm điểm (`scoring_without_answers`), `access_mode = token` (chỉ người được mời) và bắt buộc đăng nhập. `scoring_percentage` của một câu trả lời = tổng điểm / điểm tối đa (20), nên 4/5 mỗi câu = 80%.
+- **Luồng:** phiếu Nháp → quản lý bấm **Mời đánh giá 360**, chọn người → hệ thống tạo câu trả lời riêng cho từng người bằng `survey._create_answer(user=...)` (chạy bằng sudo vì quản lý KPI không có quyền Surveys) và **nhắc việc kèm link** (không gửi email nên demo không cần máy chủ thư; dùng lại cơ chế nhắc việc của Đợt A). Nhắc việc nằm trên `kpi.feedback.request` (không nằm trên phiếu) vì người được mời không đọc được phiếu của người khác. Người đánh giá nộp bài thì `survey.user_input._mark_done` tự đánh dấu xong nhắc việc. "Tính KPI" lấy các câu trả lời đã hoàn thành tới lúc đó.
+- **Quy tắc:** người đánh giá phải là người dùng nội bộ, không trùng, không phải chính nhân viên (đã có tự đánh giá riêng); chỉ mời khi phiếu Nháp; phiếu đã gửi thì câu trả lời đến sau không đổi điểm (phiếu đã khoá, không tính lại).
+- **F1:** trung bình `scoring_percentage` của câu trả lời `done`, bỏ `test_entry`; khối lượng = số câu trả lời hoàn thành, `min_volume = 3`. Dưới 3 thì hàm trả giá trị 0 chứ không trả điểm của một hai người, và phiếu không hiện điểm trung bình — phiếu chỉ hiện số người đã mời, đã trả lời và điểm trung bình khi đủ ngưỡng.
+- **Quyền:** quản lý xem được danh sách người được mời và trạng thái (record rule theo nhân viên trực tiếp), nhưng **không đọc được** `survey.user_input` (ACL của module survey chỉ cấp cho nhóm Surveys); người được mời chỉ thấy lời mời của chính mình. Giới hạn ẩn danh ghi ở Chương 8.3.
+- **Phát hiện khi làm:** wizard ban đầu đọc `survey_id.scoring_type` bằng quyền của quản lý nên bị `AccessError` — test bắt được ngay; mọi đọc/ghi khảo sát trong wizard nay chạy bằng sudo.
 
 **Không làm (giữ ở Chương 9):** nhân viên kiêm nhiệm (Bước 6b — gộp hai bộ KPI, chuẩn hoá trọng số, xử lý chỉ số trùng, đụng vào khâu tạo phiếu; rủi ro cao nhất); dải xếp loại cấu hình đầy đủ (`final_rating` đang dùng ở màu, PIP, bộ lọc, báo cáo, API và test — ngưỡng đã chỉnh được ở Thiết lập); OKR, đồng bộ Jira/GitLab, DORA, bộ KPI DevOps/Support (cần hạ tầng ngoài hoặc là hệ thống riêng).
 
@@ -1438,7 +1464,7 @@ Nguyên tắc thiết kế cốt lõi — không hardcode vai trò — đã đư
 (Chương 7), không chỉ dừng ở khẳng định lý thuyết. Các giới hạn còn tồn tại (Chương 8.3) đều đã được
 xác định rõ ràng, có hướng xử lý cụ thể (Chương 9), phù hợp để trình bày minh bạch trước hội đồng.
 
-Bản dùng để bảo vệ được đóng băng ở tag Git `v1.6-bao-ve` (dự phòng: `v1.5-bao-ve`, `v1.4-bao-ve`, `v1.3-bao-ve`, `v1.2-bao-ve`, `v1.1.1-bao-ve`; gọn nhất: `v1.0-bao-ve`) — quy trình
+Bản dùng để bảo vệ được đóng băng ở tag Git `v1.7-bao-ve` (dự phòng: `v1.6-bao-ve`, `v1.5-bao-ve`, `v1.4-bao-ve`, `v1.3-bao-ve`, `v1.2-bao-ve`, `v1.1.1-bao-ve`; gọn nhất: `v1.0-bao-ve`) — quy trình
 chuyển đúng về bản này vào ngày bảo vệ và kịch bản demo nằm ở Chương 5.7, 5.8. Phát triển tiếp theo hướng
 Chương 9 đi trên `main`, không ảnh hưởng các tag này.
 

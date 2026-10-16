@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="kpi_feedback_request_view_list" model="ir.ui.view">
+        <field name="name">kpi.feedback.request.list</field>
+        <field name="model">kpi.feedback.request</field>
+        <field name="arch" type="xml">
+            <list create="0" edit="0" delete="0">
+                <field name="employee_id"/>
+                <field name="reviewer_id"/>
+                <field name="state" widget="badge" decoration-success="state == 'done'" decoration-warning="state == 'pending'"/>
+                <button name="action_open_survey" type="object" string="Mở khảo sát" icon="fa-external-link"
+                        invisible="state == 'done'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="kpi_feedback_request_view_form" model="ir.ui.view">
+        <field name="name">kpi.feedback.request.form</field>
+        <field name="model">kpi.feedback.request</field>
+        <field name="arch" type="xml">
+            <form create="0" edit="0" delete="0">
+                <header>
+                    <button name="action_open_survey" type="object" string="Mở khảo sát" class="btn-primary" invisible="state == 'done'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="employee_id"/>
+                        <field name="reviewer_id"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="kpi_feedback_request_action" model="ir.actions.act_window">
+        <field name="name">Đánh giá 360 của tôi</field>
+        <field name="res_model">kpi.feedback.request</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p>Các lời mời đánh giá 360 độ dành cho bạn. Mở khảo sát để trả lời; điểm chỉ được tổng hợp ẩn danh.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_kpi_feedback" name="Đánh giá 360 của tôi" parent="project_kpi_management.menu_kpi_evaluation_root"
+              action="kpi_feedback_request_action" sequence="30"/>
+
+    <record id="kpi_evaluation_view_form_feedback" model="ir.ui.view">
+        <field name="name">kpi.evaluation.form.feedback</field>
+        <field name="model">kpi.evaluation</field>
+        <field name="inherit_id" ref="project_kpi_management.kpi_evaluation_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//button[@name='action_open_self_assessment']" position="before">
+                <button name="action_open_feedback_invite" string="Mời đánh giá 360" type="object"
+                        invisible="state != 'draft' or not id" groups="project_kpi_management.group_kpi_manager"/>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Phản hồi 360" name="feedback" invisible="not feedback_invited_count">
+                    <field name="feedback_score_visible" invisible="1"/>
+                    <group>
+                        <group>
+                            <field name="feedback_invited_count"/>
+                            <field name="feedback_done_count"/>
+                            <field name="feedback_avg_score" invisible="not feedback_score_visible"/>
+                        </group>
+                        <group>
+                            <div class="text-muted" invisible="feedback_score_visible">
+                                Chưa đủ 3 câu trả lời nên chưa hiện điểm trung bình (để không lộ ai chấm bao nhiêu).
+                            </div>
+                        </group>
+                    </group>
+                    <field name="feedback_request_ids" readonly="1">
+                        <list>
+                            <field name="reviewer_id"/>
+                            <field name="state" widget="badge" decoration-success="state == 'done'" decoration-warning="state == 'pending'"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

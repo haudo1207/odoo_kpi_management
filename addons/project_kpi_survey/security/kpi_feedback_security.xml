@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Người được mời chỉ thấy lời mời của chính mình; quản lý thấy danh sách người được mời của nhóm mình (không thấy
+         nội dung/điểm từng câu trả lời: survey.user_input không cấp quyền đọc cho nhóm nào ngoài Surveys); Admin thấy tất cả. -->
+    <record id="kpi_feedback_request_rule_own" model="ir.rule">
+        <field name="name">KPI 360: lời mời của chính mình</field>
+        <field name="model_id" ref="model_kpi_feedback_request"/>
+        <field name="domain_force">[('reviewer_id', '=', user.id)]</field>
+        <field name="groups" eval="[(4, ref('project_kpi_management.group_kpi_user'))]"/>
+    </record>
+    <record id="kpi_feedback_request_rule_team" model="ir.rule">
+        <field name="name">KPI 360: lời mời của phiếu nhân viên trực tiếp</field>
+        <field name="model_id" ref="model_kpi_feedback_request"/>
+        <field name="domain_force">[('evaluation_id.employee_id.parent_id.user_id', '=', user.id)]</field>
+        <field name="groups" eval="[(4, ref('project_kpi_management.group_kpi_manager'))]"/>
+    </record>
+    <record id="kpi_feedback_request_rule_all" model="ir.rule">
+        <field name="name">KPI 360: tất cả lời mời</field>
+        <field name="model_id" ref="model_kpi_feedback_request"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('project_kpi_management.group_kpi_admin'))]"/>
+    </record>
+</odoo>

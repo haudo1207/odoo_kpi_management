@@ -640,6 +640,90 @@ def check_skills_bridge(s):
         s.fail("S1 mức đáp ứng kỹ năng", f"mong đợi 66,67 / khối lượng 3 / điểm 83,33, thực tế {line}")
 
 
+def check_feedback_bridge(s):
+    """Đợt D1: chỉ chạy khi module project_kpi_survey đã cài. Quản lý (đăng nhập thật) mời 3 người đánh giá 360 cho một phiếu
+    Nháp: mỗi người nhận đúng 1 nhắc việc kèm link, người được mời chỉ thấy lời mời của mình, quản lý KHÔNG đọc được
+    survey.user_input (không xem được từng câu trả lời), và chưa có câu trả lời nào thì F1 là "Không áp dụng".
+    (Việc trả lời khảo sát đi qua controller của module survey nên được kiểm bằng unit test, không qua XML-RPC.)"""
+    if not _module_installed(s, "project_kpi_survey"):
+        print("[SKIP] F1 (phản hồi 360): module project_kpi_survey chưa cài trên database này")
+        return
+    suffix = time.strftime("%H%M%S")
+    _, g_user = s.ref("base.group_user")
+    _, g_manager = s.ref("project_kpi_management.group_kpi_manager")
+    _, job_id = s.ref("project_kpi_management.hr_job_developer")
+    _, template_id = s.ref("project_kpi_survey.kpi_template_developer_360")
+    _, act_type = s.ref("project_kpi_survey.mail_activity_type_feedback")
+
+    def make_user(tag, groups):
+        login = f"chk_fb_{tag}_{suffix}"
+        s.passwords[login] = login
+        uid = s.call("admin", "res.users", "create", {
+            "name": f"FB {tag} {suffix}", "login": login, "password": login, "group_ids": [(6, 0, groups)],
+        })
+
+        def drop():
+            try:
+                s.call("admin", "res.users", "unlink", [uid])
+            except xmlrpc.client.Fault:
+                s.call("admin", "res.users", "write", [uid], {"active": False})
+        s.add_cleanup(drop)
+        return login, uid
+
+    mgr_login, mgr_uid = make_user("mgr", [g_user, g_manager])
+    emp_login, emp_uid = make_user("emp", [g_user])
+    reviewers = [make_user(f"rev{i}", [g_user]) for i in range(3)]
+    mgr_emp = s.call("admin", "hr.employee", "create", {"name": f"FB quản lý {suffix}", "user_id": mgr_uid})
+    s.add_cleanup(lambda: s.call("admin", "hr.employee", "unlink", [mgr_emp]))
+    emp_id = s.call("admin", "hr.employee", "create", {
+        "name": f"FB nhân viên {suffix}", "user_id": emp_uid, "job_id": job_id, "parent_id": mgr_emp,
+    })
+    s.add_cleanup(lambda: s.call("admin", "hr.employee", "unlink", [emp_id]))
+    period_id = s.call("admin", "kpi.period", "create", {
+        "name": f"Kiểm tra 360 {suffix}", "period_type": "month", "date_from": "2000-01-01", "date_to": "2099-12-31",
+    })
+    s.add_cleanup(lambda: s.call("admin", "kpi.period", "unlink", [period_id]))
+    ev_id = s.call("admin", "kpi.evaluation", "create", {"employee_id": emp_id, "period_id": period_id, "template_id": template_id})
+    s.add_cleanup(lambda: _force_unlink_evaluation(s, ev_id))
+
+    def drop_answers():  # câu trả lời khảo sát không tự xoá theo phiếu
+        ids = [r["user_input_id"][0] for r in s.call("admin", "kpi.feedback.request", "search_read", [("evaluation_id", "=", ev_id)],
+                                                    fields=["user_input_id"]) if r["user_input_id"]]
+        if ids:
+            s.call("admin", "survey.user_input", "unlink", ids)
+    s.add_cleanup(drop_answers)
+
+    wiz = s.call(mgr_login, "kpi.feedback.invite.wizard", "create", {
+        "evaluation_id": ev_id, "reviewer_ids": [(6, 0, [uid for _, uid in reviewers])],
+    })
+    s.call(mgr_login, "kpi.feedback.invite.wizard", "action_invite", [wiz])
+    requests = s.call("admin", "kpi.feedback.request", "search", [("evaluation_id", "=", ev_id)])
+    per_reviewer_ok = all(
+        s.call("admin", "mail.activity", "search_count", [("res_model", "=", "kpi.feedback.request"), ("res_id", "in", requests),
+                                                           ("activity_type_id", "=", act_type), ("user_id", "=", uid)]) == 1
+        for _, uid in reviewers
+    )
+    own_ok = len(s.call(reviewers[0][0], "kpi.feedback.request", "search", [])) == 1
+    try:
+        s.call(mgr_login, "survey.user_input", "search", [])
+        hidden_ok = False
+    except xmlrpc.client.Fault:
+        hidden_ok = True
+    try:
+        s.call(emp_login, "kpi.feedback.invite.wizard", "create", {"evaluation_id": ev_id})
+        employee_blocked = False
+    except xmlrpc.client.Fault:
+        employee_blocked = True
+    s.call("admin", "kpi.evaluation", "action_compute_kpi", [ev_id])
+    f1 = s.call("admin", "kpi.evaluation.line", "search_read", [("evaluation_id", "=", ev_id), ("metric_id.code", "=", "F1")],
+                fields=["volume", "is_applicable"])[0]
+    if len(requests) == 3 and per_reviewer_ok and own_ok and hidden_ok and employee_blocked and f1["volume"] == 0 and not f1["is_applicable"]:
+        s.ok("Phản hồi 360: mời 3 người → 3 nhắc việc riêng; người được mời chỉ thấy lời mời của mình; quản lý không đọc được câu trả lời; F1 chưa có câu trả lời thì Không áp dụng")
+    else:
+        s.fail("Phản hồi 360", f"requests={len(requests)} nhắc_việc={per_reviewer_ok} chỉ_thấy_của_mình={own_ok} "
+                               f"ẩn_câu_trả_lời={hidden_ok} nhân_viên_không_mời={employee_blocked} F1={f1}")
+
+
 def check_timesheet_bridge(s):
     """Bước 4 (P4): chỉ chạy khi module cầu nối project_kpi_timesheet đã cài. Dự án giờ kế hoạch 100, thực tế 130
     → lệch 30%; mục tiêu 15 (thấp tốt) → 15/30 = 50 điểm. Tính tay trước khi chạy."""
@@ -728,6 +812,7 @@ def main():
         check_period_type_and_suggestion(s)
         check_dashboard(s)
         check_skills_bridge(s)
+        check_feedback_bridge(s)
         check_timesheet_bridge(s)
     finally:
         s.run_cleanups()

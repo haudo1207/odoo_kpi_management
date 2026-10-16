@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="mail_activity_type_feedback" model="mail.activity.type">
+            <field name="name">Đánh giá 360</field>
+            <field name="summary">Đánh giá 360</field>
+            <field name="res_model">kpi.feedback.request</field>
+            <field name="category">default</field>
+            <field name="icon">fa-users</field>
+            <field name="delay_count">5</field>
+        </record>
+
+        <!-- F1 cần module survey nên nằm ở module cầu nối. Bộ có F1 là bộ riêng, không sửa bộ Developer gốc. -->
+        <record id="kpi_metric_f1" model="kpi.metric">
+            <field name="code">F1</field>
+            <field name="name">Phản hồi 360 độ</field>
+            <field name="category">collaboration</field>
+            <field name="unit">%</field>
+            <field name="direction">higher</field>
+            <field name="compute_mode">auto</field>
+            <field name="description">Điểm trung bình (% trên tối đa) của các câu trả lời khảo sát 360 đã hoàn thành, bỏ bản test. Dưới 3 câu trả lời thì Không áp dụng và không hiện số, để không lộ ai chấm bao nhiêu. Khối lượng = số câu trả lời hoàn thành.</field>
+        </record>
+        <record id="kpi_template_developer_360" model="kpi.template">
+            <field name="name">Developer (có phản hồi 360)</field>
+            <field name="description">Như bộ Developer, thêm F1 (phản hồi 360 độ). Trọng số D4 và D9 giảm để tổng vẫn 100.</field>
+            <field name="line_ids" eval="[
+                (0, 0, {'sequence': 1, 'metric_id': ref('project_kpi_management.kpi_metric_d1'), 'target': 90, 'weight': 20, 'min_volume': 3}),
+                (0, 0, {'sequence': 2, 'metric_id': ref('project_kpi_management.kpi_metric_d2'), 'target': 20, 'weight': 10, 'min_volume': 0}),
+                (0, 0, {'sequence': 3, 'metric_id': ref('project_kpi_management.kpi_metric_d3'), 'target': 0.3, 'weight': 15, 'min_volume': 1}),
+                (0, 0, {'sequence': 4, 'metric_id': ref('project_kpi_management.kpi_metric_d4'), 'target': 5, 'weight': 10, 'min_volume': 1}),
+                (0, 0, {'sequence': 5, 'metric_id': ref('project_kpi_management.kpi_metric_d5'), 'target': 80, 'weight': 10, 'min_volume': 3}),
+                (0, 0, {'sequence': 6, 'metric_id': ref('project_kpi_management.kpi_metric_d6'), 'target': 70, 'weight': 10, 'min_volume': 1}),
+                (0, 0, {'sequence': 7, 'metric_id': ref('project_kpi_management.kpi_metric_d7'), 'target': 24, 'weight': 5, 'min_volume': 1}),
+                (0, 0, {'sequence': 8, 'metric_id': ref('project_kpi_management.kpi_metric_d8'), 'target': 1, 'weight': 5, 'min_volume': 0}),
+                (0, 0, {'sequence': 9, 'metric_id': ref('project_kpi_management.kpi_metric_d9'), 'target': 4, 'weight': 5, 'min_volume': 0}),
+                (0, 0, {'sequence': 10, 'metric_id': ref('kpi_metric_f1'), 'target': 80, 'weight': 10, 'min_volume': 3}),
+            ]"/>
+        </record>
+    </data>
+</odoo>

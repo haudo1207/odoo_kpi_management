@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_kpi_feedback_request_user,kpi.feedback.request.user,model_kpi_feedback_request,project_kpi_management.group_kpi_user,1,0,0,0
+access_kpi_feedback_request_admin,kpi.feedback.request.admin,model_kpi_feedback_request,project_kpi_management.group_kpi_admin,1,1,1,1
+access_kpi_feedback_invite_wizard_manager,kpi.feedback.invite.wizard.manager,model_kpi_feedback_invite_wizard,project_kpi_management.group_kpi_manager,1,1,1,1
