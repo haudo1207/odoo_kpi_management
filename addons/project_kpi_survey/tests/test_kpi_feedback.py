@@ -159,3 +159,20 @@ class TestKpiFeedback(TransactionCase):
         own = self.env["kpi.feedback.request"].with_user(self.reviewers[0]).search([])
         self.assertEqual(own.reviewer_id, self.reviewers[0])    # người được mời chỉ thấy lời mời của chính mình
         self.assertEqual(self.env["kpi.feedback.request"].with_user(self.other_manager).search_count([("evaluation_id", "=", ev.id)]), 0)
+
+    def test_permission_checks_happen_before_any_sudo_write(self):
+        """sudo() chỉ dùng cho việc tạo khảo sát/câu trả lời SAU khi đã qua kiểm tra quyền: người không đủ quyền hoặc phiếu
+        không còn Nháp bị chặn mà không tạo gì (không có lời mời, không có câu trả lời nào được sinh ra)."""
+        ev = self._evaluation()
+        inputs_before = self.env["survey.user_input"].sudo().search_count([])
+        with self.assertRaises(AccessError):
+            self._invite(ev, self.reviewers[:2], user=self.other_manager)
+        with self.assertRaises(AccessError):  # nhân viên thường không có quyền dùng wizard
+            self.env["kpi.feedback.invite.wizard"].with_user(self.reviewers[0]).create({
+                "evaluation_id": ev.id, "reviewer_ids": [(6, 0, self.reviewers[1].ids)],
+            })
+        ev.write({"state": "submitted"})
+        with self.assertRaises(UserError):
+            self._invite(ev, self.reviewers[:2])
+        self.assertEqual(self.env["kpi.feedback.request"].sudo().search_count([("evaluation_id", "=", ev.id)]), 0)
+        self.assertEqual(self.env["survey.user_input"].sudo().search_count([]), inputs_before)
