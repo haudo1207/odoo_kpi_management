@@ -2,7 +2,7 @@
 # Chuẩn bị buổi bảo vệ trong MỘT lệnh: nạp lại module trên database, khởi động lại container, chờ server sẵn sàng rồi chạy
 # pre_defense_check.py. Gói các bước hay bị quên (đã gây lỗi "server chưa nạp code mới" ba lần) thành một script.
 #
-# Dùng (từ thư mục gốc của repo, sau khi `git checkout <tag bảo vệ>`):
+# Dùng (từ thư mục gốc của repo, đứng trên nhánh main đã `git pull`):
 #     bash addons/project_kpi_management/scripts/prepare_defense.sh kpi_defense
 # Tuỳ chọn qua biến môi trường: WEB_CONTAINER (mặc định odoo19-web), DB_CONTAINER (odoo19-db), URL_PORT (8069 trong container).
 set -euo pipefail
@@ -36,24 +36,21 @@ for i in $(seq 1 60); do
   [ "$i" = 60 ] && { echo "Server không sẵn sàng sau 60 giây." >&2; exit 1; }
 done
 
-echo "== Phiên bản: Git, file manifest trên đĩa, database (phải đồng đều)"
-GIT_DESC=$(git describe --tags --always 2>/dev/null || echo "không phải repo Git")
+echo "== Phiên bản: file manifest trên đĩa và database (phải đồng đều); trạng thái Git"
+BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "?")
 DIRTY=$(git status --porcelain 2>/dev/null | head -1 || true)
-echo "   Git: $GIT_DESC${DIRTY:+  (CÓ thay đổi chưa commit!)}"
-TAG=$(git describe --tags --exact-match 2>/dev/null || true)
-EXPECT=""
-if [[ "$TAG" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)-bao-ve$ ]]; then EXPECT="19.0.${BASH_REMATCH[1]}"; fi
+echo "   Git: nhánh $BRANCH, commit $(git rev-parse --short HEAD 2>/dev/null || echo ?)${DIRTY:+  (CÓ thay đổi chưa commit!)}"
 BAD=0
 for M in ${MODULES//,/ }; do
   FILE_V=$(docker exec "$WEB" sh -c "grep -o '\"version\": \"[^\"]*\"' /mnt/extra-addons/$M/__manifest__.py | cut -d'\"' -f4")
   DB_V=$(docker exec "$DBC" psql -U odoo -d "$DB" -Atc "select latest_version from ir_module_module where name = '$M'")
   FLAG="OK"
   [ "$FILE_V" != "$DB_V" ] && { FLAG="LỆCH: đĩa $FILE_V khác database $DB_V"; BAD=1; }
-  [ -n "$EXPECT" ] && [ "$FILE_V" != "$EXPECT" ] && { FLAG="LỆCH: tag $TAG cần phiên bản $EXPECT"; BAD=1; }
   echo "   $M: đĩa $FILE_V | database $DB_V | $FLAG"
 done
 [ "$BAD" = 1 ] && { echo "Phiên bản không đồng đều, dừng." >&2; exit 1; }
-[ -z "$TAG" ] && echo "   Lưu ý: HEAD không đứng đúng tag bảo vệ (Chương 5.7: git checkout <tag> trước)." || true
+[ "$BRANCH" != "main" ] && echo "   Lưu ý: đang không đứng trên nhánh main (mã nguồn duy nhất là main, Chương 5.7)." || true
+[ -n "$DIRTY" ] && echo "   Lưu ý: có thay đổi chưa commit — hệ thống đang chạy mã chưa nằm trong main." || true
 
 echo "== 4/4  Chạy pre_defense_check.py"
 docker exec "$WEB" python3 "$SCRIPT" --db "$DB"
