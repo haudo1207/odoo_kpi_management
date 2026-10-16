@@ -52,6 +52,95 @@
         </field>
     </record>
 
+    <record id="kpi_period_view_search" model="ir.ui.view">
+        <field name="name">kpi.period.search</field>
+        <field name="model">kpi.period</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <filter name="open" string="Đang mở" domain="[('state', '=', 'open')]"/>
+                <filter name="closed" string="Đã đóng" domain="[('state', '=', 'closed')]"/>
+                <separator/>
+                <filter name="type_month" string="Tháng" domain="[('period_type', '=', 'month')]"/>
+                <filter name="type_quarter" string="Quý" domain="[('period_type', '=', 'quarter')]"/>
+                <filter name="group_type" string="Loại kỳ" context="{'group_by': 'period_type'}"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- Đợt C1: màn hình tổng quan — mỗi thẻ là một kỳ; mỗi con số là nút mở đúng danh sách phiếu -->
+    <record id="kpi_period_view_kanban" model="ir.ui.view">
+        <field name="name">kpi.period.kanban</field>
+        <field name="model">kpi.period</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kpi_dashboard" create="0" edit="0" sample="1">
+                <field name="state"/>
+                <field name="dashboard_total_count"/>
+                <field name="dashboard_show_data_issues"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <field name="name" class="fw-bold fs-5"/>
+                            <field name="period_type" widget="badge"/>
+                        </div>
+                        <div class="text-muted small mb-2">
+                            <field name="date_from"/> → <field name="date_to"/>
+                            <field name="state" widget="badge" decoration-success="state == 'open'" decoration-muted="state == 'closed'" class="ms-1"/>
+                        </div>
+                        <div class="mb-2">
+                            <field name="dashboard_approved_count" widget="progressbar"
+                                   options="{'max_value': 'dashboard_total_count', 'editable': false}"/>
+                            <span class="small text-muted">
+                                <field name="dashboard_approved_count"/>/<field name="dashboard_total_count"/> phiếu đã duyệt
+                            </span>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2 mb-2">
+                            <button type="object" name="action_open_draft" class="btn btn-sm btn-outline-secondary">
+                                Nháp <field name="dashboard_draft_count"/>
+                            </button>
+                            <button type="object" name="action_open_submitted" class="btn btn-sm btn-outline-warning">
+                                Đã gửi <field name="dashboard_submitted_count"/>
+                            </button>
+                            <button type="object" name="action_open_approved" class="btn btn-sm btn-outline-success">
+                                Đã duyệt <field name="dashboard_approved_count"/>
+                            </button>
+                        </div>
+                        <div class="mb-1">
+                            Điểm TB (đã duyệt): <b><field name="dashboard_avg_score" digits="[16, 1]"/></b>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button type="object" name="action_open_improve" class="btn btn-sm btn-link text-danger p-0">
+                                Cần cải thiện: <field name="dashboard_improve_count"/>
+                            </button>
+                            <button type="object" name="action_open_insufficient" class="btn btn-sm btn-link text-warning p-0">
+                                Thiếu dữ liệu: <field name="dashboard_insufficient_count"/>
+                            </button>
+                            <button type="object" name="action_open_pending_ack" class="btn btn-sm btn-link p-0">
+                                Chờ xác nhận: <field name="dashboard_pending_ack_count"/>
+                            </button>
+                        </div>
+                        <div t-if="record.dashboard_show_data_issues.raw_value" class="small text-muted mt-2">
+                            <button type="object" name="action_open_data_quality" class="btn btn-sm btn-link p-0 text-muted">
+                                Lỗi dữ liệu hiện tại (toàn hệ thống, không theo kỳ): <field name="dashboard_data_issues"/>
+                            </button>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="kpi_period_dashboard_action" model="ir.actions.act_window">
+        <field name="name">Tổng quan</field>
+        <field name="res_model">kpi.period</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="context">{'search_default_open': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Chưa có kỳ đánh giá nào</p>
+            <p>Tạo kỳ ở KPI › Cấu hình › Kỳ đánh giá. Mỗi thẻ cho biết tiến độ duyệt phiếu, điểm trung bình và những phiếu cần chú ý.</p>
+        </field>
+    </record>
+
     <record id="kpi_period_action" model="ir.actions.act_window">
         <field name="name">Kỳ đánh giá</field>
         <field name="res_model">kpi.period</field>

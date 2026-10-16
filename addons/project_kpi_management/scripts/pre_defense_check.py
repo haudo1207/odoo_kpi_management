@@ -554,6 +554,43 @@ def check_period_type_and_suggestion(s):
         s.fail("Gợi ý mục tiêu", f"mong đợi (15, 20, 25), thực tế {row}")
 
 
+def check_dashboard(s):
+    """Đợt C1: màn hình tổng quan. Tự tạo kỳ + 2 phiếu (1 Nháp, 1 Đã duyệt), đăng nhập Admin đọc số liệu kỳ qua XML-RPC:
+    tổng 2, Nháp 1, Đã duyệt 1, điểm TB = điểm cuối của phiếu đã duyệt (tính tay: chỉ có một phiếu duyệt); nút "Đã duyệt"
+    mở đúng 1 phiếu."""
+    suffix = time.strftime("%H%M%S")
+    _, job_id = s.ref("project_kpi_management.hr_job_developer")
+    period_id = s.call("admin", "kpi.period", "create", {
+        "name": f"Kiểm tra tổng quan {suffix}", "period_type": "month", "date_from": "2000-01-01", "date_to": "2099-12-31",
+    })
+    s.add_cleanup(lambda: s.call("admin", "kpi.period", "unlink", [period_id]))
+    evs = []
+    for tag in ("nháp", "duyệt"):
+        if tag == "nháp":
+            emp = s.call("admin", "hr.employee", "create", {"name": f"NV tổng quan {tag} {suffix}", "job_id": job_id})
+            s.add_cleanup(lambda i=emp: s.call("admin", "hr.employee", "unlink", [i]))
+        else:  # phiếu sẽ được Tính KPI nên nhân viên cần tài khoản
+            _, _, emp, _ = _make_pm(s, suffix + "d", "project_kpi_management.hr_job_developer")
+        ev = s.call("admin", "kpi.evaluation", "create", {"employee_id": emp, "period_id": period_id})
+        s.add_cleanup(lambda i=ev: _force_unlink_evaluation(s, i))
+        evs.append(ev)
+    s.call("admin", "kpi.evaluation", "action_compute_kpi", [evs[1]])
+    s.call("admin", "kpi.evaluation.line", "write",
+           s.call("admin", "kpi.evaluation.line", "search", [("evaluation_id", "=", evs[1])]), {"actual": 100, "volume": 100})
+    s.call("admin", "kpi.evaluation", "action_submit", [evs[1]])
+    s.call("admin", "kpi.evaluation", "action_approve", [evs[1]])
+    row = s.call("admin", "kpi.period", "read", [period_id], fields=[
+        "dashboard_total_count", "dashboard_draft_count", "dashboard_approved_count", "dashboard_avg_score"])[0]
+    final = s.call("admin", "kpi.evaluation", "read", [evs[1]], fields=["final_score"])[0]["final_score"]
+    action = s.call("admin", "kpi.period", "action_open_approved", [period_id])
+    opened = s.call("admin", "kpi.evaluation", "search", action["domain"])
+    if (row["dashboard_total_count"], row["dashboard_draft_count"], row["dashboard_approved_count"]) == (2, 1, 1) \
+            and abs(row["dashboard_avg_score"] - final) < 0.01 and opened == [evs[1]]:
+        s.ok("Màn hình tổng quan: số liệu kỳ khớp (2 phiếu = 1 Nháp + 1 Đã duyệt, điểm TB = điểm phiếu đã duyệt), nút mở đúng phiếu")
+    else:
+        s.fail("Màn hình tổng quan", f"số liệu/nút không khớp: {row}, nút mở {opened}")
+
+
 def check_timesheet_bridge(s):
     """Bước 4 (P4): chỉ chạy khi module cầu nối project_kpi_timesheet đã cài. Dự án giờ kế hoạch 100, thực tế 130
     → lệch 30%; mục tiêu 15 (thấp tốt) → 15/30 = 50 điểm. Tính tay trước khi chạy."""
@@ -640,6 +677,7 @@ def main():
         check_ba(s)
         check_workflow(s)
         check_period_type_and_suggestion(s)
+        check_dashboard(s)
         check_timesheet_bridge(s)
     finally:
         s.run_cleanups()

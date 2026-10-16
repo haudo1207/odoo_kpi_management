@@ -6,3 +6,6 @@ db_user = odoo
 db_password = odoo
 http_port = 8069
 admin_passwd = change_me
+; Ngày bảo vệ: khoá database để không chọn nhầm (bỏ dấu ; rồi khởi động lại container; xem Chương 5.7)
+; dbfilter = ^kpi_defense$
+; list_db = False

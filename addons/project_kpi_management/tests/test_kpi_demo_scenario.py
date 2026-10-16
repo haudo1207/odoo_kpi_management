@@ -274,9 +274,11 @@ class TestKpiDemoScenario(TransactionCase):
         (2222,22 + 750 + 1800 + 1200 + 1200 + 0 + 1000) / 80 = 102,1528. P2 = (55,875 + 102,1528) / 2 = 79,0139 trên 2 phiếu."""
         phuc = self.env.ref("project_kpi_management.demo_employee_phuc")
         phuc_ev = self.env["kpi.evaluation"].create({"employee_id": phuc.id, "period_id": self.period.id})
+        phuc_ev.line_ids.filtered(lambda l: l.metric_id.code == "P5").actual = 4
         phuc_ev.action_compute_kpi()
         p2 = phuc_ev.line_ids.filtered(lambda l: l.metric_id.code == "P2")
         self.assertFalse(p2.is_applicable)  # cấp dưới chưa có phiếu nào đã chốt
+        self.assertAlmostEqual(phuc_ev.kpi_score, 80.22634, places=3)  # P2 chưa áp dụng: chuẩn hoá trên trọng số 75
         evaluations = {}
         for key in ("dung", "khoa", "ha"):
             employee = self.env.ref(f"project_kpi_management.demo_employee_{key}")
@@ -296,6 +298,9 @@ class TestKpiDemoScenario(TransactionCase):
         self.assertTrue(p2.is_applicable)
         self.assertEqual(p2.volume, 2)  # Dung và Hà; Khoa (thiếu dữ liệu) không vào cả giá trị lẫn khối lượng
         self.assertAlmostEqual(p2.actual, (55.875 + 102.1528) / 2, places=3)
+        # Điểm Phúc khi P2 đã áp dụng (đủ trọng số 100): P1 41,667%·25 + P2 98,767%·25 + P3 98,765%·20 + P5 100%·30 = 84,8616.
+        # Cùng dữ liệu, khác thời điểm với 80,226 ở trên (lúc đó P2 chưa áp dụng nên điểm chuẩn hoá trên trọng số 75).
+        self.assertAlmostEqual(phuc_ev.kpi_score, 84.8616, places=3)
 
     def test_lan_ba_evaluation(self):
         """Bước 5: BA Lan — 3 yêu cầu (2 đúng hạn, 1 trễ; 2 qua review lần đầu); bug b7 (nguyên nhân "yêu cầu sai") của task

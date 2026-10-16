@@ -16,3 +16,4 @@ from . import test_kpi_ba
 from . import test_kpi_workflow
 from . import test_kpi_period_types
 from . import test_kpi_target_suggestion
+from . import test_kpi_dashboard

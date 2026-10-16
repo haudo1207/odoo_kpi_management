@@ -182,7 +182,7 @@ addons/project_kpi_management/
 ├── data/                             Dữ liệu cấu hình chuẩn (D1–D9, bộ Developer/Tester, cron, loại nhắc việc PIP...)
 ├── views/                           View cho từng model + menu
 ├── report/                          Mẫu in PDF
-└── tests/                           18 file, 174 test
+└── tests/                           19 file, 181 test
 
 addons/project_kpi_timesheet/            Module cầu nối (Bước 4): P4 + bộ "Team Lead / PM (có giờ làm)", 6 test riêng
 ```
@@ -534,6 +534,7 @@ giữ nguyên dự án của chính nó.
 
 | Model | Field | Ghi chú |
 |---|---|---|
+| `kpi.period` | `dashboard_*` (compute, không lưu: số phiếu theo trạng thái, điểm TB đã duyệt, Cần cải thiện, thiếu dữ liệu, chờ xác nhận, lỗi dữ liệu hiện tại) | Đợt C1 — màn hình tổng quan; một `_read_group` cho mọi kỳ, không dùng sudo (record rule tự áp dụng) |
 | `kpi.template` / `kpi.period` | `period_type` (Selection tháng/sprint/quý, mặc định tháng) | Đợt B1 — wizard và cron chỉ tạo phiếu cho bộ KPI cùng loại kỳ; không đổi loại kỳ của bộ khi còn phiếu ở kỳ đang mở |
 | `kpi.target.override` | `suggestion_easy/medium/hard`, `suggestion_note` (compute, không lưu) | Đợt B2 — gợi ý mục tiêu từ lịch sử, nút Áp dụng |
 | `hr.job` | `kpi_template_id` (Many2one, `ondelete=restrict`) | Trung tâm của nguyên tắc "không hardcode vai trò" |
@@ -642,7 +643,7 @@ docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management \
   --test-tags /project_kpi_management --stop-after-init --http-port 8070
 ```
 
-### 5.3. Danh sách test case (174 test, 18 file)
+### 5.3. Danh sách test case (181 test, 19 file)
 
 #### `tests/test_kpi_config.py` — 9 test (Phase 1: chỉ số, bộ KPI)
 
@@ -822,6 +823,20 @@ Mọi đường tính KPI đều đi về `kpi.evaluation.action_compute_kpi()`,
 | `test_cannot_archive_scale_in_active_template` | Không ẩn bảng bậc khi bộ KPI hoạt động còn dùng |
 | `test_percent_and_scale_name_shown_on_pdf_and_api` | PDF hiện % đạt mục tiêu và tên bảng bậc |
 
+#### `tests/test_kpi_dashboard.py` — 7 test (Đợt C1: màn hình tổng quan)
+
+Dữ liệu cố định, số đếm tính tay trước khi chạy: team của quản lý Q1 có Nháp, Đã gửi (75), Đã duyệt 100 (đã xác nhận), Đã duyệt 50 (Cần cải thiện), Đã duyệt thiếu dữ liệu (100); team của Q2 có Đã duyệt 75.
+
+| Test | Kiểm tra |
+|---|---|
+| `test_numbers_match_hand_count_for_admin` | Admin: 6 phiếu = 1 Nháp + 1 Đã gửi + 4 Đã duyệt; điểm TB (100 + 50 + 100 + 75)/4 = 81,25; Cần cải thiện 1; thiếu dữ liệu 1; chờ xác nhận 3 |
+| `test_manager_sees_only_own_team` | Cùng một kỳ: quản lý Q1 thấy 5 phiếu, đã duyệt 3, TB 83,33, chờ xác nhận 2; quản lý Q2 thấy 1 phiếu — khác Admin vì không dùng sudo |
+| `test_each_button_opens_exactly_its_evaluations` | 7 nút (tất cả, Nháp, Đã gửi, Đã duyệt, Cần cải thiện, Thiếu dữ liệu, Chờ xác nhận) mở đúng tập phiếu |
+| `test_button_respects_viewer_permissions` | Nút của quản lý Q1 không đưa phiếu team Q2 vào danh sách |
+| `test_number_of_queries_does_not_grow_with_periods` | Đọc 1 kỳ và 8 kỳ tốn số truy vấn như nhau (một `_read_group`, không `search_count` từng kỳ) |
+| `test_data_issues_are_current_and_only_for_managers_on_open_periods` | Lỗi dữ liệu là số hiện tại (+3 khi thêm Feature thiếu SP và bug thiếu gốc/phân loại), chỉ hiện cho quản lý trở lên và chỉ trên kỳ đang mở |
+| `test_dashboard_is_the_first_menu_and_view_is_valid` | Kanban hợp lệ, mặc định lọc kỳ đang mở, "Tổng quan" là menu đầu của app KPI |
+
 #### `tests/test_kpi_period_types.py` — 4 test (Đợt B1: kỳ riêng theo bộ KPI)
 
 | Test | Kiểm tra |
@@ -831,7 +846,7 @@ Mọi đường tính KPI đều đi về `kpi.evaluation.action_compute_kpi()`,
 | `test_cannot_change_period_type_with_open_period_evaluations` | Còn phiếu ở kỳ đang mở thì không đổi loại kỳ của bộ; đóng kỳ rồi thì đổi được |
 | `test_p2_quarterly_lead_averages_per_person_over_monthly_evaluations` | PM theo quý, cấp dưới theo tháng: A 3 phiếu (50, 75, 100), B 1 phiếu (50) → P2 = (75 + 50) / 2 = 62,5 trên 2 người (gộp phiếu sẽ ra 68,75, sai); phiếu của kỳ dài hơn kỳ PM không tính |
 
-(Khi PM và cấp dưới cùng theo tháng, quy tắc mới cho đúng kết quả cũ: P2 của Phúc vẫn 79,0139 và điểm Phúc vẫn 80,226 trong `test_kpi_demo_scenario.py`.)
+(Khi PM và cấp dưới cùng theo tháng, quy tắc mới cho đúng kết quả cũ. **Phúc có hai con số điểm, cùng một dữ liệu mẫu, khác thời điểm:** **80,226** khi cấp dưới CHƯA chốt phiếu nào — P2 "Không áp dụng" nên điểm chuẩn hoá trên trọng số 75 = (P1 41,667%·25 + P3 98,765%·20 + P5 100%·30) / 75; và **84,862** sau khi Dung và Hà đã Gửi duyệt — P2 = 79,0139 áp dụng, trọng số đủ 100 = (P1 41,667%·25 + P2 98,767%·25 + P3 98,765%·20 + P5 100%·30) / 100. Cả hai đều tính tay trước khi chạy và nằm trong `test_kpi_demo_scenario.py`; 84,86 cũng là số thấy được khi chạy thử qua XML-RPC trên database dựng mới.)
 
 #### `tests/test_kpi_target_suggestion.py` — 7 test (Đợt B2: gợi ý mục tiêu)
 
@@ -920,7 +935,7 @@ Mọi đường tính KPI đều đi về `kpi.evaluation.action_compute_kpi()`,
 
 ### 5.4. Kết quả kiểm thử
 
-**174/174 test đạt (0 failed, 0 error)**, xác nhận trên database tạo mới hoàn toàn (không chỉ chạy
+**181/181 test đạt (0 failed, 0 error)**, xác nhận trên database tạo mới hoàn toàn (không chỉ chạy
 lại trên database cũ), lần gần nhất 2026-10-12 — sau khi bổ sung 6 mục ở Chương 9 cũ (màu xếp loại,
 chặn xung đột vai trò, nhắc việc PIP, mục tiêu theo phòng ban, chỉ số theo dự án, tự đánh giá), vá
 thêm các phát hiện khi kiểm tra qua đường đi thật (xem 5.6): quản lý ghi trực tiếp được
@@ -952,7 +967,7 @@ Lý do cần script riêng: sửa code trên đĩa không tự áp dụng cho m�
 phải nạp lại module hoặc khởi động lại tiến trình trước, nếu không hệ thống đang chạy vẫn sai dù
 code đã đúng và test đã đạt (đúng loại lỗi đã gặp khi viết script này, xem dưới).
 
-Kiểm tra 20 mục (12 nhóm, thêm bước P4 tuỳ chọn), tự tạo kỳ/phiếu test riêng và tự dọn sạch ở cuối (kể cả khi có bước FAIL),
+Kiểm tra 21 mục (13 nhóm, thêm bước P4 tuỳ chọn), tự tạo kỳ/phiếu test riêng và tự dọn sạch ở cuối (kể cả khi có bước FAIL),
 không ảnh hưởng dữ liệu demo dùng để trình bày:
 
 1. Chặn xung đột vai trò (Mục 2): quản lý được gán thêm quyền Admin vẫn bị chặn khi duyệt phiếu
@@ -970,7 +985,8 @@ không ảnh hưởng dữ liệu demo dùng để trình bày:
 9. Quy trình (Đợt A, 3 mục): nhắc việc đi đúng người ở từng bước (tạo phiếu → quản lý; gửi duyệt → người duyệt mặc định; duyệt → nhân viên) và tự đánh dấu xong nhắc việc cũ; nhân viên xác nhận kết quả qua wizard, admin cũng không ghi trực tiếp được. Script đặt người duyệt mặc định = admin và khôi phục giá trị cũ ở cuối.
 10. Người duyệt mặc định (dữ liệu mẫu tự đặt admin): đã đặt và là KPI Admin — nếu không nhắc việc duyệt phiếu sẽ "không có gì xảy ra" ngay lúc demo.
 11. Kỳ riêng theo bộ KPI và gợi ý mục tiêu (Đợt B, 2 mục): không đổi được loại kỳ khi còn phiếu ở kỳ đang mở; 3 kỳ đã duyệt D2 = 10, 20, 30 → gợi ý Dễ 15 / Vừa 20 / Khó 25 (tính tay trước).
-12. P4 giờ so với kế hoạch (Bước 4): chỉ chạy khi module cầu nối `project_kpi_timesheet` đã cài (130/100 giờ → 50 điểm); chưa cài thì in `[SKIP]`. Tuỳ chọn `--skip-demo-checks` chỉ chạy các bước tự tạo dữ liệu, dùng cho database không có dữ liệu mẫu.
+12. Màn hình tổng quan (Đợt C1): Admin đọc số liệu kỳ qua XML-RPC (2 phiếu = 1 Nháp + 1 Đã duyệt, điểm TB = điểm phiếu đã duyệt), nút "Đã duyệt" mở đúng 1 phiếu.
+13. P4 giờ so với kế hoạch (Bước 4): chỉ chạy khi module cầu nối `project_kpi_timesheet` đã cài (130/100 giờ → 50 điểm); chưa cài thì in `[SKIP]`. Tuỳ chọn `--skip-demo-checks` chỉ chạy các bước tự tạo dữ liệu, dùng cho database không có dữ liệu mẫu.
 
 Cách chạy trước khi bảo vệ:
 
@@ -1005,9 +1021,9 @@ Mật khẩu `admin` cũ của dev vẫn còn trong lịch sử Git; môi trư�
 
 Container Odoo đọc code trực tiếp từ thư mục `addons` trên đĩa. Nếu phát triển tiếp trên `main` sau
 mốc tag bảo vệ (Chương 10) mà đến ngày bảo vệ quên chuyển về đúng tag, buổi demo sẽ chạy code
-đang làm dở — không phải bản đã kiểm chứng đủ 174 test, 6 test của module cầu nối và các bước `pre_defense_check.py`.
+đang làm dở — không phải bản đã kiểm chứng đủ 181 test, 6 test của module cầu nối và các bước `pre_defense_check.py`.
 
-**Bản được chọn để bảo vệ: `v1.4-bao-ve`** (Bước 1–5 + Đợt A, B). Dự phòng: `v1.3-bao-ve` (đến Đợt A), `v1.2-bao-ve` (Bước 1–5), `v1.1.1-bao-ve` (Bước 1–4); `v1.1-bao-ve` có lỗi P2 tính cả phiếu thiếu dữ liệu — không dùng; mọi tag cũ giữ nguyên để truy vết, không di chuyển (Bước 1–4: chỉ số cấu hình không cần code, bộ KPI Developer/Tester/Lead-PM,
+**Bản được chọn để bảo vệ: `v1.5-bao-ve`** (Bước 1–5 + Đợt A, B, C). Dự phòng: `v1.4-bao-ve` (đến Đợt B), `v1.3-bao-ve` (đến Đợt A), `v1.2-bao-ve` (Bước 1–5), `v1.1.1-bao-ve` (Bước 1–4); `v1.1-bao-ve` có lỗi P2 tính cả phiếu thiếu dữ liệu — không dùng; mọi tag cũ giữ nguyên để truy vết, không di chuyển (Bước 1–4: chỉ số cấu hình không cần code, bộ KPI Developer/Tester/Lead-PM,
 chấm theo bậc, module cầu nối). `v1.0-bao-ve` vẫn còn nguyên làm bản dự phòng gọn hơn (chưa có Bước 1–4).
 Nếu Bước 5 (BA) xong kịp và qua đủ kiểm tra thì gắn `v1.2-bao-ve` và đổi quy trình dưới đây sang tag mới.
 
@@ -1020,7 +1036,7 @@ và nạp lại thì bị bỏ qua vì kỳ mẫu đã tồn tại. Chỉ lấy 
 
 ```bash
 git stash                      # nếu còn thay đổi chưa commit trên main
-git checkout v1.4-bao-ve
+git checkout v1.5-bao-ve
 docker exec odoo19-db dropdb -U odoo --force --if-exists kpi_defense
 docker exec odoo19-web odoo -d kpi_defense -i project_kpi_management --stop-after-init        # cài module
 docker exec odoo19-web sh -c "echo 'env[\"kpi.demo\"]._load_scenario(); env.cr.commit()' | odoo shell -d kpi_defense --max-cron-threads=0 --http-port=8072"
@@ -1031,6 +1047,15 @@ git checkout main
 git stash pop                  # nếu có stash ở bước đầu
 ```
 
+**Khoá database cho buổi bảo vệ.** Màn hình đăng nhập có ô chọn database khi có nhiều database (`kpi_dev`, `kpi_defense`...); chọn nhầm `kpi_dev` (thiếu Phúc, Lan, Hà...) thì kịch bản demo hỏng ngay từ đầu. Trong `config/odoo.conf` (file thật, không nằm trong Git) thêm rồi khởi động lại container:
+
+```ini
+dbfilter = ^kpi_defense$
+list_db = False
+```
+
+Sau buổi bảo vệ xoá hai dòng này. Lưu ý: khi đang khoá, `pre_defense_check.py` qua XML-RPC chỉ chạy được với `kpi_defense` (lệnh `odoo -d ...` trên dòng lệnh vẫn dùng được database khác). `config/odoo.conf.example` có sẵn hai dòng này dạng chú thích.
+
 Tài khoản demo trên `kpi_defense`: `admin`/`admin` và các tài khoản ở Chương 5.8 (mật khẩu trùng tên đăng nhập).
 Cách thay thế khi đã có database dựng từ bản này: `git checkout` tag, `-u project_kpi_management` rồi khởi động lại container như trên.
 
@@ -1040,12 +1065,12 @@ trình Odoo đang chạy. Lần `-u` đầu trên database còn ở bản cũ s�
 
 ### 5.8. Kịch bản demo (10–15 phút, chọn lọc)
 
-Không demo hết được — chọn 5 phần, thứ tự từ nền tảng tới mở rộng. Dữ liệu mẫu: kỳ "Tháng ... (dữ liệu mẫu)", tài khoản
+Không demo hết được — chọn 5 phần, thứ tự từ nền tảng tới mở rộng. **Mở đầu** bằng màn hình **KPI › Tổng quan** (vào app là thấy ngay): thẻ kỳ mẫu lúc đầu còn trống — nói đây là bức tranh tổng của mọi kỳ; sau phần 1 quay lại màn hình này để thấy thẻ đã đầy số và bấm vào số **Cần cải thiện** để đi thẳng vào phiếu cụ thể. Dữ liệu mẫu: kỳ "Tháng ... (dữ liệu mẫu)", tài khoản
 `admin`, `quocviet` (quản lý), `an`, `binh`, `phuc` (PM), `dung`, `khoa` (tester), `ha` (Developer, cấp dưới của Phúc), `lan` (BA); người duyệt mặc định đã đặt sẵn là `admin`; mật khẩu trùng tên đăng nhập.
 
 | # | Phần (thời gian) | Thao tác | Điều cần nói |
 |---|---|---|---|
-| 1 | Luồng chính Developer (4') | Vào kỳ mẫu → Tạo phiếu cho kỳ → Tính KPI. An 113,31 Xuất sắc, Bình 73,90 Cần cải thiện; điều chỉnh +2 có lý do cho Bình; Gửi duyệt; `quocviet` (được gán thêm quyền Admin) bị chặn khi duyệt phiếu nhân viên mình quản lý | Số liệu tự tính từ task/bug thật; điểm có thể truy vết; điều chỉnh phải có lý do; tách người quản lý khỏi người duyệt |
+| 1 | Luồng chính Developer (4') | Vào kỳ mẫu → Tạo phiếu cho kỳ → Tính KPI. An 113,31 Xuất sắc, Bình 73,90 Cần cải thiện; điều chỉnh +2 có lý do cho Bình; Gửi duyệt; `quocviet` (được gán thêm quyền Admin) bị chặn khi duyệt phiếu nhân viên mình quản lý; quay lại **Tổng quan**, bấm "Cần cải thiện" trên thẻ kỳ mẫu để vào danh sách phiếu | Số liệu tự tính từ task/bug thật; điểm có thể truy vết; điều chỉnh phải có lý do; tách người quản lý khỏi người duyệt |
 | 2 | Tạo chỉ số bằng cấu hình (3') | KPI → Cấu hình → Chỉ số KPI → tạo mới: Cách tính "Tự động (cấu hình)", model `project.task`, người = `user_ids`, ngày = `date_end`, Đếm, domain `[('state', '=', '1_done')]` → bấm **Thử tính** cho An: ra 7 | Thêm chỉ số không cần viết code, domain đọc bằng `ast.literal_eval` nên không chạy được mã tuỳ ý; chỉ Admin dùng được |
 | 3 | Bộ Tester không cần code (2') | Mở bộ "Tester (tự động)" (QA1–QA3 là bản ghi cấu hình); Tạo phiếu cho `dung`, nhập QA5 = 4, Tính KPI → QA1 = 7, điểm 55,875 | Một vai trò mới chỉ bằng dữ liệu; `bug_reporter_id` chỉ Manager sửa được để không tự gán bug cho mình |
 | 4 | Phụ thuộc giữa các phiếu: P2 (3') | Tạo + Tính phiếu của `phuc`: P2 "Không áp dụng" → tạo phiếu `dung`, `khoa`, `ha` (nhập QA5 = 4 cho Dung/Khoa, D9 = 4 cho Hà; phiếu `khoa` thiếu dữ liệu nên chọn xếp loại tay + lý do), Tính KPI, Gửi duyệt cả ba → Tính lại phiếu `phuc`: P2 ra 79,01 trên 2 phiếu, điểm Phúc 84,86 (đã chạy thử qua XML-RPC trên database dựng mới) | Không cần sắp thứ tự trong wizard; phiếu thiếu dữ liệu (Khoa, nhân viên mới) **không kéo điểm của quản lý xuống** — hệ thống không tự xếp loại phiếu đó thì cũng không dùng nó để chấm người khác |
@@ -1071,7 +1096,8 @@ dùng cuối** (không cần biết Phase nào).
 3. Duyệt / Trả về / Mở lại phiếu.
 4. Chỉnh ngưỡng xếp loại, điểm trần, biên độ điều chỉnh (**KPI › Cấu hình › Thiết lập**).
 5. Theo dõi chất lượng dữ liệu (**KPI › Báo cáo › Kiểm tra dữ liệu**).
-6. Đặt **Người duyệt mặc định** (**Thiết lập › Quy trình**) để nhận nhắc việc khi có phiếu gửi duyệt; xem điểm theo phòng ban ở **KPI › Báo cáo › Theo phòng ban**.
+6. Xem tình hình các kỳ ở **KPI › Tổng quan** (mặc định là kỳ đang mở; mỗi con số bấm vào để mở đúng danh sách phiếu).
+7. Đặt **Người duyệt mặc định** (**Thiết lập › Quy trình**) để nhận nhắc việc khi có phiếu gửi duyệt; xem điểm theo phòng ban ở **KPI › Báo cáo › Theo phòng ban**.
 
 ### 6.2. Vai trò Quản lý trực tiếp
 
@@ -1079,7 +1105,7 @@ dùng cuối** (không cần biết Phase nào).
 2. Chấm D9 (thang 1–5), kiểm tra các dòng *Không áp dụng* (nếu có, cần chọn xếp loại thủ công).
 3. Điều chỉnh điểm nếu cần (bắt buộc ghi lý do).
 4. Bấm **Gửi duyệt**.
-5. Xem báo cáo của nhóm mình (**KPI › Báo cáo**).
+5. Xem báo cáo của nhóm mình (**KPI › Báo cáo**) và tổng quan các kỳ (**KPI › Tổng quan**, chỉ gồm số liệu của nhân viên mình quản lý).
 
 ### 6.3. Vai trò Nhân viên
 
@@ -1153,6 +1179,7 @@ buộc lý do) và **chấm chỉ số định tính** (D9) — số liệu tự
 | P4 dùng tổng giờ tới hết kỳ so với giờ kế hoạch cả dự án | `allocated_hours` là của cả dự án, không chia theo kỳ; cần module cầu nối + `hr_timesheet` | Thấp — chỉ khi cài cầu nối |
 | Mục tiêu không tự co giãn theo độ dài kỳ | Bộ KPI theo quý cần mục tiêu riêng (20 SP/tháng khác 60 SP/quý); hệ thống không tự nhân | Thấp — nhắc ở hướng dẫn cấu hình (Chương 6.4) |
 | P2 chỉ tính phiếu cấp dưới có kỳ nằm trọn trong kỳ của Lead | Kỳ cấp dưới dài hơn hoặc lệch kỳ của Lead (ví dụ Lead theo tháng, cấp dưới theo quý) thì không tính, P2 "Không áp dụng" | Thấp — chọn loại kỳ của Lead dài hơn hoặc bằng cấp dưới |
+| "Lỗi dữ liệu" trên thẻ Tổng quan là ảnh chụp hiện tại | Báo cáo Kiểm tra dữ liệu tính theo dự án, không theo kỳ, nên con số này giống nhau trên mọi thẻ; chỉ hiện trên kỳ đang mở và ghi rõ "hiện tại, toàn hệ thống, không theo kỳ" | Thấp |
 | Gợi ý mục tiêu cần ≥ 3 kỳ đã duyệt cùng loại kỳ | Ít hơn thì hiện "Chưa đủ dữ liệu"; phiếu thiếu dữ liệu và dòng Không áp dụng không tham gia | Thấp |
 | Cron cập nhật `days_late` ghi `write_date` dù giá trị không đổi | Đã kiểm chứng bằng script thật (không suy luận): `_cron_update_days_late()` gọi `flush_recordset(["days_late"])` cho mọi task quá hạn chưa xong mỗi ngày, và Odoo luôn ghi `write_date`/`write_uid` cùng lúc flush một field, kể cả khi `days_late` ra cùng giá trị cũ | Thấp — chỉ ảnh hưởng cách sắp xếp "mới cập nhật gần đây" ở các view khác, không ảnh hưởng điểm KPI |
 
@@ -1163,7 +1190,7 @@ buộc lý do) và **chấm chỉ số định tính** (D9) — số liệu tự
 **Hệ thống đã qua điểm dừng tính năng trước bảo vệ** (xem Chương 5.6) — bản dùng để bảo vệ đóng
 băng ở tag `v1.0-bao-ve` (Chương 10), không đổi. Nội dung chương này là kế hoạch mở rộng cho giai
 đoạn **sau bảo vệ**, phát triển trực tiếp trên `main` (không tách nhánh riêng — tag đã giữ đúng mốc
-bảo vệ nên không cần). **Bước 0+1 (9.1), Bước 2 (Tester), Bước 3 (chấm điểm theo bậc), Bước 4 (Team Lead/PM) và Bước 5 (BA) đã triển khai** (174/174 test đạt); **Bước 6
+bảo vệ nên không cần). **Bước 0+1 (9.1), Bước 2 (Tester), Bước 3 (chấm điểm theo bậc), Bước 4 (Team Lead/PM) và Bước 5 (BA) đã triển khai** (181/181 test đạt); **Bước 6
 chưa triển khai**, còn ở dạng thiết kế.
 
 ### 9.1. Điểm nghẽn lớn nhất: chỉ số tự động phải viết code — ĐÃ TRIỂN KHAI
@@ -1311,9 +1338,9 @@ tra trên source 19.0) có `deadline`, `is_reached`, `reached_date`.
 |---|---|---|
 | 1 | ~~Chỉ số cấu hình không cần code (9.1)~~ | **Đã triển khai** — xem Chương 3.3 |
 | 2 | ~~Bộ Tester tự động (9.2, Ưu tiên 1)~~ | **Đã triển khai** — 109/109 test đạt, xem 9.2 |
-| 3 | ~~Chấm điểm theo bậc (9.3 #2)~~ | **Đã triển khai** — 174/174 test đạt, xem 9.3 #2 |
-| 4 | ~~Bộ Team Lead/PM + điểm team (9.2 Ưu tiên 2, 9.3 #3)~~ | **Đã triển khai** — 174/174 test đạt + 6 test module cầu nối, xem 9.2 |
-| 5 | ~~Bộ BA (9.2 Ưu tiên 3)~~ | **Đã triển khai** — 174/174 test đạt, xem 9.2 |
+| 3 | ~~Chấm điểm theo bậc (9.3 #2)~~ | **Đã triển khai** — 181/181 test đạt, xem 9.3 #2 |
+| 4 | ~~Bộ Team Lead/PM + điểm team (9.2 Ưu tiên 2, 9.3 #3)~~ | **Đã triển khai** — 181/181 test đạt + 6 test module cầu nối, xem 9.2 |
+| 5 | ~~Bộ BA (9.2 Ưu tiên 3)~~ | **Đã triển khai** — 181/181 test đạt, xem 9.2 |
 | 6 | Kỳ khác nhau theo bộ KPI, kiêm nhiệm (9.3 #4, #5) | Chỉ cần khi đã có nhiều bộ KPI chạy song song |
 
 ### 9.5. Hướng mở rộng khác (đã nêu từ trước)
@@ -1335,7 +1362,7 @@ Sau Bước 5 các tính năng còn lại được chia theo giá trị cho báo
 |---|---|---|---|
 | A (vận hành) | A1 nhắc việc theo quy trình; A2 nhân viên xác nhận kết quả; A3 tạm tính giữa kỳ; A4 P3 theo kỳ; A5 báo cáo theo phòng ban | **Đã triển khai** | `v1.3-bao-ve` |
 | B (linh hoạt cấu hình) | B1 kỳ riêng theo bộ KPI; B2 gợi ý mục tiêu từ lịch sử | **Đã triển khai** | `v1.4-bao-ve` |
-| C (trình bày) | C1 màn hình tổng quan KPI (kanban theo kỳ) | Chưa làm | `v1.5-bao-ve` |
+| C (trình bày) | C1 màn hình tổng quan KPI (kanban theo kỳ) | **Đã triển khai** | `v1.5-bao-ve` |
 | D (đánh giá đa chiều) | D1 phản hồi 360 độ; D2 đánh giá năng lực (`hr_skills`) | Nếu còn thời gian | `v1.6-bao-ve` |
 
 **Quyết định thiết kế của Đợt A:**
@@ -1355,6 +1382,15 @@ Sau Bước 5 các tính năng còn lại được chia theo giá trị cho báo
 - **Quản lý chưa có quyền KPI:** báo cáo Kiểm tra dữ liệu tính theo dự án nên không chứa được lỗi theo nhân viên này (và `hr.employee` chỉ đọc được bởi nhóm Nhân sự); danh sách được dựng bằng sudo từ menu riêng cạnh báo cáo đó.
 - **Dữ liệu mẫu đặt sẵn người duyệt mặc định = admin** (không đặt ở data của module để doanh nghiệp thật tự cấu hình); `scripts/pre_defense_check.py` kiểm tra giá trị này.
 
+**Quyết định thiết kế của Đợt C1:**
+
+- **Nền:** kanban trên `kpi.period` (không OWL/JavaScript), mỗi thẻ một kỳ có nhãn tháng/quý/sprint, thanh tiến độ "x/y đã duyệt", điểm trung bình phiếu đã duyệt, và các con số Nháp / Đã gửi / Đã duyệt / Cần cải thiện / Thiếu dữ liệu / Chờ xác nhận — **mỗi con số là một nút `type="object"`** mở danh sách phiếu với đúng domain (kỳ + trạng thái hoặc xếp loại). "Cần cải thiện" chỉ tính phiếu đã gửi hoặc đã duyệt (xếp loại của phiếu Nháp chỉ là tạm tính).
+- **Hiệu năng:** các field số liệu là compute không lưu nhưng tính bằng **một `_read_group` cho mọi kỳ đang hiển thị**, không `search_count` từng kỳ (nếu không mỗi lần mở là hàng chục truy vấn); test khoá bằng so sánh số truy vấn giữa 1 kỳ và 8 kỳ.
+- **Phân quyền:** không dùng `sudo()`, record rule tự áp dụng — quản lý chỉ thấy số của team mình, Admin thấy tất cả (test: cùng một kỳ, hai người thấy số khác nhau; nút cũng tôn trọng quyền).
+- **Lỗi dữ liệu:** báo cáo Kiểm tra dữ liệu tính theo dự án, không theo kỳ, nên trên thẻ ghi rõ "hiện tại, toàn hệ thống, không theo kỳ", chỉ hiện cho quản lý trở lên và chỉ trên kỳ đang mở; bấm vào mở báo cáo.
+- **Mở app:** menu "Tổng quan" có sequence nhỏ nhất nên vào app KPI mở thẳng màn hình này; mặc định lọc kỳ đang mở, bỏ lọc được.
+- **Chưa kiểm chứng bằng trình duyệt:** cấu trúc kanban được kiểm bằng `get_views` (hợp lệ), số liệu và nút bằng test; hiển thị trực quan (bố cục thẻ, thanh tiến độ) cần xem bằng mắt khi chạy thử trước buổi bảo vệ.
+
 **Không làm (giữ ở Chương 9):** nhân viên kiêm nhiệm (Bước 6b — gộp hai bộ KPI, chuẩn hoá trọng số, xử lý chỉ số trùng, đụng vào khâu tạo phiếu; rủi ro cao nhất); dải xếp loại cấu hình đầy đủ (`final_rating` đang dùng ở màu, PIP, bộ lọc, báo cáo, API và test — ngưỡng đã chỉnh được ở Thiết lập); OKR, đồng bộ Jira/GitLab, DORA, bộ KPI DevOps/Support (cần hạ tầng ngoài hoặc là hệ thống riêng).
 
 ---
@@ -1365,7 +1401,7 @@ Sau Bước 5 các tính năng còn lại được chia theo giá trị cho báo
 MVP (31/31 hạng mục) và phần lớn phạm vi Nên có/Mở rộng (7/7 hạng mục), tổng cộng 38/38 hạng mục
 trong bảng thống kê triển khai, cộng thêm 6 mục mở rộng sau khi đối chiếu với các hệ thống KPI tương
 tự (màu xếp loại, chặn xung đột vai trò, nhắc việc PIP, mục tiêu theo phòng ban, chỉ số theo dự án,
-tự đánh giá — Chương 9 cũ, nay đã triển khai). Hệ thống có 174 unit test tự động trong module chính cộng 6 test của module cầu nối (0 lỗi) cộng với
+tự đánh giá — Chương 9 cũ, nay đã triển khai). Hệ thống có 181 unit test tự động trong module chính cộng 6 test của module cầu nối (0 lỗi) cộng với
 kiểm thử thủ công trên REST API, báo cáo PDF, phân quyền, luồng nghiệp vụ hoàn chỉnh trên dữ liệu
 thật, và kiểm tra qua đúng tài khoản thật bằng XML-RPC (`scripts/pre_defense_check.py`, Chương 5.6)
 — cách kiểm tra này tự nó đã bắt được một số lỗi mà unit test (chạy bằng superuser) không bắt được.
@@ -1373,7 +1409,7 @@ Nguyên tắc thiết kế cốt lõi — không hardcode vai trò — đã đư
 (Chương 7), không chỉ dừng ở khẳng định lý thuyết. Các giới hạn còn tồn tại (Chương 8.3) đều đã được
 xác định rõ ràng, có hướng xử lý cụ thể (Chương 9), phù hợp để trình bày minh bạch trước hội đồng.
 
-Bản dùng để bảo vệ được đóng băng ở tag Git `v1.4-bao-ve` (dự phòng: `v1.3-bao-ve`, `v1.2-bao-ve`, `v1.1.1-bao-ve`; gọn nhất: `v1.0-bao-ve`) — quy trình
+Bản dùng để bảo vệ được đóng băng ở tag Git `v1.5-bao-ve` (dự phòng: `v1.4-bao-ve`, `v1.3-bao-ve`, `v1.2-bao-ve`, `v1.1.1-bao-ve`; gọn nhất: `v1.0-bao-ve`) — quy trình
 chuyển đúng về bản này vào ngày bảo vệ và kịch bản demo nằm ở Chương 5.7, 5.8. Phát triển tiếp theo hướng
 Chương 9 đi trên `main`, không ảnh hưởng các tag này.
 

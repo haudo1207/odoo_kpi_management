@@ -2,6 +2,9 @@
 <odoo>
     <menuitem id="menu_kpi_root" name="KPI" sequence="60" groups="group_kpi_user"/>
 
+    <!-- Đợt C1: sequence nhỏ nhất → vào app KPI mở thẳng màn hình tổng quan -->
+    <menuitem id="menu_kpi_dashboard" name="Tổng quan" parent="menu_kpi_root" action="kpi_period_dashboard_action" sequence="1"/>
+
     <menuitem id="menu_kpi_evaluation_root" name="Đánh giá" parent="menu_kpi_root" sequence="10"/>
     <menuitem id="menu_kpi_evaluation" name="Phiếu đánh giá" parent="menu_kpi_evaluation_root" action="kpi_evaluation_action" sequence="10"/>
     <menuitem id="menu_kpi_generate" name="Tạo phiếu cho kỳ" parent="menu_kpi_evaluation_root" action="kpi_evaluation_generate_wizard_action"
