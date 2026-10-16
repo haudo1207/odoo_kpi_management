@@ -18,6 +18,8 @@
     <menuitem id="menu_kpi_settings" name="Thiết lập" parent="menu_kpi_config" action="kpi_settings_action" sequence="5" groups="group_kpi_admin"/>
     <menuitem id="menu_kpi_metric" name="Chỉ số KPI" parent="menu_kpi_config" action="kpi_metric_action" sequence="10"/>
     <menuitem id="menu_kpi_template" name="Bộ KPI" parent="menu_kpi_config" action="kpi_template_action" sequence="20"/>
+    <menuitem id="menu_kpi_score_scale" name="Bảng bậc điểm" parent="menu_kpi_config" action="kpi_score_scale_action"
+              sequence="22" groups="group_kpi_admin"/>
     <menuitem id="menu_kpi_target_override" name="Mục tiêu riêng" parent="menu_kpi_config" action="kpi_target_override_action"
               sequence="25" groups="group_kpi_admin"/>
     <menuitem id="menu_kpi_period" name="Kỳ đánh giá" parent="menu_kpi_config" action="kpi_period_action" sequence="30"/>

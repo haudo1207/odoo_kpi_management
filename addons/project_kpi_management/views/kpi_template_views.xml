@@ -44,6 +44,7 @@
                                     <field name="direction"/>
                                     <field name="weight" sum="Tổng"/>
                                     <field name="min_volume"/>
+                                    <field name="scale_id"/>
                                     <field name="compute_mode" optional="hide"/>
                                 </list>
                             </field>

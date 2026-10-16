@@ -10,3 +10,4 @@ from . import test_kpi_reports
 from . import test_kpi_integration
 from . import test_kpi_tester
 from . import test_kpi_compute_paths
+from . import test_kpi_score_scale

@@ -207,6 +207,7 @@ class KpiEvaluation(models.Model):
                         "target": line._resolve_target(overrides, vals["employee_id"], vals["department_id"]),
                         "weight": line.weight,
                         "min_volume": line.min_volume,
+                        "scale_json": line.scale_id._snapshot() if line.scale_id else False,
                     })
                     for line in template.line_ids
                 ]
@@ -393,6 +394,11 @@ class KpiEvaluationLine(models.Model):
     target = fields.Float("Mục tiêu", digits=(16, 2))
     weight = fields.Integer("Trọng số (%)")
     min_volume = fields.Float("Khối lượng tối thiểu", digits=(16, 2))
+    scale_json = fields.Text(
+        "Bảng bậc (chụp)", copy=False, readonly=True,
+        help="Bước 3: bảng bậc điểm chụp từ bộ KPI lúc tạo phiếu, dạng JSON [[% từ, điểm], ...]. Trống = tính tuyến tính.",
+    )
+    achievement_pct = fields.Float("% đạt mục tiêu", compute="_compute_score", store=True, digits=(16, 2))
     volume = fields.Float("Khối lượng", help="Engine tính ở Phase 4. Dưới khối lượng tối thiểu thì Không áp dụng.")
     actual = fields.Float("Thực tế", aggregator="avg")
     actual_entered = fields.Boolean("Đã chấm", help="Chỉ số nhập tay đã được chấm. Tự bật khi sửa giá trị Thực tế.")
@@ -405,12 +411,19 @@ class KpiEvaluationLine(models.Model):
         help="Mục 6: nhân viên tự chấm (chỉ tham khảo, không cộng vào điểm chính thức).",
     )
 
-    @api.depends("actual", "target", "volume", "min_volume", "weight", "metric_id.direction")
+    @api.depends("actual", "target", "volume", "min_volume", "weight", "metric_id.direction", "scale_json")
     def _compute_score(self):
         cap = get_kpi_param(self.env, "score_cap")
         for line in self:
             line.is_applicable = line.volume >= line.min_volume
-            line.score = self._score(line.actual, line.target, line.direction, cap) if line.is_applicable else 0.0
+            # % đạt mục tiêu đã chặn trần (Thấp tốt, thực tế = 0 → trần) rồi mới tra bậc; điểm tra được
+            # vẫn bị chặn trần lần nữa. Chỉ số Không áp dụng thì không tra bậc (điểm 0 như trước).
+            pct = self._score(line.actual, line.target, line.direction, cap) if line.is_applicable else 0.0
+            line.achievement_pct = pct
+            if line.is_applicable and line.scale_json:
+                line.score = min(self.env["kpi.score.scale"].lookup(line.scale_json, pct), cap)
+            else:
+                line.score = pct
             line.weighted_score = line.score * line.weight / 100
 
     @staticmethod

@@ -107,6 +107,17 @@
                 (0, 0, {'sequence': 5, 'metric_id': ref('kpi_metric_qa5'), 'target': 4, 'weight': 15, 'min_volume': 0}),
             ]"/>
         </record>
+        <!-- Bước 3: bảng bậc mẫu, chưa gắn vào bộ KPI nào (Admin gắn ở Bộ KPI > cột Bảng bậc để demo) -->
+        <record id="kpi_score_scale_default" model="kpi.score.scale">
+            <field name="name">Bậc 4 mức (mẫu)</field>
+            <field name="description">Dưới 50%: 0 điểm; từ 50%: 50; từ 80%: 80; từ 100%: 100.</field>
+            <field name="step_ids" eval="[
+                (0, 0, {'pct_from': 0, 'score': 0}),
+                (0, 0, {'pct_from': 50, 'score': 50}),
+                (0, 0, {'pct_from': 80, 'score': 80}),
+                (0, 0, {'pct_from': 100, 'score': 100}),
+            ]"/>
+        </record>
         <record id="hr_job_tester" model="hr.job">
             <field name="name">Kiểm thử phần mềm (QA)</field>
             <field name="department_id" ref="hr_department_dev"/>

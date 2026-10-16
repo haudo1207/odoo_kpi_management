@@ -182,7 +182,7 @@ addons/project_kpi_management/
 ├── data/                             Dữ liệu cấu hình chuẩn (D1–D9, bộ Developer/Tester, cron, loại nhắc việc PIP...)
 ├── views/                           View cho từng model + menu
 ├── report/                          Mẫu in PDF
-└── tests/                           12 file, 109 test
+└── tests/                           13 file, 118 test
 ```
 
 ### 2.4. Nguyên tắc thiết kế cốt lõi: không hardcode vai trò
@@ -255,6 +255,8 @@ bắt buộc: stage Done/Hoàn thành của mọi dự án phải bật **Folded
 | 17 | `kpi.team.report` | **SQL view** (`_auto = False`) | Chỉ số cấp team (dự án): đúng hạn, mật độ lỗi, lỗi production, giờ sửa bug |
 | 18 | `kpi.self.assessment.wizard`(`.line`) | TransientModel | Nhân viên tự đánh giá (Mục 6) |
 | 19 | `kpi.metric.test.wizard` | TransientModel | Nút "Thử tính" cho chỉ số cấu hình (Bước 1, Chương 9.1) |
+| 20 | `kpi.score.scale` | Model | Bảng bậc điểm (Bước 3, Chương 9.3): tên + các bậc; chỉ Admin sửa |
+| 21 | `kpi.score.scale.step` | Model | Một bậc: `pct_from` (% đạt mục tiêu bắt đầu), `score`, `pct_to` (compute) |
 
 ### 3.2. Sơ đồ quan hệ (ERD dạng văn bản)
 
@@ -628,7 +630,7 @@ docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management \
   --test-tags /project_kpi_management --stop-after-init --http-port 8070
 ```
 
-### 5.3. Danh sách test case (109 test, 12 file)
+### 5.3. Danh sách test case (118 test, 13 file)
 
 #### `tests/test_kpi_config.py` — 9 test (Phase 1: chỉ số, bộ KPI)
 
@@ -791,6 +793,20 @@ Mọi đường tính KPI đều đi về `kpi.evaluation.action_compute_kpi()`,
 
 **Quy ước cho các bước sau:** mỗi cơ chế mới phải có ít nhất một test đi qua hành động người dùng thật (nút, wizard, cron, API), không chỉ gọi thẳng engine.
 
+#### `tests/test_kpi_score_scale.py` — 9 test (Bước 3, Chương 9.3: chấm điểm theo bậc)
+
+| Test | Kiểm tra |
+|---|---|
+| `test_scale_validation` | Bảng rỗng, hở khoảng từ 0, hai bậc cùng điểm bắt đầu (chồng nhau), sửa bậc đầu khỏi 0 đều bị chặn |
+| `test_scale_steps_cover_without_overlap` | Các bậc liền nhau, không chồng, bậc cuối không giới hạn |
+| `test_only_admin_edits_scale` | Quản lý không tạo được bảng bậc |
+| `test_lookup_boundaries` | Đúng ở biên: 49,99 → bậc dưới, 50 → bậc trên... |
+| `test_click_compute_kpi_uses_scale` | **Qua nút "Tính KPI"**: 17/20 SP = 85% → bậc 80% = 75 điểm (tuyến tính ra 85) |
+| `test_without_scale_stays_linear` | Không gắn bảng bậc thì giữ cách tính tuyến tính cũ |
+| `test_not_applicable_skips_lookup` | Chỉ số Không áp dụng không tra bậc (kể cả bảng cho 0% được 50 điểm) |
+| `test_lower_is_better_zero_actual_takes_cap_before_lookup` | Thấp tốt, thực tế = 0: % đạt lấy trần 120 rồi mới tra bậc; điểm tra được vẫn bị chặn trần |
+| `test_editing_scale_does_not_change_existing_evaluation` | Sửa bảng bậc sau khi tạo phiếu: phiếu cũ giữ nguyên điểm (JSON đã chụp), phiếu mới nhận bảng mới |
+
 #### `tests/test_kpi_integration.py` — 8 test (Phase 9: cron, PDF, REST API)
 
 | Test | Kiểm tra |
@@ -806,7 +822,7 @@ Mọi đường tính KPI đều đi về `kpi.evaluation.action_compute_kpi()`,
 
 ### 5.4. Kết quả kiểm thử
 
-**109/109 test đạt (0 failed, 0 error)**, xác nhận trên database tạo mới hoàn toàn (không chỉ chạy
+**118/118 test đạt (0 failed, 0 error)**, xác nhận trên database tạo mới hoàn toàn (không chỉ chạy
 lại trên database cũ), lần gần nhất 2026-10-12 — sau khi bổ sung 6 mục ở Chương 9 cũ (màu xếp loại,
 chặn xung đột vai trò, nhắc việc PIP, mục tiêu theo phòng ban, chỉ số theo dự án, tự đánh giá), vá
 thêm các phát hiện khi kiểm tra qua đường đi thật (xem 5.6): quản lý ghi trực tiếp được
@@ -998,7 +1014,7 @@ buộc lý do) và **chấm chỉ số định tính** (D9) — số liệu tự
 **Hệ thống đã qua điểm dừng tính năng trước bảo vệ** (xem Chương 5.6) — bản dùng để bảo vệ đóng
 băng ở tag `v1.0-bao-ve` (Chương 10), không đổi. Nội dung chương này là kế hoạch mở rộng cho giai
 đoạn **sau bảo vệ**, phát triển trực tiếp trên `main` (không tách nhánh riêng — tag đã giữ đúng mốc
-bảo vệ nên không cần). **Bước 0+1 (9.1) và Bước 2 (9.2, Tester) đã triển khai** (109/109 test đạt); **Bước 3–6
+bảo vệ nên không cần). **Bước 0+1 (9.1), Bước 2 (9.2, Tester) và Bước 3 (chấm điểm theo bậc) đã triển khai** (118/118 test đạt); **Bước 4–6
 chưa triển khai**, còn ở dạng thiết kế.
 
 ### 9.1. Điểm nghẽn lớn nhất: chỉ số tự động phải viết code — ĐÃ TRIỂN KHAI
@@ -1105,10 +1121,21 @@ việc dữ liệu có sạch hay không — không chỉ Dev mới bị ràng b
 
 ### 9.3. Tính năng khác giúp hệ thống linh hoạt hơn
 
+**Bước 3 — chấm điểm theo bậc (đã triển khai), các quyết định thiết kế:**
+
+- Mỗi dòng bộ KPI có thể gắn một **bảng bậc** (`kpi.score.scale`); để trống thì tính tuyến tính như cũ. Bảng bậc dùng chung được cho nhiều chỉ số.
+- **Tra theo % đạt mục tiêu**, không theo giá trị thực tế, nên không phụ thuộc đơn vị và vẫn đúng khi mục tiêu đổi theo phòng ban.
+- **Thấp tốt:** đổi sang % đạt mục tiêu trước bằng đúng công thức cũ (`mục tiêu / thực tế`, thực tế = 0 lấy mức trần), rồi mới tra bậc — không cần bảng bậc riêng cho chiều ngược.
+- **Chụp JSON vào dòng phiếu** (`scale_json`, `[[% từ, điểm], ...]`), cùng nguyên tắc bất biến với mục tiêu: sửa bảng bậc sau khi tạo phiếu không đổi phiếu cũ.
+- **Điểm trần vẫn áp dụng sau khi tra bậc** (bậc cho 130 vẫn ra tối đa 120); chỉ số Không áp dụng không tra bậc.
+- **Kiểm tra bảng bậc:** mỗi bậc chỉ khai báo điểm bắt đầu và kéo dài tới bậc kế tiếp (không gồm), bậc cuối không giới hạn — nên khoảng không thể chồng nhau; bậc thấp nhất bắt buộc từ 0% nên phủ liên tục. Bảng rỗng, trùng điểm bắt đầu, hở khỏi 0 đều bị chặn khi lưu. Giới hạn đã biết: kiểm tra chạy khi lưu bảng bậc (đúng đường của form); ghi thẳng vào từng bậc qua API bỏ qua được — chỉ Admin có quyền này.
+- Trên phiếu có thêm cột "% đạt mục tiêu" (ẩn mặc định) để thấy vì sao ra điểm đó. Dữ liệu mẫu có "Bậc 4 mức (mẫu)" chưa gắn vào bộ nào, để demo gắn trực tiếp.
+
+
 | # | Tính năng | Vấn đề giải quyết | Cách làm | Giá trị |
 |---|---|---|---|---|
 | 1 | Chỉ số cấu hình không cần code | Xem 9.1 | Xem 9.1 — **đã triển khai** | Rất cao — mở khoá 9.2 |
-| 2 | Cách chấm điểm theo bậc | Hiện chỉ có tỷ lệ tuyến tính (`_score()`, Chương 3.3); nhiều công ty chấm theo bậc, ví dụ ≥90% → 100 điểm, 80–90% → 80 điểm | Mỗi dòng template chọn "Tuyến tính" hoặc "Theo bảng bậc"; bảng bậc là các dòng (từ, đến, điểm) | Cao |
+| 2 | **ĐÃ TRIỂN KHAI (Bước 3)** — Cách chấm điểm theo bậc | Hiện chỉ có tỷ lệ tuyến tính (`_score()`, Chương 3.3); nhiều công ty chấm theo bậc, ví dụ ≥90% → 100 điểm, 80–90% → 80 điểm | Mỗi dòng template chọn "Tuyến tính" hoặc "Theo bảng bậc"; bảng bậc là các dòng (từ, đến, điểm) | Cao |
 | 3 | Điểm team góp vào điểm cá nhân | Phần mềm là việc nhóm, nhưng điểm hiện hoàn toàn cá nhân | Một dòng template là "Điểm trung bình của team" (lấy từ `kpi.team.report`), trọng số 10–20% | Cao, đúng xu hướng ngành |
 | 4 | Kỳ đánh giá khác nhau theo bộ KPI | Dev hợp chu kỳ tháng; BA, PM hợp chu kỳ quý | Thêm `period_type` cho template; wizard tạo phiếu chỉ tạo cho template cùng loại kỳ | Trung bình |
 | 5 | Nhân viên kiêm nhiệm | Một người vừa là Dev vừa là Team Lead | Cho phiếu nhận thêm template phụ, gộp dòng và chuẩn hoá trọng số về 100 | Trung bình, phức tạp hơn |
@@ -1119,7 +1146,7 @@ việc dữ liệu có sạch hay không — không chỉ Dev mới bị ràng b
 |---|---|---|
 | 1 | ~~Chỉ số cấu hình không cần code (9.1)~~ | **Đã triển khai** — xem Chương 3.3 |
 | 2 | ~~Bộ Tester tự động (9.2, Ưu tiên 1)~~ | **Đã triển khai** — 109/109 test đạt, xem 9.2 |
-| 3 | Chấm điểm theo bậc (9.3 #2) | Nhiều công ty cần ngay khi áp dụng thật |
+| 3 | ~~Chấm điểm theo bậc (9.3 #2)~~ | **Đã triển khai** — 118/118 test đạt, xem 9.3 #2 |
 | 4 | Bộ Team Lead/PM + điểm team (9.2 Ưu tiên 2, 9.3 #3) | Cần dữ liệu milestone, timesheet |
 | 5 | Bộ BA (9.2 Ưu tiên 3) | Cần thêm loại task Requirement |
 | 6 | Kỳ khác nhau theo bộ KPI, kiêm nhiệm (9.3 #4, #5) | Chỉ cần khi đã có nhiều bộ KPI chạy song song |

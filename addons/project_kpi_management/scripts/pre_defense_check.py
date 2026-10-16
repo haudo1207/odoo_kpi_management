@@ -285,6 +285,32 @@ def check_tester(s, period_id):
     else:
         s.fail("Phiếu Tester", f"mong đợi 71.0, thực tế {score}")
 
+    # Bước 3: chấm điểm theo bậc, đi qua nút Tính KPI. QA1 = 2 bug / mục tiêu 4 = 50% đạt → bậc 50% = 60 điểm
+    # (tuyến tính sẽ ra 50). Tính tay trước khi chạy.
+    scale_id = s.call("admin", "kpi.score.scale", "create", {
+        "name": f"Bậc kiểm tra {suffix}",
+        "step_ids": [(0, 0, {"pct_from": f, "score": sc}) for f, sc in ((0, 0), (50, 60), (100, 100))],
+    })
+    s.add_cleanup(lambda: s.call("admin", "kpi.score.scale", "unlink", [scale_id]))
+    _, qa1_id = s.ref("project_kpi_management.kpi_metric_qa1")
+    template_id = s.call("admin", "kpi.template", "create", {
+        "name": f"Bậc kiểm tra {suffix}",
+        "line_ids": [(0, 0, {"metric_id": qa1_id, "target": 4, "weight": 100, "scale_id": scale_id})],
+    })
+    s.add_cleanup(lambda: s.call("admin", "kpi.template", "unlink", [template_id]))
+    period2 = s.call("admin", "kpi.period", "create", {
+        "name": f"Kiểm tra bậc {suffix}", "period_type": "sprint", "date_from": "2000-01-01", "date_to": "2099-12-31",
+    })
+    s.add_cleanup(lambda: s.call("admin", "kpi.period", "unlink", [period2]))
+    ev2 = s.call("admin", "kpi.evaluation", "create", {"employee_id": employee_id, "period_id": period2, "template_id": template_id})
+    s.add_cleanup(lambda: _force_unlink_evaluation(s, ev2))
+    s.call("admin", "kpi.evaluation", "action_compute_kpi", [ev2])
+    score2 = s.call("admin", "kpi.evaluation", "read", [ev2], fields=["kpi_score"])[0]["kpi_score"]
+    if abs(score2 - 60.0) < 0.01:
+        s.ok("Chấm theo bậc: nút Tính KPI ra 60 điểm (50% đạt mục tiêu → bậc 60), khớp bảng tính tay")
+    else:
+        s.fail("Chấm theo bậc", f"mong đợi 60.0, thực tế {score2}")
+
 
 def check_target_override(s, period_id):
     """Mục 4: mục tiêu riêng theo phòng ban được áp dụng khi tạo phiếu mới."""

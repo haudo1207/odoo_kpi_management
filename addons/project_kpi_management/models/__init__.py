@@ -1,4 +1,5 @@
 from . import kpi_metric
+from . import kpi_score_scale
 from . import kpi_template
 from . import kpi_target_override
 from . import hr_job

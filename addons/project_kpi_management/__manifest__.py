@@ -18,6 +18,7 @@
         "views/kpi_metric_views.xml",
         "views/kpi_metric_test_wizard_views.xml",
         "views/kpi_template_views.xml",
+        "views/kpi_score_scale_views.xml",
         "views/kpi_target_override_views.xml",
         "views/kpi_wizard_settings_views.xml",
         "views/kpi_period_views.xml",

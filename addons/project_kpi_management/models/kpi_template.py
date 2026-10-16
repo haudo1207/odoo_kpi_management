@@ -57,6 +57,11 @@ class KpiTemplateLine(models.Model):
         digits=(16, 2),
         help="Dưới mức này, chỉ số được đánh dấu Không áp dụng. 0 = luôn áp dụng.",
     )
+    scale_id = fields.Many2one(
+        "kpi.score.scale", string="Bảng bậc", ondelete="restrict",
+        help="Để trống: điểm tính tuyến tính theo % đạt mục tiêu (như trước). Có bảng bậc: tra điểm theo "
+             "bậc của % đạt mục tiêu. Phiếu tạo mới chụp bảng bậc này, sửa sau không đổi phiếu cũ.",
+    )
     direction = fields.Selection(related="metric_id.direction")
     unit = fields.Char(related="metric_id.unit")
     compute_mode = fields.Selection(related="metric_id.compute_mode")
