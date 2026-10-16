@@ -1,6 +1,6 @@
 {
     "name": "Project KPI - 360 feedback bridge",
-    "version": "19.0.1.0.0",
+    "version": "19.0.1.7.4",
     "summary": "Chỉ số F1 (phản hồi 360 độ) từ khảo sát có chấm điểm",
     "category": "Services/Project",
     "author": "Nam4",

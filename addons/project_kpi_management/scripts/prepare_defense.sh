@@ -36,5 +36,24 @@ for i in $(seq 1 60); do
   [ "$i" = 60 ] && { echo "Server không sẵn sàng sau 60 giây." >&2; exit 1; }
 done
 
+echo "== Phiên bản: Git, file manifest trên đĩa, database (phải đồng đều)"
+GIT_DESC=$(git describe --tags --always 2>/dev/null || echo "không phải repo Git")
+DIRTY=$(git status --porcelain 2>/dev/null | head -1 || true)
+echo "   Git: $GIT_DESC${DIRTY:+  (CÓ thay đổi chưa commit!)}"
+TAG=$(git describe --tags --exact-match 2>/dev/null || true)
+EXPECT=""
+if [[ "$TAG" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)-bao-ve$ ]]; then EXPECT="19.0.${BASH_REMATCH[1]}"; fi
+BAD=0
+for M in ${MODULES//,/ }; do
+  FILE_V=$(docker exec "$WEB" sh -c "grep -o '\"version\": \"[^\"]*\"' /mnt/extra-addons/$M/__manifest__.py | cut -d'\"' -f4")
+  DB_V=$(docker exec "$DBC" psql -U odoo -d "$DB" -Atc "select latest_version from ir_module_module where name = '$M'")
+  FLAG="OK"
+  [ "$FILE_V" != "$DB_V" ] && { FLAG="LỆCH: đĩa $FILE_V khác database $DB_V"; BAD=1; }
+  [ -n "$EXPECT" ] && [ "$FILE_V" != "$EXPECT" ] && { FLAG="LỆCH: tag $TAG cần phiên bản $EXPECT"; BAD=1; }
+  echo "   $M: đĩa $FILE_V | database $DB_V | $FLAG"
+done
+[ "$BAD" = 1 ] && { echo "Phiên bản không đồng đều, dừng." >&2; exit 1; }
+[ -z "$TAG" ] && echo "   Lưu ý: HEAD không đứng đúng tag bảo vệ (Chương 5.7: git checkout <tag> trước)." || true
+
 echo "== 4/4  Chạy pre_defense_check.py"
 docker exec "$WEB" python3 "$SCRIPT" --db "$DB"

@@ -1,6 +1,6 @@
 {
     "name": "Project KPI - Skills bridge",
-    "version": "19.0.1.0.0",
+    "version": "19.0.1.7.4",
     "summary": "Chỉ số S1 (mức đáp ứng kỹ năng của chức danh) cho bộ KPI",
     "category": "Services/Project",
     "author": "Nam4",

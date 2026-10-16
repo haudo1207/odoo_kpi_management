@@ -182,7 +182,7 @@ addons/project_kpi_management/
 ├── data/                             Dữ liệu cấu hình chuẩn (D1–D9, bộ Developer/Tester, cron, loại nhắc việc PIP...)
 ├── views/                           View cho từng model + menu
 ├── report/                          Mẫu in PDF
-└── tests/                           19 file, 182 test
+└── tests/                           19 file, 183 test
 
 addons/project_kpi_timesheet/            Module cầu nối (Bước 4): P4 + bộ "Team Lead / PM (có giờ làm)", 6 test riêng
 addons/project_kpi_skills/               Module cầu nối (Đợt D2): S1 mức đáp ứng kỹ năng + bộ "Developer (có năng lực)", 9 test riêng
@@ -646,9 +646,9 @@ docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management \
   --test-tags /project_kpi_management --stop-after-init --http-port 8070
 ```
 
-### 5.3. Danh sách test case (182 test, 19 file)
+### 5.3. Danh sách test case (183 test, 19 file)
 
-#### `tests/test_kpi_config.py` — 9 test (Phase 1: chỉ số, bộ KPI)
+#### `tests/test_kpi_config.py` — 10 test (Phase 1: chỉ số, bộ KPI; thêm test phiên bản đồng đều)
 
 | Test | Kiểm tra |
 |---|---|
@@ -965,7 +965,7 @@ Dữ liệu cố định, số đếm tính tay trước khi chạy: team của 
 
 ### 5.4. Kết quả kiểm thử
 
-**Tổng cộng 205 test, 0 failed, 0 error:** 182 test của module chính (`project_kpi_management`) + 6 của `project_kpi_timesheet` + 9 của `project_kpi_skills` + 8 của `project_kpi_survey`. Lần gần nhất 2026-10-16, đều trên database tạo mới hoàn toàn (không chỉ chạy lại trên database cũ): module chính một mình; module chính + `project_kpi_timesheet`; và **cả ba module cầu nối cài cùng lúc** (203 test tại thời điểm chạy — chưa tính test thêm sau đó) để chắc các hàm `_metric_*` của chúng (đều kế thừa `kpi.engine`) không đè nhau. Từng module cầu nối cũng được chạy riêng bằng `--test-tags`.
+**Tổng cộng 206 test, 0 failed, 0 error:** 183 test của module chính (`project_kpi_management`) + 6 của `project_kpi_timesheet` + 9 của `project_kpi_skills` + 8 của `project_kpi_survey`. Lần gần nhất 2026-10-16, đều trên database tạo mới hoàn toàn (không chỉ chạy lại trên database cũ): module chính một mình; module chính + `project_kpi_timesheet`; và **cả ba module cầu nối cài cùng lúc** (203 test tại thời điểm chạy — chưa tính test thêm sau đó) để chắc các hàm `_metric_*` của chúng (đều kế thừa `kpi.engine`) không đè nhau. Từng module cầu nối cũng được chạy riêng bằng `--test-tags`.
 
 **Các lỗi thật phát hiện nhờ kiểm tra qua đường đi thật** (không phải qua unit test gọi thẳng hàm), đã sửa và có test khoá lại:
 
@@ -1059,9 +1059,9 @@ Mật khẩu `admin` cũ của dev vẫn còn trong lịch sử Git; môi trư�
 
 Container Odoo đọc code trực tiếp từ thư mục `addons` trên đĩa. Nếu phát triển tiếp trên `main` sau
 mốc tag bảo vệ (Chương 10) mà đến ngày bảo vệ quên chuyển về đúng tag, buổi demo sẽ chạy code
-đang làm dở — không phải bản đã kiểm chứng đủ 205 test (182 + 6 + 9 + 8 của ba module cầu nối) và các bước `pre_defense_check.py`.
+đang làm dở — không phải bản đã kiểm chứng đủ 206 test (183 + 6 + 9 + 8 của ba module cầu nối) và các bước `pre_defense_check.py`.
 
-**Bản được chọn để bảo vệ: `v1.7.3-bao-ve`** (Bước 1–5 + Đợt A, B, C, D — toàn bộ kế hoạch ở Chương 9.6; giống `v1.7-bao-ve` về chức năng; thêm `prepare_defense.sh`, `backup_defense.sh`, `restore_defense.sh`, PM Phúc thuộc nhóm KPI Manager trong dữ liệu mẫu và tài liệu đã rà nhất quán — các tag trước không có đủ công cụ mà quy trình dưới đây gọi tới). Dự phòng theo thứ tự: `v1.7.2-bao-ve`, `v1.7.1-bao-ve`, `v1.7-bao-ve`, `v1.6-bao-ve` (đến D2), `v1.5-bao-ve` (đến Đợt C), `v1.4-bao-ve` (đến Đợt B), `v1.3-bao-ve` (đến Đợt A), `v1.2-bao-ve` (Bước 1–5), `v1.1.1-bao-ve` (Bước 1–4), `v1.0-bao-ve` (bản gọn nhất, chưa có Bước 1–4). `v1.1-bao-ve` có lỗi P2 tính cả phiếu thiếu dữ liệu — **không dùng**. Mọi tag cũ giữ nguyên để truy vết, không di chuyển.
+**Bản được chọn để bảo vệ: `v1.7.4-bao-ve`** (Bước 1–5 + Đợt A, B, C, D — toàn bộ kế hoạch ở Chương 9.6; giống `v1.7-bao-ve` về chức năng; thêm đồng bộ số phiên bản (xem "Phiên bản đồng đều" bên dưới), `prepare_defense.sh`, `backup_defense.sh`, `restore_defense.sh`, PM Phúc thuộc nhóm KPI Manager trong dữ liệu mẫu và tài liệu đã rà nhất quán — các tag trước không có đủ công cụ mà quy trình dưới đây gọi tới). Dự phòng theo thứ tự: `v1.7.3-bao-ve` (chức năng như nhau, số phiên bản module chưa đồng bộ với tag), `v1.7.2-bao-ve`, `v1.7.1-bao-ve`, `v1.7-bao-ve`, `v1.6-bao-ve` (đến D2), `v1.5-bao-ve` (đến Đợt C), `v1.4-bao-ve` (đến Đợt B), `v1.3-bao-ve` (đến Đợt A), `v1.2-bao-ve` (Bước 1–5), `v1.1.1-bao-ve` (Bước 1–4), `v1.0-bao-ve` (bản gọn nhất, chưa có Bước 1–4). `v1.1-bao-ve` có lỗi P2 tính cả phiếu thiếu dữ liệu — **không dùng**. Mọi tag cũ giữ nguyên để truy vết, không di chuyển.
 
 **Ngày dừng:** đặt một ngày dừng cho bản bảo vệ (đề xuất 1 tuần trước buổi bảo vệ). Sau ngày đó, mọi thay đổi
 (các việc còn lại ở Chương 9, ví dụ Bước 6) chỉ nằm trên `main`, không gộp vào tag dùng để bảo vệ, dù xong hay chưa.
@@ -1072,7 +1072,7 @@ và nạp lại thì bị bỏ qua vì kỳ mẫu đã tồn tại. Chỉ lấy 
 
 ```bash
 git stash                      # nếu còn thay đổi chưa commit trên main
-git checkout v1.7.3-bao-ve
+git checkout v1.7.4-bao-ve
 docker exec odoo19-db dropdb -U odoo --force --if-exists kpi_defense
 docker exec odoo19-web odoo -d kpi_defense -i project_kpi_skills,project_kpi_survey --stop-after-init   # cài module (kéo theo project_kpi_management, hr_skills, survey)
 docker exec odoo19-web sh -c "echo 'env[\"kpi.demo\"]._load_scenario(); env.cr.commit()' | odoo shell -d kpi_defense --max-cron-threads=0 --http-port=8072"
@@ -1082,6 +1082,8 @@ bash addons/project_kpi_management/scripts/prepare_defense.sh kpi_defense   # n�
 git checkout main
 git stash pop                  # nếu có stash ở bước đầu
 ```
+
+**Phiên bản đồng đều (Git, file, database).** Số phiên bản trong `__manifest__.py` của cả bốn module KPI là **một số phát hành duy nhất**, tính từ tag bảo vệ: tag `vX.Y.Z-bao-ve` ↔ phiên bản module `19.0.X.Y.Z` (tag `v1.7.4-bao-ve` ↔ `19.0.1.7.4`), nên số hiển thị trong Odoo (Apps) khớp với source. Trước bản này manifest của module chính dừng ở `19.0.1.1.0` và ba cầu nối ở `19.0.1.0.0` dù code đã qua nhiều đợt — số phiên bản trong Odoo không phản ánh bản đang chạy. Nay `prepare_defense.sh` in bảng đối chiếu cho từng module (phiên bản trên đĩa | trong database | khớp tag không) và **dừng nếu lệch**; một test (`test_all_kpi_modules_share_one_release_version`) giữ cho các module không lệch nhau. Khi gắn tag mới phải đổi số phiên bản trong cả bốn manifest. Nâng phiên bản ở database đã cài dùng `-u` (script tự làm); thư mục `migrations/19.0.1.1.0` chỉ chạy một lần khi nâng từ phiên bản thấp hơn 1.1.0 nên không chạy lại.
 
 **Sao lưu và khôi phục `kpi_defense` (bắt buộc trước ngày bảo vệ).** Mỗi lần tổng duyệt demo sẽ tạo phiếu, tính điểm, duyệt, xác nhận — database không còn ở trạng thái "thẻ kỳ trống" như kịch bản mở đầu. Vì vậy sao lưu khi database còn sạch rồi khôi phục sau mỗi lần tổng duyệt và sáng ngày bảo vệ:
 
@@ -1102,7 +1104,7 @@ bash addons/project_kpi_management/scripts/restore_defense.sh clean    # khôi p
 | Thử offline một lần | Tắt mạng, chạy `restore_defense.sh clean`, đi hết luồng happy case. Mã của các module KPI không gọi địa chỉ ngoài nào (đã kiểm), Odoo chạy cục bộ không cần internet — nhưng nên tự thấy điều đó |
 | Tổng duyệt ≥ 2 lần | Mỗi lần: `restore_defense.sh clean` → luồng happy case → kịch bản Chương 5.8 có canh giờ (10–15 phút). Lần đầu chú ý phần P2: nhắc việc "Hoàn tất phiếu" của Dung, Khoa, Hà đi tới `phuc` |
 | Ôn câu hỏi | Tự trả lời theo từng bước demo (cách tính điểm, phân quyền) không nhìn tài liệu |
-| Sáng ngày bảo vệ | `git checkout v1.7.3-bao-ve` → `bash addons/project_kpi_management/scripts/restore_defense.sh clean` → chờ "tất cả OK" → mở trình duyệt |
+| Sáng ngày bảo vệ | `git checkout v1.7.4-bao-ve` → `bash addons/project_kpi_management/scripts/restore_defense.sh clean` → chờ "tất cả OK" → mở trình duyệt |
 
 **Khoá database cho buổi bảo vệ.** Màn hình đăng nhập có ô chọn database khi có nhiều database (`kpi_dev`, `kpi_defense`...); chọn nhầm `kpi_dev` (thiếu Phúc, Lan, Hà...) thì kịch bản demo hỏng ngay từ đầu. Trong `config/odoo.conf` (file thật, không nằm trong Git) thêm rồi khởi động lại container:
 
@@ -1111,7 +1113,7 @@ dbfilter = ^kpi_defense$
 list_db = False
 ```
 
-Hai dòng này **đã được đặt** trong `config/odoo.conf` của máy này (mỗi lần chạy test trên database mới sẽ tạo thêm database; có `dbfilter` thì màn hình đăng nhập không bao giờ hiện ô chọn). Chạy test bằng lệnh `odoo -d <db tạm> -i ...` vẫn dùng bình thường vì dòng lệnh không đi qua `dbfilter`; xoá database tạm sau khi chạy. Sau buổi bảo vệ xoá hai dòng này nếu cần dùng nhiều database. Lưu ý: khi đang khoá, `pre_defense_check.py` qua XML-RPC chỉ chạy được với `kpi_defense` (lệnh `odoo -d ...` trên dòng lệnh vẫn dùng được database khác). `config/odoo.conf.example` có sẵn hai dòng này dạng chú thích.
+Hai dòng này **đã được đặt** trong `config/odoo.conf` của máy này (mỗi lần chạy test trên database mới sẽ tạo thêm database; có `dbfilter` thì màn hình đăng nhập không bao giờ hiện ô chọn). **Không** chạy test trực tiếp bằng `odoo -d <db tạm> -i ...` khi đang khoá: test API (HttpCase) đi qua HTTP nên bị `dbfilter` chặn (404) — đã gặp thật khi làm bản `v1.7.4`. Dùng `bash addons/project_kpi_management/scripts/run_all_tests.sh`: script chạy toàn bộ test của bốn module trên một database tạm bằng bản sao config đã bỏ `dbfilter` (config thật không đổi) rồi tự xoá database và filestore tạm; phải in `TẤT CẢ TEST ĐẠT`. Sau buổi bảo vệ xoá hai dòng này nếu cần dùng nhiều database. Lưu ý: khi đang khoá, `pre_defense_check.py` qua XML-RPC chỉ chạy được với `kpi_defense` (lệnh `odoo -d ...` trên dòng lệnh vẫn dùng được database khác). `config/odoo.conf.example` có sẵn hai dòng này dạng chú thích.
 
 **Module cầu nối cài trên `kpi_defense`:** `project_kpi_skills` (thêm tab Kỹ năng vào hồ sơ nhân viên, ít xáo trộn) và `project_kpi_survey` (thêm app Surveys; khảo sát 360 mẫu nằm trong đó). **Không** cài `hr_timesheet`/`project_kpi_timesheet` (thêm app Timesheet). Các bước tương ứng trong `pre_defense_check.py` tự bỏ qua khi module chưa cài.
 
@@ -1267,7 +1269,7 @@ buộc lý do) và **chấm chỉ số định tính** (D9) — số liệu tự
 
 ## Chương 9 — Hướng phát triển
 
-**Trạng thái:** mọi tính năng trong kế hoạch này đã được triển khai trừ **Bước 6** (kỳ khác nhau theo bộ KPI đã làm ở Đợt B1; còn lại nhân viên kiêm nhiệm — xem 9.6 "Không làm"). Bản dùng để bảo vệ là tag `v1.7.3-bao-ve` (Chương 5.7, 10), phát triển trực tiếp trên `main` (không tách nhánh riêng — tag đã giữ đúng từng mốc, không di chuyển). Các Bước 0–5 ở 9.1–9.4 là kế hoạch ban đầu và nay đều đã triển khai; 9.6 ghi các đợt hoàn thiện sau đó.
+**Trạng thái:** mọi tính năng trong kế hoạch này đã được triển khai trừ **Bước 6** (kỳ khác nhau theo bộ KPI đã làm ở Đợt B1; còn lại nhân viên kiêm nhiệm — xem 9.6 "Không làm"). Bản dùng để bảo vệ là tag `v1.7.4-bao-ve` (Chương 5.7, 10), phát triển trực tiếp trên `main` (không tách nhánh riêng — tag đã giữ đúng từng mốc, không di chuyển). Các Bước 0–5 ở 9.1–9.4 là kế hoạch ban đầu và nay đều đã triển khai; 9.6 ghi các đợt hoàn thiện sau đó.
 
 ### 9.1. Điểm nghẽn lớn nhất: chỉ số tự động phải viết code — ĐÃ TRIỂN KHAI
 
@@ -1499,7 +1501,7 @@ Sau Bước 5 các tính năng còn lại được chia theo giá trị cho báo
 MVP (31/31 hạng mục) và phần lớn phạm vi Nên có/Mở rộng (7/7 hạng mục), tổng cộng 38/38 hạng mục
 trong bảng thống kê triển khai, cộng thêm 6 mục mở rộng sau khi đối chiếu với các hệ thống KPI tương
 tự (màu xếp loại, chặn xung đột vai trò, nhắc việc PIP, mục tiêu theo phòng ban, chỉ số theo dự án,
-tự đánh giá — Chương 9 cũ, nay đã triển khai). Hệ thống có 205 unit test tự động (182 ở module chính, 6 + 9 + 8 ở ba module cầu nối; 0 lỗi) cộng với
+tự đánh giá — Chương 9 cũ, nay đã triển khai). Hệ thống có 206 unit test tự động (183 ở module chính, 6 + 9 + 8 ở ba module cầu nối; 0 lỗi) cộng với
 kiểm thử thủ công trên REST API, báo cáo PDF, phân quyền, luồng nghiệp vụ hoàn chỉnh trên dữ liệu
 thật, và kiểm tra qua đúng tài khoản thật bằng XML-RPC (`scripts/pre_defense_check.py`, Chương 5.6)
 — cách kiểm tra này tự nó đã bắt được một số lỗi mà unit test (chạy bằng superuser) không bắt được.
@@ -1507,7 +1509,7 @@ Nguyên tắc thiết kế cốt lõi — không hardcode vai trò — đã đư
 (Chương 7), không chỉ dừng ở khẳng định lý thuyết. Các giới hạn còn tồn tại (Chương 8.3) đều đã được
 xác định rõ ràng, có hướng xử lý cụ thể (Chương 9), phù hợp để trình bày minh bạch trước hội đồng.
 
-Bản dùng để bảo vệ được đóng băng ở tag Git `v1.7.3-bao-ve` (dự phòng: `v1.7.2-bao-ve`, `v1.7.1-bao-ve`, `v1.7-bao-ve`, `v1.6-bao-ve`, `v1.5-bao-ve`, `v1.4-bao-ve`, `v1.3-bao-ve`, `v1.2-bao-ve`, `v1.1.1-bao-ve`; gọn nhất: `v1.0-bao-ve`) — quy trình
+Bản dùng để bảo vệ được đóng băng ở tag Git `v1.7.4-bao-ve` (dự phòng: `v1.7.3-bao-ve`, `v1.7.2-bao-ve`, `v1.7.1-bao-ve`, `v1.7-bao-ve`, `v1.6-bao-ve`, `v1.5-bao-ve`, `v1.4-bao-ve`, `v1.3-bao-ve`, `v1.2-bao-ve`, `v1.1.1-bao-ve`; gọn nhất: `v1.0-bao-ve`) — quy trình
 chuyển đúng về bản này vào ngày bảo vệ và kịch bản demo nằm ở Chương 5.7, 5.8. Phát triển tiếp theo hướng
 Chương 9 đi trên `main`, không ảnh hưởng các tag này.
 

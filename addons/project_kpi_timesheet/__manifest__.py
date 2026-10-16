@@ -1,6 +1,6 @@
 {
     "name": "Project KPI - Timesheet bridge",
-    "version": "19.0.1.0.0",
+    "version": "19.0.1.7.4",
     "summary": "Chỉ số P4 (giờ thực tế so với kế hoạch) cho bộ KPI Team Lead / PM",
     "category": "Services/Project",
     "author": "Nam4",

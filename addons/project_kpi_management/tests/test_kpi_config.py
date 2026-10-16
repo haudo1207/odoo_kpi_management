@@ -87,3 +87,13 @@ class TestKpiConfig(TransactionCase):
         job.kpi_template_id = False
         template.action_archive()
         self.assertFalse(template.active)
+
+    def test_all_kpi_modules_share_one_release_version(self):
+        """Phiên bản trong __manifest__ của mọi module KPI đang cài phải giống nhau (và theo dạng 19.0.<phát hành>): một
+        số phát hành duy nhất ứng với tag bảo vệ, để phiên bản hiển thị trong Odoo (Apps) không lệch với source."""
+        from odoo.modules.module import get_manifest
+        names = [m for m in ("project_kpi_management", "project_kpi_timesheet", "project_kpi_skills", "project_kpi_survey")
+                 if self.env["ir.module.module"].search_count([("name", "=", m), ("state", "=", "installed")])]
+        versions = {name: get_manifest(name)["version"] for name in names}
+        self.assertEqual(len(set(versions.values())), 1, versions)
+        self.assertRegex(next(iter(versions.values())), r"^19\.0\.\d+\.\d+\.\d+$")
