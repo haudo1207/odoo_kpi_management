@@ -58,7 +58,7 @@ class ProjectTask(models.Model):
     bug_reporter_id = fields.Many2one(
         "res.users", string="Người phát hiện bug", default=lambda self: self.env.user,
         help="Mặc định là người tạo task. Chỉ KPI Manager trở lên sửa được, để tránh tự gán bug "
-             "người khác log về mình nhằm tăng T4 (số bug hợp lệ tìm được).",
+             "người khác log về mình nhằm tăng QA1 (số bug hợp lệ tìm được).",
     )
 
     # D1: số ngày trễ, đo cả khi đã hoàn thành
@@ -145,8 +145,8 @@ class ProjectTask(models.Model):
     @api.model
     def _migrate_bug_reporter_id(self):
         """Bù dữ liệu cũ (Bước 2): bug tạo trước khi có field này thì gán bug_reporter_id =
-        create_uid. Gọi qua <function> trong data XML nên chạy lại mỗi lần -u, không phải chỉ lúc
-        cài mới — chỉ tìm những bug còn thiếu nên chạy nhiều lần vẫn an toàn (không ghi đè tay)."""
+        create_uid. Gọi từ migrations/19.0.1.1.0/post-migrate.py (một lần khi nâng cấp); chỉ tìm những
+        bug còn thiếu nên chạy lại vẫn an toàn, không ghi đè giá trị đã sửa tay."""
         bugs = self.search([("task_type", "=", "bug"), ("bug_reporter_id", "=", False)])
         for bug in bugs:
             bug.bug_reporter_id = bug.create_uid

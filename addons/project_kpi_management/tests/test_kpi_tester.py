@@ -7,7 +7,7 @@ from odoo.tests import TransactionCase, new_test_user, tagged
 
 @tagged("post_install", "-at_install")
 class TestKpiTester(TransactionCase):
-    """Bước 2 (Chương 9.2): bộ KPI Tester tự động — T4-T6 chỉ cấu hình, T7 hàm Python, T8 nhập tay."""
+    """Bước 2 (Chương 9.2): bộ KPI Tester tự động — QA1-QA3 chỉ cấu hình, QA4 hàm Python, QA5 nhập tay."""
 
     @classmethod
     def setUpClass(cls):
@@ -49,32 +49,32 @@ class TestKpiTester(TransactionCase):
     # ---- Cấu hình, không code ----
 
     def test_t4_t6_have_no_python_code(self):
-        for code in ("T4", "T5", "T6"):
+        for code in ("QA1", "QA2", "QA3"):
             with self.subTest(code=code):
                 self.assertEqual(self.metrics[code].compute_mode, "domain")
                 self.assertFalse(hasattr(self.engine, f"_metric_{code.lower()}"))
-        self.assertTrue(hasattr(self.engine, "_metric_t7"))
-        self.assertEqual(self.metrics["T8"].compute_mode, "manual")
+        self.assertTrue(hasattr(self.engine, "_metric_qa4"))
+        self.assertEqual(self.metrics["QA5"].compute_mode, "manual")
 
     # ---- Từng chỉ số ----
 
     def test_t4_counts_valid_bugs_of_reporter_only(self):
         self._scenario()
-        self.assertEqual(self._compute("T4"), (5, 5))
+        self.assertEqual(self._compute("QA1"), (5, 5))
 
     def test_t4_ignores_bugs_outside_period(self):
         self._bug(resolution="valid", cause="code")
         self.assertEqual(
-            self.engine.compute_actual(self.metrics["T4"], self.employee, self.date_from - timedelta(days=60), self.date_from - timedelta(days=30)),
+            self.engine.compute_actual(self.metrics["QA1"], self.employee, self.date_from - timedelta(days=60), self.date_from - timedelta(days=30)),
             (0, 0),
         )
 
     def test_t5_t6_ratio(self):
         self._scenario()
-        actual5, volume5 = self._compute("T5")
+        actual5, volume5 = self._compute("QA2")
         self.assertAlmostEqual(actual5, 2 / 7 * 100)   # duplicate + invalid / bug đã phân loại
         self.assertEqual(volume5, 7)
-        actual6, volume6 = self._compute("T6")
+        actual6, volume6 = self._compute("QA3")
         self.assertAlmostEqual(actual6, 75.0)           # 6 / 8
         self.assertEqual(volume6, 8)
 
@@ -83,7 +83,7 @@ class TestKpiTester(TransactionCase):
         self._bug(resolution="invalid", cause="code")
         ev = self._evaluation()
         ev.action_compute_kpi()
-        for code in ("T5", "T6"):  # 2 bug < min_volume 3
+        for code in ("QA2", "QA3"):  # 2 bug < min_volume 3
             line = ev.line_ids.filtered(lambda l: l.metric_id.code == code)
             self.assertFalse(line.is_applicable, code)
 
@@ -94,12 +94,12 @@ class TestKpiTester(TransactionCase):
             "name": "Bug dự án khác", "project_id": other_project.id, "task_type": "bug",
             "bug_reporter_id": self.other.id, "bug_resolution": "valid", "is_production_bug": True,
         })
-        actual, volume = self._compute("T7")
+        actual, volume = self._compute("QA4")
         self.assertEqual(volume, 1)  # chỉ dự án tester có log bug
         self.assertAlmostEqual(actual, 1 / 6 * 100)  # 1 production / 6 bug hợp lệ trong dự án (kể cả của người khác)
 
     def test_t7_no_project_not_applicable(self):
-        self.assertEqual(self._compute("T7"), (0.0, 0))
+        self.assertEqual(self._compute("QA4"), (0.0, 0))
 
     # ---- bug_reporter_id ----
 
@@ -174,8 +174,8 @@ class TestKpiTester(TransactionCase):
         self._scenario()
         ev = self._evaluation()
         self.assertEqual(ev.template_id, self.env.ref("project_kpi_management.kpi_template_tester_auto"))
-        ev.line_ids.filtered(lambda l: l.metric_id.code == "T8").actual = 3
+        ev.line_ids.filtered(lambda l: l.metric_id.code == "QA5").actual = 3
         ev.action_compute_kpi()
-        # T4 5/15=33.33%·25 + T5 10/28.57=35%·20 + T6 75/90=83.33%·15 + T7 5/16.67=30%·25 + T8 3/4=75%·15
+        # QA1 5/15=33.33%·25 + QA2 10/28.57=35%·20 + QA3 75/90=83.33%·15 + QA4 5/16.67=30%·25 + QA5 3/4=75%·15
         self.assertAlmostEqual(ev.kpi_score, 8.33333 + 7 + 12.5 + 7.5 + 11.25, places=3)
         self.assertEqual(ev.applicable_weight, 100)

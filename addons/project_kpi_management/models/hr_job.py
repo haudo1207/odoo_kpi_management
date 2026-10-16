@@ -8,10 +8,11 @@ class HrJob(models.Model):
 
     @api.model
     def _migrate_tester_template(self):
-        """Bước 2: chuyển chức danh Tester sang bộ KPI tự động (T4-T8), ẩn bộ cũ toàn chỉ số nhập tay.
+        """Bước 2: chuyển chức danh Tester sang bộ KPI tự động (QA1-QA5), ẩn bộ cũ toàn chỉ số nhập tay.
         Bản ghi trong kpi_org_data.xml nằm trong noupdate="1" nên sửa XML không đổi được database
-        đã cài — hàm này gọi qua <function> nên chạy lại mỗi lần -u. Chỉ chuyển khi chức danh còn
-        trỏ về bộ cũ, không ghi đè lựa chọn của admin."""
+        đã cài — hàm này chỉ được gọi từ migrations/19.0.1.1.0/post-migrate.py (MỘT lần khi nâng cấp,
+        không phải <function> chạy mỗi lần -u, vì như vậy sẽ hoàn tác lựa chọn của admin về sau).
+        Chỉ chuyển khi chức danh còn trỏ về bộ cũ."""
         old = self.env.ref("project_kpi_management.kpi_template_tester", raise_if_not_found=False)
         new = self.env.ref("project_kpi_management.kpi_template_tester_auto", raise_if_not_found=False)
         if not old or not new:

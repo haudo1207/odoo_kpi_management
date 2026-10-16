@@ -25,7 +25,7 @@ class KpiEngine(models.AbstractModel):
     @api.model
     def compute_actual(self, metric, employee, date_from, date_to):
         """Trả về (actual, volume) của một chỉ số, hoặc None nếu chỉ số nhập tay."""
-        if metric.compute_mode == "manual":
+        if not metric._is_engine_computed():
             return None
         if metric.compute_mode == "domain":
             return self._compute_domain_metric(metric, employee, date_from, date_to)
@@ -197,7 +197,7 @@ class KpiEngine(models.AbstractModel):
         ])
         return count, count
 
-    def _metric_t7(self, ctx):
+    def _metric_qa4(self, ctx):
         """Bước 2: lỗi lọt production của các dự án tester tham gia = bug production / bug hợp lệ
         (valid, wont_fix) trong các dự án đó, tính theo ngày tạo bug trong kỳ. "Dự án tham gia" là
         dự án tester đã log ít nhất 1 bug trong kỳ. Khối lượng = số dự án tham gia. Cần hàm Python

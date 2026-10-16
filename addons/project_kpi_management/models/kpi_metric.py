@@ -168,6 +168,13 @@ class KpiMetric(models.Model):
             except Exception as e:
                 raise ValidationError(f"Chỉ số \"{metric.name}\": domain không hợp lệ — {e}")
 
+    def _is_engine_computed(self):
+        """Điều kiện DUY NHẤT quyết định chỉ số nào do engine tính (mọi chế độ trừ nhập tay). Mọi nơi gọi
+        engine hoặc chặn ghi số liệu (Tính KPI, wizard, cron, API, view) phải dùng hàm này thay vì tự so
+        compute_mode — chế độ mới thêm sau sẽ không bị sót ở một đường nào."""
+        self.ensure_one()
+        return self.compute_mode != "manual"
+
     def action_open_test_wizard(self):
         self.ensure_one()
         if not self.env.su and not self.env.user.has_group("project_kpi_management.group_kpi_admin"):

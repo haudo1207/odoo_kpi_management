@@ -26,16 +26,16 @@
             <field name="date_to" eval="((DateTime.today().replace(day=28) + relativedelta(days=4)).replace(day=1) - relativedelta(days=1)).strftime('%Y-%m-%d')"/>
         </record>
 
-        <!-- Phase 8 + Bước 2: vai trò Tester chỉ cấu hình bằng dữ liệu. T4-T6 là chỉ số "domain" —
+        <!-- Phase 8 + Bước 2: vai trò Tester chỉ cấu hình bằng dữ liệu. QA1-QA3 là chỉ số "domain" —
              khai báo hoàn toàn bằng bản ghi này, KHÔNG có hàm Python (mục đích chính của Bước 2);
-             T7 cần hàm _metric_t7 vì tập dự án suy ra từ dữ liệu bug; T8 nhập tay.
-             Mã là T4-T8 chứ không phải T1-T5 vì T1-T3 đã bị bộ Tester cũ (Phase 8, chỉ số nhập tay)
-             chiếm trên database đã cài và mã chỉ số là UNIQUE; bản ghi cũ nằm trong noupdate nên
-             không sửa được bằng XML — hr.job._migrate_tester_template() sẽ ẩn chúng (kpi_migration_data.xml).
-             Rủi ro T4: tách một lỗi thành nhiều bug để tăng số lượng. Hai lớp chặn: T5 (bug trùng/không
+             QA4 cần hàm _metric_qa4 vì tập dự án suy ra từ dữ liệu bug; QA5 nhập tay.
+             Mã QA1-QA5 (không dùng T1-T5: T1-T3 đã thuộc bộ Tester cũ, mã chỉ số UNIQUE; không dùng T4-T8 vì
+             trùng tên với "lỗi lọt production" ở tài liệu thiết kế cũ). Database đã cài được chuyển bằng
+             migrations/19.0.1.1.0/. Bản ghi cũ (noupdate) không sửa được bằng XML.
+             Rủi ro QA1: tách một lỗi thành nhiều bug để tăng số lượng. Hai lớp chặn: QA2 (bug trùng/không
              hợp lệ bị trừ điểm) và quản lý phân loại bug (bug_resolution) trước khi chốt kỳ. -->
-        <record id="kpi_metric_t4" model="kpi.metric">
-            <field name="code">T4</field>
+        <record id="kpi_metric_qa1" model="kpi.metric">
+            <field name="code">QA1</field>
             <field name="name">Số bug hợp lệ tìm được</field>
             <field name="category">quality</field>
             <field name="unit">bug</field>
@@ -46,10 +46,10 @@
             <field name="date_field_id" search="[('model', '=', 'project.task'), ('name', '=', 'create_date')]"/>
             <field name="aggregation">count</field>
             <field name="numerator_domain">[('task_type', '=', 'bug'), ('bug_resolution', 'in', ['valid', 'wont_fix'])]</field>
-            <field name="description">Bug do tester log trong kỳ (bug_reporter_id, ngày tạo) có kết quả xử lý là lỗi thật (valid, wont_fix). Rủi ro: tách một lỗi thành nhiều bug — bị chặn bởi T5 và việc phân loại bug của quản lý.</field>
+            <field name="description">Bug do tester log trong kỳ (bug_reporter_id, ngày tạo) có kết quả xử lý là lỗi thật (valid, wont_fix). Rủi ro: tách một lỗi thành nhiều bug — bị chặn bởi QA2 và việc phân loại bug của quản lý.</field>
         </record>
-        <record id="kpi_metric_t5" model="kpi.metric">
-            <field name="code">T5</field>
+        <record id="kpi_metric_qa2" model="kpi.metric">
+            <field name="code">QA2</field>
             <field name="name">Tỷ lệ bug bị từ chối</field>
             <field name="category">quality</field>
             <field name="unit">%</field>
@@ -63,8 +63,8 @@
             <field name="denominator_domain">[('task_type', '=', 'bug'), ('bug_resolution', '!=', False)]</field>
             <field name="description">Bug trùng/không phải lỗi / bug đã được phân loại × 100. Mẫu số chỉ gồm bug đã có kết quả xử lý.</field>
         </record>
-        <record id="kpi_metric_t6" model="kpi.metric">
-            <field name="code">T6</field>
+        <record id="kpi_metric_qa3" model="kpi.metric">
+            <field name="code">QA3</field>
             <field name="name">Tỷ lệ bug đủ phân loại</field>
             <field name="category">process</field>
             <field name="unit">%</field>
@@ -78,8 +78,8 @@
             <field name="denominator_domain">[('task_type', '=', 'bug')]</field>
             <field name="description">Bug có task gốc và nguyên nhân / mọi bug tester log trong kỳ × 100.</field>
         </record>
-        <record id="kpi_metric_t7" model="kpi.metric">
-            <field name="code">T7</field>
+        <record id="kpi_metric_qa4" model="kpi.metric">
+            <field name="code">QA4</field>
             <field name="name">Lỗi lọt production của dự án tham gia</field>
             <field name="category">quality</field>
             <field name="unit">%</field>
@@ -87,8 +87,8 @@
             <field name="compute_mode">auto</field>
             <field name="description">Bug production / bug hợp lệ trong các dự án tester đã log bug trong kỳ × 100. Khối lượng = số dự án tham gia.</field>
         </record>
-        <record id="kpi_metric_t8" model="kpi.metric">
-            <field name="code">T8</field>
+        <record id="kpi_metric_qa5" model="kpi.metric">
+            <field name="code">QA5</field>
             <field name="name">Đánh giá của quản lý (Tester)</field>
             <field name="category">collaboration</field>
             <field name="unit">điểm</field>
@@ -98,13 +98,13 @@
         </record>
         <record id="kpi_template_tester_auto" model="kpi.template">
             <field name="name">Tester (tự động)</field>
-            <field name="description">Bộ KPI kiểm thử viên: T4-T6 tính tự động bằng cấu hình, T7 bằng hàm Python, T8 quản lý nhập.</field>
+            <field name="description">Bộ KPI kiểm thử viên: QA1-QA3 tính tự động bằng cấu hình, QA4 bằng hàm Python, QA5 quản lý nhập.</field>
             <field name="line_ids" eval="[
-                (0, 0, {'sequence': 1, 'metric_id': ref('kpi_metric_t4'), 'target': 15, 'weight': 25, 'min_volume': 0}),
-                (0, 0, {'sequence': 2, 'metric_id': ref('kpi_metric_t5'), 'target': 10, 'weight': 20, 'min_volume': 3}),
-                (0, 0, {'sequence': 3, 'metric_id': ref('kpi_metric_t6'), 'target': 90, 'weight': 15, 'min_volume': 3}),
-                (0, 0, {'sequence': 4, 'metric_id': ref('kpi_metric_t7'), 'target': 5, 'weight': 25, 'min_volume': 1}),
-                (0, 0, {'sequence': 5, 'metric_id': ref('kpi_metric_t8'), 'target': 4, 'weight': 15, 'min_volume': 0}),
+                (0, 0, {'sequence': 1, 'metric_id': ref('kpi_metric_qa1'), 'target': 15, 'weight': 25, 'min_volume': 0}),
+                (0, 0, {'sequence': 2, 'metric_id': ref('kpi_metric_qa2'), 'target': 10, 'weight': 20, 'min_volume': 3}),
+                (0, 0, {'sequence': 3, 'metric_id': ref('kpi_metric_qa3'), 'target': 90, 'weight': 15, 'min_volume': 3}),
+                (0, 0, {'sequence': 4, 'metric_id': ref('kpi_metric_qa4'), 'target': 5, 'weight': 25, 'min_volume': 1}),
+                (0, 0, {'sequence': 5, 'metric_id': ref('kpi_metric_qa5'), 'target': 4, 'weight': 15, 'min_volume': 0}),
             ]"/>
         </record>
         <record id="hr_job_tester" model="hr.job">

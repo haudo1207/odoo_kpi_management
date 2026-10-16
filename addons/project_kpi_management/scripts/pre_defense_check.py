@@ -275,11 +275,11 @@ def check_tester(s, period_id):
             s.fail("Tester không tự sửa bug_reporter_id", f"bị chặn nhưng sai lý do: {e.faultString[:200]}")
 
     ev_id = create_evaluation(s, None, period_id, employee_id=employee_id)
-    t8_lines = s.call("admin", "kpi.evaluation.line", "search", [("evaluation_id", "=", ev_id), ("metric_id.code", "=", "T8")])
+    t8_lines = s.call("admin", "kpi.evaluation.line", "search", [("evaluation_id", "=", ev_id), ("metric_id.code", "=", "QA5")])
     s.call("admin", "kpi.evaluation.line", "write", t8_lines, {"actual": 4})
     s.call("admin", "kpi.evaluation", "action_compute_kpi", [ev_id])
     score = s.call("admin", "kpi.evaluation", "read", [ev_id], fields=["kpi_score"])[0]["kpi_score"]
-    # T4 2/15·25 + T5 10/33.33·20 + T6 100/90·15 + T7 (0% → trần 120)·25 + T8 4/4·15 = 71.0
+    # QA1 2/15·25 + QA2 10/33.33·20 + QA3 100/90·15 + QA4 (0% → trần 120)·25 + QA5 4/4·15 = 71.0
     if abs(score - 71.0) < 0.01:
         s.ok("Phiếu Tester: admin tính ra 71.0 điểm, khớp bảng tính tay")
     else:

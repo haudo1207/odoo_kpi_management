@@ -213,10 +213,10 @@ class TestKpiReports(TransactionCase):
             self.skipTest("Database không có dữ liệu mẫu.")
         employee = self._employee("qa1", self.dept_a, job=job)
         ev = self.env["kpi.evaluation"].create({"employee_id": employee.id, "period_id": self.period.id})
-        # Bước 2: bộ Tester tự động (T4-T8) thay bộ nhập tay cũ; số liệu tự tính xem test_kpi_tester.py
+        # Bước 2: bộ Tester tự động (QA1-QA5) thay bộ nhập tay cũ; số liệu tự tính xem test_kpi_tester.py
         self.assertEqual(ev.template_id, self.env.ref("project_kpi_management.kpi_template_tester_auto"))
-        values = {"T4": 15, "T5": 20, "T6": 90, "T7": 5, "T8": 4}
+        values = {"QA1": 15, "QA2": 20, "QA3": 90, "QA4": 5, "QA5": 4}
         for line in ev.line_ids:
             line.write({"actual": values[line.metric_id.code], "volume": 10})
-        # T4 100, T5 thấp tốt 10/20 = 50, T6 100, T7 100, T8 100
+        # QA1 100, QA2 thấp tốt 10/20 = 50, QA3 100, QA4 100, QA5 100
         self.assertAlmostEqual(ev.kpi_score, (100 * 25 + 50 * 20 + 100 * 15 + 100 * 25 + 100 * 15) / 100)

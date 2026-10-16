@@ -114,7 +114,7 @@ class KpiApi(http.Controller):
         line = ev.line_ids.filtered(lambda l: l.metric_id.code == code)
         if not line:
             raise MissingError(f"Phiếu {evaluation_id} không có chỉ số {code}.")
-        if line.compute_mode != "manual":
+        if line.metric_id._is_engine_computed():
             raise UserError(f"Chỉ số {code} tính tự động, không nhận số liệu từ bên ngoài.")
         vals = {"actual": float(payload["actual"]), "actual_entered": True}
         if "remark" in payload:

@@ -1,6 +1,6 @@
 {
     "name": "Project KPI & Performance Management",
-    "version": "19.0.1.0.0",
+    "version": "19.0.1.1.0",
     "summary": "Đánh giá KPI nhân viên theo kỳ từ dữ liệu Odoo Project",
     "category": "Services/Project",
     "author": "Nam4",
@@ -13,7 +13,6 @@
         "data/kpi_calendar_data.xml",
         "data/kpi_template_data.xml",
         "data/kpi_org_data.xml",
-        "data/kpi_migration_data.xml",
         "data/kpi_activity_data.xml",
         "data/ir_cron_data.xml",
         "views/kpi_metric_views.xml",
