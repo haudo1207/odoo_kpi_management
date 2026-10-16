@@ -217,12 +217,15 @@ class KpiEngine(models.AbstractModel):
 
     def _metric_p2(self, ctx):
         """Bước 4 (P2): điểm KPI trung bình của cấp dưới trực tiếp, chỉ lấy phiếu CÙNG KỲ đã Gửi hoặc Đã duyệt
-        (điểm cuối). Phiếu cấp dưới chưa chốt thì không vào → ít phiếu hơn min_volume → "Không áp dụng", không
-        ra số sai; nên không cần ép thứ tự tạo phiếu trong wizard, và không tính phiếu của chính người này
-        nên không có vòng lặp. Khối lượng = số phiếu cấp dưới."""
+        (điểm cuối) VÀ đủ dữ liệu (insufficient_data = False). Phiếu chưa chốt hoặc thiếu dữ liệu (ví dụ nhân viên
+        mới) bị bỏ cả ở giá trị lẫn khối lượng: điểm của phiếu thiếu dữ liệu chỉ tính trên phần nhỏ chỉ số áp
+        dụng, không phản ánh hiệu suất, nên không được kéo điểm của quản lý xuống. Ít phiếu hơn min_volume thì
+        "Không áp dụng", không ra số sai; không cần ép thứ tự tạo phiếu trong wizard, và không tính phiếu của chính
+        người này nên không có vòng lặp. Khối lượng = số phiếu hợp lệ."""
         subordinates = self.env["hr.employee"].sudo().search([("parent_id", "=", ctx["employee"].id)])
         evaluations = self.env["kpi.evaluation"].sudo().search([
             ("employee_id", "in", subordinates.ids), ("state", "in", ("submitted", "approved")),
+            ("insufficient_data", "=", False),
             ("period_id.date_from", "=", ctx["date_from"]), ("period_id.date_to", "=", ctx["date_to"]),
         ])
         if not evaluations:

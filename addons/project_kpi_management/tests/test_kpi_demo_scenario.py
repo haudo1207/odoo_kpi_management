@@ -263,26 +263,34 @@ class TestKpiDemoScenario(TransactionCase):
         self.assertAlmostEqual(by["P3"].actual, 56 / 60 * 100, places=4)
         self.assertAlmostEqual(ev.kpi_score, 81.54321, places=3)
 
-    def test_phuc_p2_applicable_after_subordinates_submit(self):
-        """Kịch bản demo Bước 4: P2 của Phúc "Không áp dụng" khi cấp dưới (Dung, Khoa) chưa chốt phiếu; sau khi cả
-        hai Gửi duyệt và Tính lại phiếu Phúc thì P2 ra số — không cần sắp thứ tự tạo phiếu.
-        Tính tay: Dung 55,875 (xem test_dung_tester_evaluation); Khoa chỉ có QA1 = 0 (không bug) và QA5 = 4 áp dụng
-        → (0·25 + 100·15) / 40 = 37,5; P2 = (55,875 + 37,5) / 2 = 46,6875 trên 2 phiếu."""
+    def test_phuc_p2_skips_closed_evaluations_without_enough_data(self):
+        """Kịch bản demo Bước 4: P2 của Phúc chỉ lấy phiếu cấp dưới đã chốt VÀ đủ dữ liệu.
+        Cấp dưới: Dung (tester, 55,875), Khoa (tester mới, chưa log bug → thiếu dữ liệu, bị loại), Hà (Developer, đủ dữ liệu).
+        Tính tay Hà: 3 Feature xong đúng hạn, qua review lần đầu, có unit test, 15 SP, không bug.
+        D1 100/90 = 111,11% ·20; D2 15/20 = 75% ·10; D3 thấp tốt thực tế 0 → trần 120% ·15; D5 trần 120% ·10; D6 trần 120% ·10;
+        D8 0% ·5; D9 = 4 → 100% ·10; D4, D7 Không áp dụng (không có bug). Trọng số áp dụng 80:
+        (2222,22 + 750 + 1800 + 1200 + 1200 + 0 + 1000) / 80 = 102,1528. P2 = (55,875 + 102,1528) / 2 = 79,0139 trên 2 phiếu."""
         phuc = self.env.ref("project_kpi_management.demo_employee_phuc")
         phuc_ev = self.env["kpi.evaluation"].create({"employee_id": phuc.id, "period_id": self.period.id})
         phuc_ev.action_compute_kpi()
         p2 = phuc_ev.line_ids.filtered(lambda l: l.metric_id.code == "P2")
         self.assertFalse(p2.is_applicable)  # cấp dưới chưa có phiếu nào đã chốt
-        for key in ("dung", "khoa"):
+        evaluations = {}
+        for key in ("dung", "khoa", "ha"):
             employee = self.env.ref(f"project_kpi_management.demo_employee_{key}")
             self.assertEqual(employee.parent_id, phuc)
             ev = self.env["kpi.evaluation"].create({"employee_id": employee.id, "period_id": self.period.id})
-            ev.line_ids.filtered(lambda l: l.metric_id.code == "QA5").actual = 4
+            manual = "QA5" if key != "ha" else "D9"
+            ev.line_ids.filtered(lambda l: l.metric_id.code == manual).actual = 4
             ev.action_compute_kpi()
             if ev.insufficient_data:
                 ev.write({"manual_rating": "improve", "manual_rating_note": "Tester mới vào, chưa đủ dữ liệu"})
             ev.action_submit()
+            evaluations[key] = ev
+        self.assertTrue(evaluations["khoa"].insufficient_data)
+        self.assertFalse(evaluations["ha"].insufficient_data)
+        self.assertAlmostEqual(evaluations["ha"].final_score, 102.1528, places=3)
         phuc_ev.action_compute_kpi()
         self.assertTrue(p2.is_applicable)
-        self.assertEqual(p2.volume, 2)
-        self.assertAlmostEqual(p2.actual, (55.875 + 37.5) / 2, places=3)
+        self.assertEqual(p2.volume, 2)  # Dung và Hà; Khoa (thiếu dữ liệu) không vào cả giá trị lẫn khối lượng
+        self.assertAlmostEqual(p2.actual, (55.875 + 102.1528) / 2, places=3)

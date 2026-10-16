@@ -115,8 +115,9 @@ class KpiDemo(models.AbstractModel):
         def task(key, owner, name, sp=0, deadline=None, done=None, approve=0, reject=0, unit=False,
                  task_type="feature", **bug):
             created = bug.pop("created", None)
+            target_project = bug.pop("project", None) or project
             t = Task.create({
-                "name": name, "project_id": project.id, "user_ids": [(6, 0, [employees[owner].user_id.id])],
+                "name": name, "project_id": target_project.id, "user_ids": [(6, 0, [employees[owner].user_id.id])],
                 "task_type": task_type, "story_points": sp, "has_unit_test": unit,
                 "date_deadline": at(deadline, 18) if deadline is not None else False,
                 **bug,
@@ -165,6 +166,23 @@ class KpiDemo(models.AbstractModel):
 
         # ---- Chi: mới vào giữa kỳ, chưa đủ dữ liệu ----
         task("t10", "chi", "Trang hồ sơ khách hàng", sp=3, deadline=18)
+
+        # ---- Hà (Developer, cấp dưới thứ 3 của PM Phúc): đủ dữ liệu, ở dự án riêng ----
+        # Để dự án chính (Phúc quản lý, P3 của Phúc và QA4 của Dung) không đổi. 3 Feature xong đúng hạn, đã qua review
+        # lần đầu, có unit test, không bug: phiếu đủ dữ liệu → vào P2, khác Khoa (mới vào, thiếu dữ liệu → bị loại).
+        ha_user = self.env["res.users"].create({"name": "Lý Thanh Hà", "login": "ha", "password": "ha", "tz": tz.zone})
+        ha_employee = self.env["hr.employee"].create({
+            "name": "Lý Thanh Hà", "user_id": ha_user.id, "job_id": dev_job.id,
+            "department_id": department.id, "parent_id": pm_employee.id,
+        })
+        employees["ha"] = ha_employee
+        xmlids += [("demo_user_ha", ha_user), ("demo_employee_ha", ha_employee)]
+        second_project = self.env["project.project"].create({
+            "name": "Ứng dụng di động (dữ liệu mẫu KPI)",
+            "type_ids": [(6, 0, [stage_new.id, stage_doing.id, done_stage.id])],
+        })
+        for key, name, deadline, done in (("h1", "Màn hình đăng nhập", 4, 3), ("h2", "Danh sách đơn hàng", 9, 8), ("h3", "Thông báo đẩy", 14, 13)):
+            task(key, "ha", name, sp=5, deadline=deadline, done=at(done, 10), approve=1, unit=True, project=second_project)
 
         # ---- Dung (Tester, Bước 2): 10 bug tự log, bộ KPI Tester tự động ----
         # Bug không giao cho ai và nguyên nhân khác "code", nên không lọt vào D3/D4/D7 của An, Bình.

@@ -137,3 +137,16 @@ class TestKpiLead(TransactionCase):
         self.assertFalse(by["P3"].is_applicable)   # < 10 bản ghi
         # Chỉ P1 (50/80 = 62.5% x 25) và P5 (100% x 30) áp dụng: (62.5 x 25 + 100 x 30) / 55
         self.assertAlmostEqual(ev.kpi_score, (62.5 * 25 + 100 * 30) / 55, places=3)
+
+    def test_p2_skips_evaluation_with_insufficient_data(self):
+        """Phiếu cấp dưới đã chốt nhưng thiếu dữ liệu (nhân viên mới) không vào P2, cả giá trị lẫn khối lượng."""
+        full = self._subordinate("p2_f", "approved")
+        thin = self._subordinate("p2_g", "draft")
+        thin.line_ids.write({"volume": 0})  # chỉ còn vài chỉ số min_volume 0 áp dụng → dưới ngưỡng trọng số
+        thin.write({"state": "approved", "computed_date": fields.Datetime.now()})
+        self.env.invalidate_all()
+        self.assertTrue(thin.insufficient_data)
+        self.assertFalse(full.insufficient_data)
+        actual, volume = self._compute("P2")
+        self.assertEqual(volume, 1)
+        self.assertAlmostEqual(actual, full.final_score)
