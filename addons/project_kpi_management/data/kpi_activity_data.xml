@@ -10,4 +10,30 @@
         <field name="decoration_type">warning</field>
         <field name="icon">fa-exclamation-triangle</field>
     </record>
+
+    <!-- Đợt A1: nhắc việc theo quy trình phiếu; Đợt A2: nhắc nhân viên xác nhận kết quả -->
+    <record id="mail_activity_type_complete" model="mail.activity.type">
+        <field name="name">Hoàn tất phiếu KPI</field>
+        <field name="summary">Hoàn tất phiếu KPI</field>
+        <field name="res_model">kpi.evaluation</field>
+        <field name="category">default</field>
+        <field name="icon">fa-pencil</field>
+        <field name="delay_count">3</field>
+    </record>
+    <record id="mail_activity_type_approve" model="mail.activity.type">
+        <field name="name">Duyệt phiếu KPI</field>
+        <field name="summary">Duyệt phiếu KPI</field>
+        <field name="res_model">kpi.evaluation</field>
+        <field name="category">default</field>
+        <field name="icon">fa-check</field>
+        <field name="delay_count">2</field>
+    </record>
+    <record id="mail_activity_type_ack" model="mail.activity.type">
+        <field name="name">Xác nhận kết quả KPI</field>
+        <field name="summary">Xác nhận kết quả KPI</field>
+        <field name="res_model">kpi.evaluation</field>
+        <field name="category">default</field>
+        <field name="icon">fa-thumbs-up</field>
+        <field name="delay_count">5</field>
+    </record>
 </odoo>

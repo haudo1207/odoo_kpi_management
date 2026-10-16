@@ -53,6 +53,12 @@
                             <field name="kpi_adjustment_max"/>
                         </setting>
                     </block>
+                    <block title="Quy trình" name="kpi_workflow">
+                        <setting id="kpi_default_approver" string="Người duyệt mặc định"
+                                 help="Nhận nhắc việc khi có phiếu được gửi duyệt. Phải là KPI Administrator, và không phải nhân viên hay quản lý trực tiếp của phiếu cần duyệt">
+                            <field name="kpi_default_approver_id" options="{'no_create': True}"/>
+                        </setting>
+                    </block>
                     <block title="Ngưỡng xếp loại" name="kpi_rating">
                         <setting id="kpi_rating" string="Xuất sắc / Tốt / Đạt"
                                  help="Khoảng nửa mở: Xuất sắc ≥ ngưỡng 1; Tốt trong [ngưỡng 2, ngưỡng 1); Đạt trong [ngưỡng 3, ngưỡng 2)">

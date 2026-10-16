@@ -251,7 +251,8 @@ class TestKpiDemoScenario(TransactionCase):
 
     def test_phuc_pm_evaluation(self):
         """Bước 4: PM Phúc — P1 = 1/3 milestone đúng hạn (33,33%); P2 Không áp dụng (chưa có cấp dưới chốt);
-        P3 = 59/63 bản ghi sạch (93,65%; thêm 3 yêu cầu của BA Lan đã xong); P5 = 4. Điểm = ((33,33/80·25) + (93,65/90·20) + 100·30/100) / 75 · 100."""
+        P3 (theo kỳ, Đợt A4) = 32/36 tiêu chí sạch (88,89%): 8 Feature xong có SP + 14 bug tạo trong kỳ (mỗi bug 2 tiêu chí: 2 bug thiếu gốc, 2 chưa phân loại);
+        P5 = 4. Điểm = ((33,33/80·25) + (88,89/90·20) + 100·30/100) / 75 · 100 = 80,226."""
         employee = self.env.ref("project_kpi_management.demo_employee_phuc")
         ev = self.env["kpi.evaluation"].create({"employee_id": employee.id, "period_id": self.period.id})
         ev.line_ids.filtered(lambda l: l.metric_id.code == "P5").actual = 4
@@ -260,8 +261,9 @@ class TestKpiDemoScenario(TransactionCase):
         self.assertAlmostEqual(by["P1"].actual, 100 / 3, places=4)
         self.assertEqual(by["P1"].volume, 3)
         self.assertFalse(by["P2"].is_applicable)
-        self.assertAlmostEqual(by["P3"].actual, 59 / 63 * 100, places=4)
-        self.assertAlmostEqual(ev.kpi_score, 81.63728, places=3)
+        self.assertAlmostEqual(by["P3"].actual, 32 / 36 * 100, places=4)
+        self.assertEqual(by["P3"].volume, 36)
+        self.assertAlmostEqual(ev.kpi_score, 80.22634, places=3)
 
     def test_phuc_p2_skips_closed_evaluations_without_enough_data(self):
         """Kịch bản demo Bước 4: P2 của Phúc chỉ lấy phiếu cấp dưới đã chốt VÀ đủ dữ liệu.

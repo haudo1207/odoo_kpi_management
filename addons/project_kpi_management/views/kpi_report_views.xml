@@ -77,6 +77,68 @@
         <field name="context">{'search_default_applicable': 1}</field>
     </record>
 
+    <!-- Đợt A5: báo cáo theo phòng ban. Dùng department_id ĐÃ CHỤP trên phiếu (hr.employee không lưu phòng ban hiện tại),
+         nên đúng theo thời điểm tạo phiếu, không cần nối từ task sang phòng ban bằng SQL. -->
+    <record id="kpi_evaluation_view_pivot_department" model="ir.ui.view">
+        <field name="name">kpi.evaluation.pivot.department</field>
+        <field name="model">kpi.evaluation</field>
+        <field name="arch" type="xml">
+            <pivot string="Điểm và xếp loại theo phòng ban" sample="1">
+                <field name="department_id" type="row"/>
+                <field name="final_rating" type="col"/>
+                <field name="final_score" type="measure" widget="float" digits="[16, 2]"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="kpi_evaluation_view_graph_department" model="ir.ui.view">
+        <field name="name">kpi.evaluation.graph.department</field>
+        <field name="model">kpi.evaluation</field>
+        <field name="arch" type="xml">
+            <graph string="Điểm trung bình theo phòng ban" type="bar" sample="1">
+                <field name="department_id"/>
+                <field name="final_score" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="kpi_evaluation_department_action" model="ir.actions.act_window">
+        <field name="name">Theo phòng ban</field>
+        <field name="res_model">kpi.evaluation</field>
+        <field name="view_mode">graph,pivot,list</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'graph', 'view_id': ref('kpi_evaluation_view_graph_department')}),
+            (0, 0, {'view_mode': 'pivot', 'view_id': ref('kpi_evaluation_view_pivot_department')})]"/>
+        <field name="context">{'search_default_approved': 1}</field>
+        <field name="help" type="html">
+            <p>Điểm trung bình và phân bố xếp loại theo phòng ban, chỉ tính phiếu đã duyệt (bỏ filter để xem cả phiếu khác).</p>
+        </field>
+    </record>
+
+    <record id="kpi_evaluation_line_view_pivot_department" model="ir.ui.view">
+        <field name="name">kpi.evaluation.line.pivot.department</field>
+        <field name="model">kpi.evaluation.line</field>
+        <field name="arch" type="xml">
+            <pivot string="Điểm trung bình từng chỉ số theo phòng ban" sample="1">
+                <field name="department_id" type="row"/>
+                <field name="metric_id" type="col"/>
+                <field name="score" type="measure" widget="float" digits="[16, 2]"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="kpi_evaluation_line_department_action" model="ir.actions.act_window">
+        <field name="name">Chỉ số theo phòng ban</field>
+        <field name="res_model">kpi.evaluation.line</field>
+        <field name="view_mode">pivot,graph,list</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'pivot', 'view_id': ref('kpi_evaluation_line_view_pivot_department')})]"/>
+        <field name="context">{'search_default_applicable': 1, 'search_default_approved': 1}</field>
+        <field name="help" type="html">
+            <p>Trung bình điểm từng chỉ số theo phòng ban; chỉ tính chỉ số được áp dụng của phiếu đã duyệt.</p>
+        </field>
+    </record>
+
     <!-- Kiểm tra dữ liệu -->
     <record id="kpi_data_quality_report_view_list" model="ir.ui.view">
         <field name="name">kpi.data.quality.report.list</field>

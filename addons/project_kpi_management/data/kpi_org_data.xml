@@ -141,7 +141,7 @@
             <field name="unit">%</field>
             <field name="direction">higher</field>
             <field name="compute_mode">auto</field>
-            <field name="description">Bản ghi sạch / tổng bản ghi của các dự án Lead quản lý, theo báo cáo Kiểm tra dữ liệu (ảnh chụp hiện tại, không theo kỳ).</field>
+            <field name="description">Tiêu chí dữ liệu sạch / tổng tiêu chí của các dự án Lead quản lý, chỉ xét bản ghi thuộc kỳ: Feature xong trong kỳ có story point; bug tạo trong kỳ có task gốc và đủ phân loại.</field>
         </record>
         <record id="kpi_metric_p5" model="kpi.metric">
             <field name="code">P5</field>

@@ -17,4 +17,14 @@
         <field name="interval_number">1</field>
         <field name="interval_type">days</field>
     </record>
+
+    <!-- Đợt A3: tạm tính hằng tuần cho phiếu Nháp của kỳ đang mở -->
+    <record id="ir_cron_provisional_compute" model="ir.cron">
+        <field name="name">KPI: tạm tính phiếu Nháp giữa kỳ (hằng tuần)</field>
+        <field name="model_id" ref="model_kpi_evaluation"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_provisional_compute()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">weeks</field>
+    </record>
 </odoo>

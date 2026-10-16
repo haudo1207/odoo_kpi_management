@@ -13,3 +13,4 @@ from . import test_kpi_compute_paths
 from . import test_kpi_score_scale
 from . import test_kpi_lead
 from . import test_kpi_ba
+from . import test_kpi_workflow

@@ -24,7 +24,15 @@ class ResConfigSettings(models.TransientModel):
     kpi_rating_pass = fields.Float("Ngưỡng Đạt", config_parameter=PREFIX + "rating_pass",
                                    default=PARAM_DEFAULTS["rating_pass"])
 
+    kpi_default_approver_id = fields.Many2one(
+        "res.users", string="Người duyệt mặc định", config_parameter=PREFIX + "default_approver_id",
+        help="Nhắc việc Duyệt phiếu KPI được giao cho người này (nhắc việc chỉ giao được cho một người, "
+             "nên không giao cho cả nhóm Admin). Để trống: không tạo nhắc việc duyệt.",
+    )
+
     def set_values(self):
+        if self.kpi_default_approver_id and not self.kpi_default_approver_id.has_group("project_kpi_management.group_kpi_admin"):
+            raise ValidationError("Người duyệt mặc định phải thuộc nhóm KPI Administrator.")
         if not (self.kpi_rating_excellent > self.kpi_rating_good > self.kpi_rating_pass > 0):
             raise ValidationError("Ngưỡng xếp loại phải giảm dần: Xuất sắc > Tốt > Đạt > 0.")
         if self.kpi_score_cap < 100:

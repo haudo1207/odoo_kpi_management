@@ -252,18 +252,28 @@ class KpiEngine(models.AbstractModel):
         return sum(evaluations.mapped("final_score")) / len(evaluations), len(evaluations)
 
     def _metric_p3(self, ctx):
-        """Bước 4 (P3): chất lượng dữ liệu của các dự án do người này quản lý (project.user_id), quy về một tỷ lệ
-        bản ghi sạch / tổng bản ghi từ kpi.data.quality.report (Feature xong có SP, task xong có ngày hoàn
-        thành, bug có task gốc, bug đủ phân loại). Báo cáo là ảnh chụp hiện tại, không theo kỳ — nên chốt kỳ
-        Lead khi dữ liệu đã được dọn. Khối lượng = tổng số bản ghi xét."""
+        """Bước 4 (P3), theo kỳ từ Đợt A4: chất lượng dữ liệu của các dự án do người này quản lý (project.user_id),
+        chỉ xét bản ghi THUỘC KỲ — Feature xong có date_end trong kỳ (sạch nếu có story point) và bug tạo trong kỳ
+        (sạch nếu có task gốc; sạch nếu đủ phân loại: mỗi bug xét hai tiêu chí). Tỷ lệ = tiêu chí sạch / tổng tiêu chí,
+        nên mở lại và tính lại phiếu của kỳ cũ cho cùng kết quả dù dữ liệu kỳ khác được dọn sau đó. Không còn tiêu chí
+        "task xong thiếu ngày hoàn thành": task thiếu date_end không xác định được thuộc kỳ nào — lỗi đó vẫn có trong
+        báo cáo Kiểm tra dữ liệu. Khối lượng = tổng số tiêu chí xét."""
+        Task = self.env["project.task"].sudo()
         projects = self.env["project.project"].sudo().search([("user_id", "=", ctx["user"].id)])
-        self.env["project.task"].flush_model()  # báo cáo là SQL view: phải đẩy thay đổi chưa ghi xuống DB trước khi đọc
-        rows = self.env["kpi.data.quality.report"].sudo().search([("project_id", "in", projects.ids)])
-        total = clean = 0
-        for row in rows:
-            total += row.done_feature_count + row.done_count + 2 * row.bug_count
-            clean += (row.done_feature_count - row.done_without_sp) + (row.done_count - row.done_without_date_end) \
-                + (row.bug_count - row.bug_without_origin) + (row.bug_count - row.bug_unclassified)
+        in_projects = [("project_id", "in", projects.ids)]
+        features = Task.search(in_projects + [
+            ("task_type", "=", "feature"), ("state", "=", "1_done"),
+            ("date_end", ">=", ctx["start"]), ("date_end", "<", ctx["end"]),
+        ])
+        bugs = Task.search(in_projects + [
+            ("task_type", "=", "bug"), ("create_date", ">=", ctx["start"]), ("create_date", "<", ctx["end"]),
+        ])
+        total = len(features) + 2 * len(bugs)
+        clean = (
+            len(features.filtered("story_points"))
+            + len(bugs.filtered("origin_task_id"))
+            + len(bugs.filtered(lambda b: b.bug_resolution and b.bug_root_cause))
+        )
         return self._ratio(clean, total), total
 
     @staticmethod

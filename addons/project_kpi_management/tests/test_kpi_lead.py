@@ -113,11 +113,24 @@ class TestKpiLead(TransactionCase):
         Task.create({"name": "B2", "project_id": self.project.id, "task_type": "bug"})  # thiếu task gốc và phân loại
         other_project = self.env["project.project"].create({"name": "X"})
         Task.create({"name": "Khác", "project_id": other_project.id, "state": "1_done"})  # dự án khác: không tính
-        # done_feature 2 (1 thiếu SP), done 2 (date_end có), bug 2 (1 thiếu gốc, 1 chưa phân loại)
-        # tổng = 2 + 2 + 2*2 = 8; sạch = 1 + 2 + 1 + 1 = 5
+        # Theo kỳ (Đợt A4): Feature xong trong kỳ 2 (1 thiếu SP) + bug tạo trong kỳ 2 (1 thiếu gốc, 1 chưa phân loại)
+        # tổng tiêu chí = 2 + 2*2 = 6; sạch = 1 (SP) + 1 (có gốc) + 1 (đủ phân loại) = 3
         actual, volume = self._compute("P3")
-        self.assertEqual(volume, 8)
-        self.assertAlmostEqual(actual, 62.5)
+        self.assertEqual(volume, 6)
+        self.assertAlmostEqual(actual, 50.0)
+
+    def test_p3_ignores_records_outside_period(self):
+        """Đợt A4: bản ghi ngoài kỳ không ảnh hưởng — mở lại, tính lại phiếu kỳ cũ cho cùng kết quả."""
+        Task = self.env["project.task"]
+        Task.create({"name": "F", "project_id": self.project.id, "story_points": 3, "state": "1_done"})
+        before = self._compute("P3")
+        old = Task.create({"name": "F cũ", "project_id": self.project.id, "state": "1_done"})  # thiếu SP
+        old.date_end = fields.Datetime.now() - timedelta(days=90)
+        bug = Task.create({"name": "Bug cũ", "project_id": self.project.id, "task_type": "bug"})
+        self.env.flush_all()
+        self.env.cr.execute("UPDATE project_task SET create_date = %s WHERE id = %s", (fields.Datetime.now() - timedelta(days=90), bug.id))
+        self.env.invalidate_all()
+        self.assertEqual(self._compute("P3"), before)
 
     # ---- Phiếu qua nút Tính KPI ----
 

@@ -42,6 +42,8 @@
                             invisible="state != 'approved'" groups="project_kpi_management.group_kpi_admin"/>
                     <button name="action_open_self_assessment" string="Tự đánh giá" type="object"
                             invisible="not is_own_evaluation or state != 'draft' or not id"/>
+                    <button name="action_open_acknowledge" string="Xác nhận kết quả" type="object" class="btn-primary"
+                            invisible="not is_own_evaluation or state != 'approved' or ack_date"/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
@@ -69,6 +71,7 @@
                             <field name="job_id"/>
                             <field name="department_id"/>
                             <field name="computed_date" invisible="not computed_date"/>
+                            <field name="last_computed_date" invisible="not last_computed_date"/>
                             <field name="approved_date" invisible="not approved_date"/>
                         </group>
                     </group>
@@ -90,6 +93,11 @@
                                    decoration-warning="final_rating == 'pass'"
                                    decoration-danger="final_rating == 'improve'"/>
                         </group>
+                    </group>
+                    <group invisible="not ack_date" string="Xác nhận kết quả của nhân viên">
+                        <field name="ack_decision" readonly="1" decoration-danger="ack_decision == 'disagree'" decoration-success="ack_decision == 'agree'"/>
+                        <field name="ack_date" readonly="1"/>
+                        <field name="ack_comment" readonly="1" invisible="not ack_comment"/>
                     </group>
                     <group invisible="not employee_comment" string="Tự đánh giá của nhân viên (tham khảo)">
                         <field name="employee_comment" readonly="1" nolabel="1"/>

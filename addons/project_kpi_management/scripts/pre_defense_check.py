@@ -405,6 +405,89 @@ def check_ba(s):
         s.fail("Phiếu BA", f"mong đợi {expected:.2f}, thực tế {score}")
 
 
+def check_workflow(s):
+    """Đợt A (v1.3): nhắc việc theo quy trình + nhân viên xác nhận kết quả, qua tài khoản thật. Tự tạo quản lý,
+    nhân viên, kỳ, phiếu; đặt người duyệt mặc định = admin và khôi phục giá trị cũ ở cuối."""
+    suffix = time.strftime("%H%M%S")
+    _, g_user = s.ref("base.group_user")
+    _, g_kpi_user = s.ref("project_kpi_management.group_kpi_user")
+    _, g_kpi_manager = s.ref("project_kpi_management.group_kpi_manager")
+    _, job_id = s.ref("project_kpi_management.hr_job_developer")
+
+    def make_user(tag, groups):
+        login = f"chk_wf_{tag}_{suffix}"
+        s.passwords[login] = login
+        uid = s.call("admin", "res.users", "create", {
+            "name": f"WF {tag} {suffix}", "login": login, "password": login, "group_ids": [(6, 0, groups)],
+        })
+
+        def drop():
+            try:
+                s.call("admin", "res.users", "unlink", [uid])
+            except xmlrpc.client.Fault:
+                s.call("admin", "res.users", "write", [uid], {"active": False})
+        s.add_cleanup(drop)
+        return login, uid
+
+    _, manager_uid = make_user("mgr", [g_user, g_kpi_manager])
+    emp_login, emp_uid = make_user("emp", [g_user, g_kpi_user])
+    manager_emp = s.call("admin", "hr.employee", "create", {"name": f"WF quản lý {suffix}", "user_id": manager_uid})
+    s.add_cleanup(lambda: s.call("admin", "hr.employee", "unlink", [manager_emp]))
+    employee_id = s.call("admin", "hr.employee", "create", {
+        "name": f"WF nhân viên {suffix}", "user_id": emp_uid, "job_id": job_id, "parent_id": manager_emp,
+    })
+    s.add_cleanup(lambda: s.call("admin", "hr.employee", "unlink", [employee_id]))
+    old_approver = s.call("admin", "ir.config_parameter", "get_param", "project_kpi_management.default_approver_id")
+    s.call("admin", "ir.config_parameter", "set_param", "project_kpi_management.default_approver_id", str(s.uid("admin")))
+    s.add_cleanup(lambda: s.call("admin", "ir.config_parameter", "set_param",
+                                 "project_kpi_management.default_approver_id", old_approver or False))
+    period_id = s.call("admin", "kpi.period", "create", {
+        "name": f"Kiểm tra quy trình {suffix}", "period_type": "sprint", "date_from": "2000-01-01", "date_to": "2099-12-31",
+    })
+    s.add_cleanup(lambda: s.call("admin", "kpi.period", "unlink", [period_id]))
+    ev_id = create_evaluation(s, None, period_id, employee_id=employee_id)
+
+    def activities(xmlid, user_uid):
+        _, type_id = s.ref(xmlid)
+        return s.call("admin", "mail.activity", "search_count", [
+            ("res_model", "=", "kpi.evaluation"), ("res_id", "=", ev_id),
+            ("activity_type_id", "=", type_id), ("user_id", "=", user_uid),
+        ])
+
+    admin_uid = s.uid("admin")
+    ok = activities("project_kpi_management.mail_activity_type_complete", manager_uid) == 1
+    s.call("admin", "kpi.evaluation", "action_compute_kpi", [ev_id])
+    s.call("admin", "kpi.evaluation.line", "write",
+           s.call("admin", "kpi.evaluation.line", "search", [("evaluation_id", "=", ev_id)]), {"actual": 100, "volume": 100})
+    s.call("admin", "kpi.evaluation", "action_submit", [ev_id])
+    ok = ok and activities("project_kpi_management.mail_activity_type_complete", manager_uid) == 0
+    ok = ok and activities("project_kpi_management.mail_activity_type_approve", admin_uid) == 1
+    s.call("admin", "kpi.evaluation", "action_approve", [ev_id])
+    ok = ok and activities("project_kpi_management.mail_activity_type_approve", admin_uid) == 0
+    ok = ok and activities("project_kpi_management.mail_activity_type_ack", emp_uid) == 1
+    if ok:
+        s.ok("Nhắc việc quy trình: tạo phiếu → quản lý; gửi duyệt → người duyệt; duyệt → nhân viên; mỗi bước tự đánh dấu xong nhắc việc cũ")
+    else:
+        s.fail("Nhắc việc quy trình", "số nhắc việc theo từng bước không như mong đợi")
+
+    try:
+        s.call("admin", "kpi.evaluation", "write", [ev_id], {"ack_decision": "agree"})
+        s.fail("Xác nhận kết quả (chặn ghi trực tiếp)", "ghi trực tiếp được ack_decision")
+    except xmlrpc.client.Fault:
+        s.ok("Xác nhận kết quả: không ghi trực tiếp được (kể cả admin), chỉ qua wizard của chính nhân viên")
+    try:
+        wiz = s.call(emp_login, "kpi.acknowledge.wizard", "create", {"evaluation_id": ev_id, "decision": "agree"})
+        s.call(emp_login, "kpi.acknowledge.wizard", "action_confirm", [wiz])
+        row = s.call("admin", "kpi.evaluation", "read", [ev_id], fields=["ack_decision", "state"])[0]
+        if row["ack_decision"] == "agree" and row["state"] == "approved" and \
+                activities("project_kpi_management.mail_activity_type_ack", emp_uid) == 0:
+            s.ok("Xác nhận kết quả: nhân viên xác nhận qua wizard, phiếu vẫn Đã duyệt, nhắc việc xác nhận hoàn tất")
+        else:
+            s.fail("Xác nhận kết quả", f"trạng thái sau xác nhận không đúng: {row}")
+    except xmlrpc.client.Fault as e:
+        s.fail("Xác nhận kết quả", e.faultString[:200])
+
+
 def check_timesheet_bridge(s):
     """Bước 4 (P4): chỉ chạy khi module cầu nối project_kpi_timesheet đã cài. Dự án giờ kế hoạch 100, thực tế 130
     → lệch 30%; mục tiêu 15 (thấp tốt) → 15/30 = 50 điểm. Tính tay trước khi chạy."""
@@ -488,6 +571,7 @@ def main():
         check_tester(s, period_id)
         check_lead(s)
         check_ba(s)
+        check_workflow(s)
         check_timesheet_bridge(s)
     finally:
         s.run_cleanups()

@@ -1,3 +1,5 @@
+import logging
+
 from odoo import api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
 
@@ -8,7 +10,14 @@ RATINGS = [
     ("improve", "Cần cải thiện"),
 ]
 
+_logger = logging.getLogger(__name__)
+
 PIP_ACTIVITY_XMLID = "project_kpi_management.mail_activity_type_pip"
+# Đợt A1: nhắc việc theo quy trình Nháp → Đã gửi → Đã duyệt (xem _sync_workflow_activities)
+ACT_COMPLETE_XMLID = "project_kpi_management.mail_activity_type_complete"
+ACT_APPROVE_XMLID = "project_kpi_management.mail_activity_type_approve"
+ACT_ACK_XMLID = "project_kpi_management.mail_activity_type_ack"
+ACK_FIELDS = ("ack_decision", "ack_comment", "ack_date")
 
 
 def _check_self_assessment_field(vals_list, env, field, message):
@@ -91,6 +100,18 @@ class KpiEvaluation(models.Model):
     # Ghi qua wizard kpi.self.assessment.wizard bằng sudo(), không nới quyền ghi trực tiếp.
     employee_comment = fields.Text("Nhận xét của nhân viên", copy=False)
     is_own_evaluation = fields.Boolean(compute="_compute_is_own_evaluation")
+
+    # Đợt A2: nhân viên xác nhận kết quả SAU khi phiếu Đã duyệt — không thêm trạng thái, không đụng khoá phiếu.
+    # Ghi qua wizard kpi.acknowledge.wizard bằng sudo(); mở lại phiếu thì xoá xác nhận (kết quả có thể đổi).
+    ack_decision = fields.Selection(
+        [("agree", "Đồng ý"), ("disagree", "Có ý kiến")], string="Xác nhận của nhân viên", copy=False, readonly=True,
+    )
+    ack_comment = fields.Text("Ý kiến của nhân viên khi xác nhận", copy=False, readonly=True)
+    ack_date = fields.Datetime("Xác nhận lúc", copy=False, readonly=True)
+
+    # Đợt A3: lần tính gần nhất, kể cả tạm tính tự động hằng tuần. computed_date vẫn chỉ ghi khi quản lý chủ
+    # động bấm Tính KPI (là điều kiện để Gửi duyệt) — tạm tính của cron không thay thế bước đó.
+    last_computed_date = fields.Datetime("Tính lần cuối lúc", readonly=True, copy=False)
 
     _employee_period_unique = models.Constraint(
         "UNIQUE(employee_id, period_id)", "Mỗi nhân viên chỉ có một phiếu đánh giá trong một kỳ."
@@ -180,6 +201,10 @@ class KpiEvaluation(models.Model):
         _check_self_assessment_field(
             vals_list, self.env, "employee_comment", "Chỉ ghi nhận xét của nhân viên qua wizard Tự đánh giá."
         )
+        for ack_field in ACK_FIELDS:
+            _check_self_assessment_field(
+                vals_list, self.env, ack_field, "Chỉ ghi xác nhận của nhân viên qua wizard Xác nhận kết quả."
+            )
         # sudo: quản lý KPI không thuộc nhóm HR vẫn cần đọc chức danh, phòng ban (nằm ở hr.version)
         Employee = self.env["hr.employee"].sudo()
         for vals in vals_list:
@@ -212,7 +237,9 @@ class KpiEvaluation(models.Model):
                     })
                     for line in template.line_ids
                 ]
-        return super().create(vals_list)
+        evaluations = super().create(vals_list)
+        evaluations._sync_workflow_activities()
+        return evaluations
 
     def write(self, vals):
         # employee_comment là lời của chính nhân viên: quản lý/admin vẫn có quyền ghi (group_kpi_manager
@@ -221,9 +248,19 @@ class KpiEvaluation(models.Model):
         _check_self_assessment_field(
             [vals], self.env, "employee_comment", "Chỉ ghi nhận xét của nhân viên qua wizard Tự đánh giá."
         )
+        for ack_field in ACK_FIELDS:
+            _check_self_assessment_field(
+                [vals], self.env, ack_field, "Chỉ ghi xác nhận của nhân viên qua wizard Xác nhận kết quả."
+            )
         if self._LOCKED_FIELDS & vals.keys() and self.filtered(lambda e: e.state != "draft"):
             raise UserError("Phiếu đã gửi hoặc đã duyệt, chỉ sửa được khi ở trạng thái Nháp.")
-        return super().write(vals)
+        res = super().write(vals)
+        if "state" in vals:
+            if vals["state"] == "draft":
+                # Mở lại phiếu: kết quả có thể đổi nên xác nhận cũ hết giá trị
+                self.filtered("ack_date").sudo().write({name: False for name in ACK_FIELDS})
+            self._sync_workflow_activities()
+        return res
 
     def unlink(self):
         if self.filtered(lambda e: e.state != "draft"):
@@ -243,7 +280,13 @@ class KpiEvaluation(models.Model):
                     line.metric_id, ev.employee_id, ev.period_id.date_from, ev.period_id.date_to
                 )
                 line.write({"actual": actual, "volume": volume})
-            ev.computed_date = fields.Datetime.now()
+            now = fields.Datetime.now()
+            # Tạm tính của cron (ngữ cảnh kpi_provisional) không đặt computed_date: Gửi duyệt vẫn đòi quản lý
+            # chủ động bấm Tính KPI ít nhất một lần
+            if self.env.context.get("kpi_provisional"):
+                ev.last_computed_date = now
+            else:
+                ev.write({"computed_date": now, "last_computed_date": now})
         # Tính lại điểm kể cả khi số liệu không đổi: tham số trong Settings (trần, ngưỡng) có thể đã đổi.
         # add_to_compute chỉ đánh dấu đúng field được truyền vào, nên phải liệt kê mọi field của từng hàm compute
         lines = self.line_ids
@@ -326,6 +369,114 @@ class KpiEvaluation(models.Model):
         self._sync_pip_activity()
         return True
 
+    # ---- Đợt A1: nhắc việc theo quy trình ----
+
+    def _kpi_assignee(self, user, group_xmlid):
+        """Người nhận nhắc việc phải đọc được phiếu (Odoo từ chối giao activity cho người không có quyền đọc
+        tài liệu) — nên chỉ giao cho người thuộc nhóm KPI tương ứng, nếu không thì trả về rỗng."""
+        user = user.sudo()
+        return user if user and user.has_group(group_xmlid) else self.env["res.users"]
+
+    def _default_approver(self):
+        """Người duyệt mặc định (Settings). Activity chỉ giao được cho MỘT người, nên không giao cho cả nhóm Admin."""
+        value = self.env["ir.config_parameter"].sudo().get_param("project_kpi_management.default_approver_id")
+        user = self.env["res.users"].sudo().browse(int(value)).exists() if value else self.env["res.users"]
+        return self._kpi_assignee(user, "project_kpi_management.group_kpi_admin")
+
+    def _open_activities(self, xmlid):
+        act_type = self.env.ref(xmlid, raise_if_not_found=False)
+        return self.activity_ids.filtered(lambda a: act_type and a.activity_type_id == act_type)
+
+    def _close_activities(self, xmlid, done):
+        """Đánh dấu xong (done=True, để lại dấu vết trong chatter) hoặc huỷ nhắc việc không còn hợp lệ."""
+        for ev in self:
+            activities = ev._open_activities(xmlid).sudo()
+            if not activities:
+                continue
+            if done:
+                activities.action_feedback(feedback="Hoàn tất theo quy trình phiếu KPI.")
+            else:
+                activities.unlink()
+
+    def _sync_workflow_activities(self):
+        """Đưa nhắc việc về đúng trạng thái phiếu, idempotent (gọi lại nhiều lần không tạo trùng):
+        - Nháp: nhắc quản lý trực tiếp hoàn tất phiếu (không có quản lý thuộc nhóm KPI thì nhắc người duyệt mặc định);
+        - Đã gửi: đánh dấu xong nhắc hoàn tất, nhắc người duyệt mặc định duyệt phiếu;
+        - Đã duyệt: đánh dấu xong nhắc duyệt, nhắc nhân viên xác nhận kết quả (Đợt A2).
+        Không có người nhận hợp lệ thì bỏ qua (ghi chú vào chatter với nhắc duyệt) chứ không báo lỗi."""
+        types = {xmlid: self.env.ref(xmlid, raise_if_not_found=False)
+                 for xmlid in (ACT_COMPLETE_XMLID, ACT_APPROVE_XMLID, ACT_ACK_XMLID)}
+        if not all(types.values()):
+            return
+        for ev in self:
+            employee = ev.employee_id.sudo()
+            if ev.state == "draft":
+                ev._close_activities(ACT_APPROVE_XMLID, done=False)
+                ev._close_activities(ACT_ACK_XMLID, done=False)
+                if not ev._open_activities(ACT_COMPLETE_XMLID):
+                    assignee = ev._kpi_assignee(employee.parent_id.user_id, "project_kpi_management.group_kpi_manager") \
+                        or ev._default_approver()
+                    if assignee:
+                        ev.sudo().activity_schedule(
+                            act_type_xmlid=ACT_COMPLETE_XMLID, user_id=assignee.id, summary="Hoàn tất phiếu KPI",
+                            note=f"Phiếu {ev.name} đã được tạo. Hãy Tính KPI, chấm các chỉ số nhập tay rồi Gửi duyệt.",
+                        )
+            elif ev.state == "submitted":
+                ev._close_activities(ACT_COMPLETE_XMLID, done=True)
+                ev._close_activities(ACT_ACK_XMLID, done=False)
+                if not ev._open_activities(ACT_APPROVE_XMLID):
+                    approver = ev._default_approver()
+                    if not approver:
+                        ev.message_post(body="Chưa đặt người duyệt mặc định hợp lệ (Thiết lập KPI), không tạo nhắc việc duyệt.")
+                    elif approver in (employee.user_id, employee.parent_id.user_id):
+                        ev.message_post(body=f"{approver.name} là nhân viên hoặc quản lý trực tiếp của phiếu này nên không "
+                                             "được duyệt — không tạo nhắc việc duyệt.")
+                    else:
+                        ev.sudo().activity_schedule(
+                            act_type_xmlid=ACT_APPROVE_XMLID, user_id=approver.id, summary="Duyệt phiếu KPI",
+                            note=f"Phiếu {ev.name} đã được gửi duyệt.",
+                        )
+            else:  # approved
+                ev._close_activities(ACT_COMPLETE_XMLID, done=False)
+                ev._close_activities(ACT_APPROVE_XMLID, done=True)
+                assignee = ev._kpi_assignee(employee.user_id, "project_kpi_management.group_kpi_user")
+                if assignee and not ev.ack_date and not ev._open_activities(ACT_ACK_XMLID):
+                    ev.sudo().activity_schedule(
+                        act_type_xmlid=ACT_ACK_XMLID, user_id=assignee.id, summary="Xác nhận kết quả KPI",
+                        note=f"Phiếu {ev.name} đã được duyệt. Hãy xem kết quả và xác nhận (đồng ý hoặc ghi ý kiến).",
+                    )
+
+    # ---- Đợt A2: nhân viên xác nhận kết quả ----
+
+    def action_open_acknowledge(self):
+        self.ensure_one()
+        if not self.is_own_evaluation:
+            raise AccessError("Chỉ chính nhân viên trên phiếu mới xác nhận được.")
+        return {
+            "type": "ir.actions.act_window",
+            "name": "Xác nhận kết quả KPI",
+            "res_model": "kpi.acknowledge.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {"default_evaluation_id": self.id},
+        }
+
+    # ---- Đợt A3: tạm tính giữa kỳ ----
+
+    @api.model
+    def _cron_provisional_compute(self):
+        """Hằng tuần tính lại phiếu Nháp của kỳ còn mở để quản lý thấy số liệu giữa kỳ. Chỉ gọi action_compute_kpi
+        — vốn chỉ ghi các dòng do engine tính (_is_engine_computed), không đụng D9/chỉ số nhập tay, mục tiêu đã sửa,
+        điều chỉnh hay xếp loại tay — với ngữ cảnh kpi_provisional (không đặt computed_date). Lỗi ở một phiếu
+        (ví dụ nhân viên chưa có tài khoản) không chặn các phiếu khác."""
+        evaluations = self.search([("state", "=", "draft"), ("period_id.state", "=", "open")])
+        for ev in evaluations:
+            try:
+                with self.env.cr.savepoint():
+                    ev.with_context(kpi_provisional=True).action_compute_kpi()
+            except Exception:
+                _logger.exception("KPI: không tạm tính được phiếu %s", ev.display_name)
+
     def _sync_pip_activity(self):
         """Mục 3: phiếu duyệt với xếp loại Cần cải thiện thì nhắc quản lý trực tiếp lập kế hoạch
         cải thiện. Không tạo trùng nếu đã có nhắc việc đang mở (ví dụ Mở lại rồi Duyệt lại)."""
@@ -337,7 +488,7 @@ class KpiEvaluation(models.Model):
                 continue
             if ev.activity_ids.filtered(lambda a: a.activity_type_id == pip_type):
                 continue
-            manager_user = ev.employee_id.sudo().parent_id.user_id
+            manager_user = ev._kpi_assignee(ev.employee_id.sudo().parent_id.user_id, "project_kpi_management.group_kpi_manager")
             ev.activity_schedule(
                 act_type_xmlid=PIP_ACTIVITY_XMLID,
                 user_id=(manager_user or self.env.user).id,

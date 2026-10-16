@@ -24,3 +24,4 @@ access_kpi_score_scale_user,kpi.score.scale.user,model_kpi_score_scale,group_kpi
 access_kpi_score_scale_admin,kpi.score.scale.admin,model_kpi_score_scale,group_kpi_admin,1,1,1,1
 access_kpi_score_scale_step_user,kpi.score.scale.step.user,model_kpi_score_scale_step,group_kpi_user,1,0,0,0
 access_kpi_score_scale_step_admin,kpi.score.scale.step.admin,model_kpi_score_scale_step,group_kpi_admin,1,1,1,1
+access_kpi_acknowledge_wizard_user,kpi.acknowledge.wizard.user,model_kpi_acknowledge_wizard,group_kpi_user,1,1,1,1
