@@ -1419,6 +1419,10 @@ tra trên source 19.0) có `deadline`, `is_reached`, `reached_date`.
 | 5 | ~~Bộ BA (9.2 Ưu tiên 3)~~ | **Đã triển khai** — 143/143 test đạt tại thời điểm đó, xem 9.2 |
 | 6 | Kỳ khác nhau theo bộ KPI, kiêm nhiệm (9.3 #4, #5) | Chỉ cần khi đã có nhiều bộ KPI chạy song song |
 
+### 9.5a. Chỉ số cấu hình biết "hôm nay" (hướng phát triển)
+
+Chỉ số cấu hình bằng domain (Chương 9.1) chỉ có ba chuỗi giữ chỗ: `$CURRENT_USER_ID`, `$PERIOD_START`, `$PERIOD_END`. Domain không biết "hôm nay", nên không phân biệt được việc **chưa tới hạn** với việc **trễ hạn**: đó là lý do D1 (đúng hạn) vẫn viết bằng Python để loại task chưa tới hạn khỏi mẫu số, còn P1 (milestone) và B1 (yêu cầu) giữa kỳ thấp hơn thực tế (Chương 8.3). Hướng cải thiện gọn: thêm chuỗi giữ chỗ `$TODAY` (và có thể `$PERIOD_END` đã có sẵn) được hệ thống thay bằng giá trị thật SAU khi đọc domain bằng `ast.literal_eval`, đúng cách các chuỗi giữ chỗ hiện có — vẫn không chạy biểu thức tuỳ ý. Khi đó có thể chuyển thêm chỉ số sang dạng cấu hình và bỏ giới hạn "milestone chưa tới hạn tính là chưa đạt".
+
 ### 9.5. Hướng mở rộng khác (đã nêu từ trước)
 
 | Hướng | Nội dung |
