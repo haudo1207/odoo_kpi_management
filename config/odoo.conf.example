@@ -5,5 +5,4 @@ db_port = 5432
 db_user = odoo
 db_password = odoo
 http_port = 8069
-; Mật khẩu master chỉ dùng cho máy dev. Odoo tự băm lại khi đổi qua giao diện.
-admin_passwd = admin
+admin_passwd = change_me

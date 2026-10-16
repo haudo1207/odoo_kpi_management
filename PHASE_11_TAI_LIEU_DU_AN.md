@@ -866,6 +866,19 @@ Chương 3.3) — cộng thêm 2 lỗi thao tác khi viết chính script (chạ
 lại code, và nhầm trạng thái phiếu sau khi Mở lại). Tất cả đã sửa và xác minh lại bằng cách chạy
 script nhiều lần liên tiếp, không còn cảnh báo dọn dẹp.
 
+### 5.6b. Cấu hình môi trường dev (clone repo mới)
+
+`config/odoo.conf` **không** nằm trong Git (có mật khẩu master). Sau khi clone, chạy một lần trước `docker compose up`:
+
+```bash
+cp config/odoo.conf.example config/odoo.conf   # rồi đổi admin_passwd khỏi change_me
+docker compose up -d
+```
+
+Mật khẩu `admin` cũ của dev vẫn còn trong lịch sử Git; môi trường dev nên coi như đã lộ và **server production
+(Chương 7, thư mục `deploy/`) phải dùng mật khẩu khác** — các file `deploy/` chỉ chứa giá trị giữ chỗ
+(`DOI_MAT_KHAU_*`), mật khẩu thật nằm trong `.env`/`odoo.conf` không commit.
+
 ### 5.7. Quy trình đúng ngày bảo vệ
 
 Container Odoo đọc code trực tiếp từ thư mục `addons` trên đĩa. Nếu phát triển tiếp trên `main` sau
