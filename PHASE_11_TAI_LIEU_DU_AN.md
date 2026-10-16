@@ -1092,6 +1092,18 @@ bash addons/project_kpi_management/scripts/restore_defense.sh clean    # khôi p
 
 Đường dẫn filestore là `/var/lib/odoo/.local/share/Odoo/filestore` (kiểm bằng `odoo.tools.config['data_dir']` trong image `odoo:19.0` — **không** phải `/var/lib/odoo/filestore`). Đã chạy thử khôi phục thật hai lần (từ bản `clean` rồi bản `seeded`), cả hai đều qua `prepare_defense.sh` với kết quả tất cả OK. Hai bản sao lưu hiện có: `clean` (vừa dựng, 4 kỳ lịch sử đã duyệt, kỳ mẫu chưa có phiếu và đã đánh dấu `auto_generated` để tác vụ cuối kỳ không tạo sẵn phiếu — nên bước "Tạo phiếu cho kỳ" của kịch bản chạy thật) và `seeded` (có sẵn 8 phiếu ở các trạng thái, kỳ năng lực + 360 với lời mời chưa trả lời — để xem các màn hình).
 
+**Bản sao lưu phải có ở nơi thứ hai.** `backups/` không nằm trong Git nên chỉ có trên một máy; nếu máy hỏng hoặc volume Docker bị xoá thì mất cả database lẫn bản sạch. Chép cả thư mục `backups/` (khoảng 10 MB) sang ổ ngoài hoặc Google Drive. Hai bản sao lưu gắn với dữ liệu mẫu của tag bảo vệ: nếu đổi tag bảo vệ mà dữ liệu mẫu đổi theo, phải tạo lại bằng `backup_defense.sh`.
+
+**Chuẩn bị ngày bảo vệ (checklist).**
+
+| Việc | Ghi chú |
+|---|---|
+| Ngày dừng thay đổi | **____/____/______** (điền: đề xuất 1 tuần trước buổi bảo vệ). Sau ngày này chỉ sửa lỗi hiển thị/nhãn gây hiểu nhầm, không thêm tính năng; mọi sửa đổi đều phải chạy lại test + `pre_defense_check.py` và gắn tag mới |
+| Thử offline một lần | Tắt mạng, chạy `restore_defense.sh clean`, đi hết luồng happy case. Mã của các module KPI không gọi địa chỉ ngoài nào (đã kiểm), Odoo chạy cục bộ không cần internet — nhưng nên tự thấy điều đó |
+| Tổng duyệt ≥ 2 lần | Mỗi lần: `restore_defense.sh clean` → luồng happy case → kịch bản Chương 5.8 có canh giờ (10–15 phút). Lần đầu chú ý phần P2: nhắc việc "Hoàn tất phiếu" của Dung, Khoa, Hà đi tới `phuc` |
+| Ôn câu hỏi | Tự trả lời theo từng bước demo (cách tính điểm, phân quyền) không nhìn tài liệu |
+| Sáng ngày bảo vệ | `git checkout v1.7.3-bao-ve` → `bash addons/project_kpi_management/scripts/restore_defense.sh clean` → chờ "tất cả OK" → mở trình duyệt |
+
 **Khoá database cho buổi bảo vệ.** Màn hình đăng nhập có ô chọn database khi có nhiều database (`kpi_dev`, `kpi_defense`...); chọn nhầm `kpi_dev` (thiếu Phúc, Lan, Hà...) thì kịch bản demo hỏng ngay từ đầu. Trong `config/odoo.conf` (file thật, không nằm trong Git) thêm rồi khởi động lại container:
 
 ```ini
