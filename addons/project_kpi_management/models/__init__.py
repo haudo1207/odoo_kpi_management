@@ -5,6 +5,7 @@ from . import kpi_target_override
 from . import hr_job
 from . import hr_employee
 from . import project_task
+from . import project_milestone
 from . import kpi_period
 from . import kpi_evaluation
 from . import kpi_engine

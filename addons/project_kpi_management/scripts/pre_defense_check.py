@@ -312,6 +312,91 @@ def check_tester(s, period_id):
         s.fail("Chấm theo bậc", f"mong đợi 60.0, thực tế {score2}")
 
 
+def _make_pm(s, suffix):
+    """Tạo PM + dự án do PM quản lý (project.user_id), trả về (login, user_id, employee_id, project_id)."""
+    login = f"chk_pm_{suffix}"
+    s.passwords[login] = login
+    _, user_group = s.ref("base.group_user")
+    user_id = s.call("admin", "res.users", "create", {
+        "name": f"PM kiểm tra {suffix}", "login": login, "password": login, "group_ids": [(6, 0, [user_group])],
+    })
+
+    def _drop_user():
+        try:
+            s.call("admin", "res.users", "unlink", [user_id])
+        except xmlrpc.client.Fault:
+            s.call("admin", "res.users", "write", [user_id], {"active": False})
+    s.add_cleanup(_drop_user)
+    _, job_id = s.ref("project_kpi_management.hr_job_pm")
+    employee_id = s.call("admin", "hr.employee", "create", {"name": f"PM kiểm tra {suffix}", "user_id": user_id, "job_id": job_id})
+    s.add_cleanup(lambda: s.call("admin", "hr.employee", "unlink", [employee_id]))
+    project_id = s.call("admin", "project.project", "create", {"name": f"Dự án PM kiểm tra {suffix}", "user_id": user_id})
+    s.add_cleanup(lambda: s.call("admin", "project.project", "unlink", [project_id]))
+    return login, user_id, employee_id, project_id
+
+
+def check_lead(s):
+    """Bước 4: bộ KPI Team Lead / PM. Tự tạo PM, dự án, 2 milestone (1 đúng hạn, 1 quá hạn chưa đạt), tính phiếu
+    bằng nút Tính KPI. Tính tay trước: P1 = 1/2 = 50% → 50/80 = 62.5% đạt; P2, P3 Không áp dụng (chưa có cấp dưới
+    chốt phiếu, dự án chưa đủ dữ liệu); P5 = 4 → 100%. Điểm = (62.5×25 + 100×30) / 55 = 82.95."""
+    suffix = time.strftime("%H%M%S")
+    _, _, employee_id, project_id = _make_pm(s, suffix)
+    period_id = s.call("admin", "kpi.period", "create", {
+        "name": f"Kiểm tra Lead {suffix}", "period_type": "sprint", "date_from": "2000-01-01", "date_to": "2099-12-31",
+    })
+    s.add_cleanup(lambda: s.call("admin", "kpi.period", "unlink", [period_id]))
+    today = time.strftime("%Y-%m-%d")
+    future = time.strftime("%Y-%m-%d", time.localtime(time.time() + 5 * 86400))
+    past = time.strftime("%Y-%m-%d", time.localtime(time.time() - 5 * 86400))
+    m1 = s.call("admin", "project.milestone", "create", {"name": "Đúng hạn", "project_id": project_id, "deadline": future})
+    s.call("admin", "project.milestone", "write", [m1], {"is_reached": True})
+    m2 = s.call("admin", "project.milestone", "create", {"name": "Quá hạn", "project_id": project_id, "deadline": past})
+    s.add_cleanup(lambda: s.call("admin", "project.milestone", "unlink", [m1, m2]))
+    ev_id = create_evaluation(s, None, period_id, employee_id=employee_id)
+    p5 = s.call("admin", "kpi.evaluation.line", "search", [("evaluation_id", "=", ev_id), ("metric_id.code", "=", "P5")])
+    s.call("admin", "kpi.evaluation.line", "write", p5, {"actual": 4})
+    s.call("admin", "kpi.evaluation", "action_compute_kpi", [ev_id])
+    score = s.call("admin", "kpi.evaluation", "read", [ev_id], fields=["kpi_score"])[0]["kpi_score"]
+    expected = (62.5 * 25 + 100 * 30) / 55
+    if abs(score - expected) < 0.01:
+        s.ok(f"Phiếu Lead/PM: admin tính ra {expected:.2f} điểm (P1 50%, P2 và P3 Không áp dụng), khớp bảng tính tay")
+    else:
+        s.fail("Phiếu Lead/PM", f"mong đợi {expected:.2f}, thực tế {score}")
+
+
+def check_timesheet_bridge(s):
+    """Bước 4 (P4): chỉ chạy khi module cầu nối project_kpi_timesheet đã cài. Dự án giờ kế hoạch 100, thực tế 130
+    → lệch 30%; mục tiêu 15 (thấp tốt) → 15/30 = 50 điểm. Tính tay trước khi chạy."""
+    installed = s.call("admin", "ir.module.module", "search_count",
+                       [("name", "=", "project_kpi_timesheet"), ("state", "=", "installed")])
+    if not installed:
+        print("[SKIP] P4 (giờ so với kế hoạch): module project_kpi_timesheet chưa cài trên database này")
+        return
+    suffix = time.strftime("%H%M%S")
+    _, user_id, employee_id, project_id = _make_pm(s, suffix + "t")
+    s.call("admin", "project.project", "write", [project_id], {"allow_timesheets": True, "allocated_hours": 100})
+    task_id = s.call("admin", "project.task", "create", {"name": "T", "project_id": project_id})
+    s.add_cleanup(lambda: s.call("admin", "project.task", "unlink", [task_id]))
+    line_id = s.call("admin", "account.analytic.line", "create", {
+        "name": "giờ", "project_id": project_id, "task_id": task_id, "unit_amount": 130, "employee_id": employee_id,
+    })
+    s.add_cleanup(lambda: s.call("admin", "account.analytic.line", "unlink", [line_id]))
+    _, template_id = s.ref("project_kpi_timesheet.kpi_template_lead_timesheet")
+    period_id = s.call("admin", "kpi.period", "create", {
+        "name": f"Kiểm tra P4 {suffix}", "period_type": "sprint", "date_from": "2000-01-01", "date_to": "2099-12-31",
+    })
+    s.add_cleanup(lambda: s.call("admin", "kpi.period", "unlink", [period_id]))
+    ev_id = s.call("admin", "kpi.evaluation", "create", {"employee_id": employee_id, "period_id": period_id, "template_id": template_id})
+    s.add_cleanup(lambda: _force_unlink_evaluation(s, ev_id))
+    s.call("admin", "kpi.evaluation", "action_compute_kpi", [ev_id])
+    line = s.call("admin", "kpi.evaluation.line", "search_read",
+                  [("evaluation_id", "=", ev_id), ("metric_id.code", "=", "P4")], fields=["actual", "score"])[0]
+    if abs(line["actual"] - 30) < 0.01 and abs(line["score"] - 50) < 0.01:
+        s.ok("P4: 130/100 giờ → lệch 30%, ra 50 điểm, khớp bảng tính tay")
+    else:
+        s.fail("P4 giờ so với kế hoạch", f"mong đợi lệch 30 / 50 điểm, thực tế {line}")
+
+
 def check_target_override(s, period_id):
     """Mục 4: mục tiêu riêng theo phòng ban được áp dụng khi tạo phiếu mới."""
     _, chi_id = s.ref("project_kpi_management.demo_employee_chi")
@@ -342,6 +427,8 @@ def main():
     parser.add_argument("--admin-password", default=DEMO_LOGINS["admin"])
     parser.add_argument("--quocviet-password", default=DEMO_LOGINS["quocviet"])
     parser.add_argument("--an-password", default=DEMO_LOGINS["an"])
+    parser.add_argument("--skip-demo-checks", action="store_true",
+                        help="Chỉ chạy các bước tự tạo dữ liệu (Tester, Lead/PM, P4) — dùng cho database không có dữ liệu mẫu")
     args = parser.parse_args()
 
     passwords = {
@@ -351,12 +438,15 @@ def main():
     }
     s = Session(args.url, args.db, passwords)
     try:
-        ensure_demo_loaded(s)
         period_id = make_test_period(s)
-        check_role_conflict_and_pip(s, period_id)
-        check_self_assessment(s, period_id)
-        check_target_override(s, period_id)
+        if not args.skip_demo_checks:
+            ensure_demo_loaded(s)
+            check_role_conflict_and_pip(s, period_id)
+            check_self_assessment(s, period_id)
+            check_target_override(s, period_id)
         check_tester(s, period_id)
+        check_lead(s)
+        check_timesheet_bridge(s)
     finally:
         s.run_cleanups()
 

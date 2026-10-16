@@ -84,10 +84,32 @@ class KpiDemo(models.AbstractModel):
             {"name": "Đang làm", "sequence": 2},
             {"name": "Hoàn thành", "sequence": 3, "fold": True},
         ])
+        # Phúc (PM, Bước 4): quản lý dự án mẫu — "dự án của Lead" xác định bằng project.user_id
+        pm_user = self.env["res.users"].create({"name": "Hoàng Văn Phúc", "login": "phuc", "password": "phuc", "tz": tz.zone})
+        pm_employee = self.env["hr.employee"].create({
+            "name": "Hoàng Văn Phúc", "user_id": pm_user.id, "job_id": self.env.ref(XMLID % "hr_job_pm").id,
+            "department_id": department.id, "parent_id": manager_employee.id,
+        })
+        xmlids += [("demo_user_phuc", pm_user), ("demo_employee_phuc", pm_employee)]
         project = self.env["project.project"].create({
             "name": "Website bán hàng (dữ liệu mẫu KPI)",
             "type_ids": [(6, 0, [stage_new.id, stage_doing.id, done_stage.id])],
+            "user_id": pm_user.id,
         })
+        # 3 milestone trong kỳ: đúng hạn, trễ 2 ngày, chưa đạt → P1 = 1/3. reached_date tự đặt bằng ngày hôm nay
+        # khi tick is_reached nên ghi thẳng SQL để có ngày đạt trong quá khứ.
+        Milestone = self.env["project.milestone"]
+        for key, name, deadline_day, reached_day in (("m1", "Bản demo nội bộ", 5, 4), ("m2", "Thanh toán", 10, 12), ("m3", "Phát hành", 15, None)):
+            milestone = Milestone.create({"name": name, "project_id": project.id, "deadline": monday + timedelta(days=deadline_day)})
+            if reached_day is not None:
+                Milestone.flush_model()
+                self.env.cr.execute(
+                    "UPDATE project_milestone SET is_reached = TRUE, reached_date = %s WHERE id = %s",
+                    (monday + timedelta(days=reached_day), milestone.id),
+                )
+                milestone.invalidate_recordset()
+                self.env.add_to_compute(Milestone._fields["is_reached_on_time"], milestone)
+            xmlids.append((f"demo_milestone_{key}", milestone))
         Task = self.env["project.task"]
 
         def task(key, owner, name, sp=0, deadline=None, done=None, approve=0, reject=0, unit=False,

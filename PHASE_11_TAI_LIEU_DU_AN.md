@@ -182,7 +182,9 @@ addons/project_kpi_management/
 ├── data/                             Dữ liệu cấu hình chuẩn (D1–D9, bộ Developer/Tester, cron, loại nhắc việc PIP...)
 ├── views/                           View cho từng model + menu
 ├── report/                          Mẫu in PDF
-└── tests/                           13 file, 121 test
+└── tests/                           14 file, 130 test
+
+addons/project_kpi_timesheet/            Module cầu nối (Bước 4): P4 + bộ "Team Lead / PM (có giờ làm)", 6 test riêng
 ```
 
 ### 2.4. Nguyên tắc thiết kế cốt lõi: không hardcode vai trò
@@ -630,7 +632,7 @@ docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management \
   --test-tags /project_kpi_management --stop-after-init --http-port 8070
 ```
 
-### 5.3. Danh sách test case (121 test, 13 file)
+### 5.3. Danh sách test case (130 test, 14 file)
 
 #### `tests/test_kpi_config.py` — 9 test (Phase 1: chỉ số, bộ KPI)
 
@@ -810,6 +812,23 @@ Mọi đường tính KPI đều đi về `kpi.evaluation.action_compute_kpi()`,
 | `test_cannot_archive_scale_in_active_template` | Không ẩn bảng bậc khi bộ KPI hoạt động còn dùng |
 | `test_percent_and_scale_name_shown_on_pdf_and_api` | PDF hiện % đạt mục tiêu và tên bảng bậc |
 
+#### `tests/test_kpi_lead.py` — 8 test (Bước 4, Chương 9.2: bộ Team Lead / PM)
+
+| Test | Kiểm tra |
+|---|---|
+| `test_p1_has_no_python_code_and_uses_domain` | P1 là chỉ số domain, không có hàm `_metric_p1` |
+| `test_p1_on_time_milestones_of_lead_projects` | P1 chỉ tính milestone có deadline trong kỳ của dự án Lead quản lý; quá hạn chưa đạt tính trễ |
+| `test_is_reached_on_time_flag` | Cờ `is_reached_on_time` đúng (đạt đúng hạn / trễ / không deadline) |
+| `test_p2_only_closed_evaluations_of_same_period` | P2 chỉ lấy phiếu cấp dưới Đã gửi/Đã duyệt, bỏ phiếu Nháp |
+| `test_p2_not_applicable_when_team_not_closed` | Chưa có phiếu cấp dưới chốt → P2 "Không áp dụng", qua nút Tính KPI |
+| `test_p2_other_period_ignored_and_no_self_loop` | Phiếu kỳ khác và phiếu của chính Lead không tính |
+| `test_p3_clean_ratio_of_lead_projects` | Tỷ lệ bản ghi sạch đúng bảng tính tay (5/8), loại dự án khác |
+| `test_template_and_click_compute` | Chức danh PM gắn bộ P1–P5; nút Tính KPI ra điểm đúng khi P2, P3 không áp dụng |
+
+(`tests/test_kpi_demo_scenario.py` có thêm `test_phuc_pm_evaluation`: PM mẫu Phúc, P1 = 33,33%, P3 = 56/60, điểm 81,54 — tính tay trước khi chạy.)
+
+**Module `project_kpi_timesheet` — 6 test riêng** (`tests/test_kpi_timesheet.py`, chạy bằng `-i project_kpi_timesheet --test-tags /project_kpi_timesheet`): cài đặt P4 và bộ có giờ làm, lệch cả hai chiều đều bị phạt, bỏ dự án không có giờ kế hoạch hoặc của Lead khác, bỏ timesheet sau cuối kỳ, nút Tính KPI (130/100 giờ → lệch 30% → 50 điểm).
+
 #### `tests/test_kpi_integration.py` — 8 test (Phase 9: cron, PDF, REST API)
 
 | Test | Kiểm tra |
@@ -825,7 +844,7 @@ Mọi đường tính KPI đều đi về `kpi.evaluation.action_compute_kpi()`,
 
 ### 5.4. Kết quả kiểm thử
 
-**121/121 test đạt (0 failed, 0 error)**, xác nhận trên database tạo mới hoàn toàn (không chỉ chạy
+**130/130 test đạt (0 failed, 0 error)**, xác nhận trên database tạo mới hoàn toàn (không chỉ chạy
 lại trên database cũ), lần gần nhất 2026-10-12 — sau khi bổ sung 6 mục ở Chương 9 cũ (màu xếp loại,
 chặn xung đột vai trò, nhắc việc PIP, mục tiêu theo phòng ban, chỉ số theo dự án, tự đánh giá), vá
 thêm các phát hiện khi kiểm tra qua đường đi thật (xem 5.6): quản lý ghi trực tiếp được
@@ -1017,7 +1036,7 @@ buộc lý do) và **chấm chỉ số định tính** (D9) — số liệu tự
 **Hệ thống đã qua điểm dừng tính năng trước bảo vệ** (xem Chương 5.6) — bản dùng để bảo vệ đóng
 băng ở tag `v1.0-bao-ve` (Chương 10), không đổi. Nội dung chương này là kế hoạch mở rộng cho giai
 đoạn **sau bảo vệ**, phát triển trực tiếp trên `main` (không tách nhánh riêng — tag đã giữ đúng mốc
-bảo vệ nên không cần). **Bước 0+1 (9.1), Bước 2 (9.2, Tester) và Bước 3 (chấm điểm theo bậc) đã triển khai** (121/121 test đạt); **Bước 4–6
+bảo vệ nên không cần). **Bước 0+1 (9.1), Bước 2 (9.2, Tester) và Bước 3 (chấm điểm theo bậc) và Bước 4 (Team Lead/PM) đã triển khai** (130/130 test đạt); **Bước 5–6
 chưa triển khai**, còn ở dạng thiết kế.
 
 ### 9.1. Điểm nghẽn lớn nhất: chỉ số tự động phải viết code — ĐÃ TRIỂN KHAI
@@ -1091,19 +1110,26 @@ proxy ở Chương 8.
 QA3 gắn trực tiếp với báo cáo kiểm tra dữ liệu (Chương 3.3): tester log bug sạch thì KPI của Dev mới
 đúng — một team phụ thuộc chất lượng dữ liệu của team khác.
 
-**Ưu tiên 2 — Team Lead/PM:** Odoo Project có sẵn dữ liệu cấp dự án. `project.milestone` (đã kiểm
+**Ưu tiên 2 — Team Lead/PM — ĐÃ TRIỂN KHAI (Bước 4):** Odoo Project có sẵn dữ liệu cấp dự án. `project.milestone` (đã kiểm
 tra trên source 19.0) có `deadline`, `is_reached`, `reached_date`.
 
-| Mã | Chỉ số | Nguồn dữ liệu | Chiều |
-|---|---|---|---|
-| P1 | Tỷ lệ milestone đạt đúng hạn | `reached_date ≤ deadline` | Cao tốt |
-| P2 | Điểm KPI trung bình của team | `kpi.evaluation` của nhân viên cấp dưới | Cao tốt |
-| P3 | Chất lượng dữ liệu dự án | `kpi.data.quality.report` của dự án phụ trách | Cao tốt |
-| P4 | Giờ thực tế so với kế hoạch | `hr_timesheet` so với `allocated_hours` (cần thêm `hr_timesheet` vào `depends`) | Gần 100% tốt |
-| P5 | Đánh giá của cấp trên | Nhập tay | Cao tốt |
+| Mã | Chỉ số | Cách tính | Chiều | Mục tiêu | Trọng số | Khối lượng tối thiểu |
+|---|---|---|---|---|---|---|
+| P1 | Tỷ lệ milestone đạt đúng hạn | **Domain, tỷ lệ** (chỉ cấu hình, không hàm Python): milestone có deadline trong kỳ, `is_reached_on_time` / tổng; dự án của Lead = `project_id.user_id` | Cao tốt | 80% | 25 | 2 milestone |
+| P2 | Điểm KPI trung bình của team | **Python `_metric_p2()`**: điểm cuối trung bình phiếu cấp dưới trực tiếp, cùng kỳ, trạng thái Đã gửi/Đã duyệt | Cao tốt | 80 | 25 | 2 phiếu |
+| P3 | Chất lượng dữ liệu dự án | **Python `_metric_p3()`**: bản ghi sạch / tổng bản ghi (từ `kpi.data.quality.report`) của dự án Lead quản lý | Cao tốt | 90% | 20 | 10 bản ghi |
+| P4 | Giờ thực tế so với kế hoạch | **Module cầu nối `project_kpi_timesheet`**, `_metric_p4()`: \|giờ thực tế / giờ kế hoạch − 1\| × 100 | Thấp tốt | 15% lệch | 15 (bộ có P4) | 1 dự án |
+| P5 | Đánh giá của cấp trên | Nhập tay | Cao tốt | 4 | 30 | 0 |
 
-P3 có ý nghĩa thực tế: PM chịu trách nhiệm về dữ liệu dự án, nên KPI của PM cũng phải phụ thuộc vào
-việc dữ liệu có sạch hay không — không chỉ Dev mới bị ràng buộc bởi chất lượng dữ liệu.
+**Các quyết định thiết kế của Bước 4:**
+
+- **Dự án của Lead** là dự án có `project.project.user_id` = người dùng của Lead (P1, P3, P4 dùng chung cách xác định).
+- **P1:** thêm cờ lưu sẵn `project.milestone.is_reached_on_time` (đã đạt và `reached_date ≤ deadline`) rồi cấu hình bằng domain — dùng lại cơ chế Bước 1, `kpi.engine` không có hàm `_metric_p1`. Milestone không có deadline không vào mẫu số (lọc theo deadline). Milestone chưa đạt mà quá hạn tính là trễ; kỳ chưa kết thúc thì milestone chưa tới hạn cũng chưa đạt, nên chốt phiếu Lead sau khi kỳ kết thúc.
+- **P2 — tránh phải sắp xếp thứ tự trong wizard:** chỉ lấy phiếu cấp dưới **đã Gửi hoặc Đã duyệt trong cùng kỳ**; số phiếu là khối lượng, dưới `min_volume` thì "Không áp dụng" thay vì ra số sai. Quy trình tự nhiên đã đúng (cấp dưới chốt trước, Lead tính sau), và vì không tính phiếu của chính Lead nên không có vòng lặp. Điều đó thay cho ràng buộc "P2 phải tính sau phiếu cấp dưới" đề xuất trước đó.
+- **P3:** quy về một tỷ lệ `(Feature xong có SP + task xong có ngày hoàn thành + bug có task gốc + bug đủ phân loại) / (Feature xong + task xong + 2 × bug)` để dùng chiều "Cao tốt" sẵn có. Giới hạn: báo cáo kiểm tra dữ liệu là ảnh chụp hiện tại, không theo kỳ.
+- **P4 — không thêm chiều "gần 100% tốt":** giá trị thực tế định nghĩa là độ lệch tuyệt đối, chiều "Thấp tốt", nên engine không phải sửa. Giờ thực tế là tổng timesheet tới hết kỳ (giờ kế hoạch là của cả dự án, không chia theo kỳ).
+- **Module cầu nối `project_kpi_timesheet`:** `depends: project_kpi_management, hr_timesheet`, `auto_install: True`; P4 và bộ "Team Lead / PM (có giờ làm)" (P1–P5, trọng số 20/20/15/15/30) nằm hoàn toàn trong module này, test riêng trong module này. Khi chưa cài, bộ "Team Lead / PM" gốc vẫn chạy với P1–P3 và P5. Bộ có P4 là bộ riêng, không sửa bộ gốc, để gỡ cầu nối không làm lệch tổng trọng số.
+- **Quyết định về `kpi_dev`:** **không** cài `hr_timesheet`/cầu nối trên `kpi_dev` (cài sẽ thêm app Timesheet vào database demo). P4 được kiểm chứng bằng 6 test của module cầu nối trên một database riêng (`-i project_kpi_timesheet`) và bằng bước P4 của `scripts/pre_defense_check.py` (bước này tự bỏ qua nếu cầu nối chưa cài).
 
 **Ưu tiên 3 — BA:** dữ liệu có một phần (`bug_root_cause = requirement`), cần thêm loại task
 "Requirement" và cách nối task tính năng với yêu cầu gốc.
@@ -1149,8 +1175,8 @@ việc dữ liệu có sạch hay không — không chỉ Dev mới bị ràng b
 |---|---|---|
 | 1 | ~~Chỉ số cấu hình không cần code (9.1)~~ | **Đã triển khai** — xem Chương 3.3 |
 | 2 | ~~Bộ Tester tự động (9.2, Ưu tiên 1)~~ | **Đã triển khai** — 109/109 test đạt, xem 9.2 |
-| 3 | ~~Chấm điểm theo bậc (9.3 #2)~~ | **Đã triển khai** — 121/121 test đạt, xem 9.3 #2 |
-| 4 | Bộ Team Lead/PM + điểm team (9.2 Ưu tiên 2, 9.3 #3) | Cần dữ liệu milestone, timesheet |
+| 3 | ~~Chấm điểm theo bậc (9.3 #2)~~ | **Đã triển khai** — 130/130 test đạt, xem 9.3 #2 |
+| 4 | ~~Bộ Team Lead/PM + điểm team (9.2 Ưu tiên 2, 9.3 #3)~~ | **Đã triển khai** — 130/130 test đạt + 6 test module cầu nối, xem 9.2 |
 | 5 | Bộ BA (9.2 Ưu tiên 3) | Cần thêm loại task Requirement |
 | 6 | Kỳ khác nhau theo bộ KPI, kiêm nhiệm (9.3 #4, #5) | Chỉ cần khi đã có nhiều bộ KPI chạy song song |
 

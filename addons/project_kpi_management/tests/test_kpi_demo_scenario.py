@@ -248,3 +248,17 @@ class TestKpiDemoScenario(TransactionCase):
         self.assertFalse(copy.employee_comment)
         copy_manual_line = copy.line_ids.filtered(lambda l: l.compute_mode == "manual")
         self.assertEqual(copy_manual_line.self_score, 0)
+
+    def test_phuc_pm_evaluation(self):
+        """Bước 4: PM Phúc — P1 = 1/3 milestone đúng hạn (33,33%); P2 Không áp dụng (chưa có cấp dưới chốt);
+        P3 = 56/60 bản ghi sạch (93,33%); P5 = 4. Điểm = ((33,33/80·25) + (93,33/90·20) + 100·30/100) / 75 · 100."""
+        employee = self.env.ref("project_kpi_management.demo_employee_phuc")
+        ev = self.env["kpi.evaluation"].create({"employee_id": employee.id, "period_id": self.period.id})
+        ev.line_ids.filtered(lambda l: l.metric_id.code == "P5").actual = 4
+        ev.action_compute_kpi()
+        by = {line.metric_id.code: line for line in ev.line_ids}
+        self.assertAlmostEqual(by["P1"].actual, 100 / 3, places=4)
+        self.assertEqual(by["P1"].volume, 3)
+        self.assertFalse(by["P2"].is_applicable)
+        self.assertAlmostEqual(by["P3"].actual, 56 / 60 * 100, places=4)
+        self.assertAlmostEqual(ev.kpi_score, 81.54321, places=3)

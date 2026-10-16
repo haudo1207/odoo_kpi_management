@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- P4 nằm ở module cầu nối vì cần hr_timesheet. Khi chưa cài module này, bộ "Team Lead / PM" của
+         project_kpi_management vẫn chạy bình thường với P1, P2, P3, P5. Bộ có P4 là bộ riêng (không sửa bộ gốc,
+         vì sửa dòng/trọng số bộ gốc sẽ lệch tổng trọng số 100 khi gỡ cài đặt cầu nối). -->
+    <data noupdate="1">
+        <record id="kpi_metric_p4" model="kpi.metric">
+            <field name="code">P4</field>
+            <field name="name">Giờ thực tế so với kế hoạch</field>
+            <field name="category">delivery</field>
+            <field name="unit">% lệch</field>
+            <field name="direction">lower</field>
+            <field name="compute_mode">auto</field>
+            <field name="description">|giờ timesheet thực tế / giờ kế hoạch (allocated_hours) − 1| × 100 trên các dự án Lead quản lý. Lệch càng ít càng tốt.</field>
+        </record>
+        <record id="kpi_template_lead_timesheet" model="kpi.template">
+            <field name="name">Team Lead / PM (có giờ làm)</field>
+            <field name="description">Như bộ Team Lead / PM, thêm P4 (giờ thực tế so với kế hoạch). Gắn vào chức danh PM nếu công ty chấm công theo timesheet.</field>
+            <field name="line_ids" eval="[
+                (0, 0, {'sequence': 1, 'metric_id': ref('project_kpi_management.kpi_metric_p1'), 'target': 80, 'weight': 20, 'min_volume': 2}),
+                (0, 0, {'sequence': 2, 'metric_id': ref('project_kpi_management.kpi_metric_p2'), 'target': 80, 'weight': 20, 'min_volume': 2}),
+                (0, 0, {'sequence': 3, 'metric_id': ref('project_kpi_management.kpi_metric_p3'), 'target': 90, 'weight': 15, 'min_volume': 10}),
+                (0, 0, {'sequence': 4, 'metric_id': ref('kpi_metric_p4'), 'target': 15, 'weight': 15, 'min_volume': 1}),
+                (0, 0, {'sequence': 5, 'metric_id': ref('project_kpi_management.kpi_metric_p5'), 'target': 4, 'weight': 30, 'min_volume': 0}),
+            ]"/>
+        </record>
+    </data>
+</odoo>

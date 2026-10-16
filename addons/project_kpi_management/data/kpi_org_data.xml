@@ -107,6 +107,66 @@
                 (0, 0, {'sequence': 5, 'metric_id': ref('kpi_metric_qa5'), 'target': 4, 'weight': 15, 'min_volume': 0}),
             ]"/>
         </record>
+        <!-- Bước 4 (Chương 9.2, Ưu tiên 2): bộ Team Lead / PM. P1 chỉ là cấu hình (domain); P2, P3 cần hàm vì
+             lấy dữ liệu từ phiếu cấp dưới và báo cáo chất lượng dữ liệu; P5 nhập tay. P4 (giờ thực tế so với
+             kế hoạch) nằm ở module cầu nối project_kpi_timesheet vì cần hr_timesheet.
+             "Dự án của Lead" = project.project.user_id (Quản lý dự án), cùng cách xác định ở P1 và P3. -->
+        <record id="kpi_metric_p1" model="kpi.metric">
+            <field name="code">P1</field>
+            <field name="name">Tỷ lệ milestone đạt đúng hạn</field>
+            <field name="category">delivery</field>
+            <field name="unit">%</field>
+            <field name="direction">higher</field>
+            <field name="compute_mode">domain</field>
+            <field name="source_model_id" ref="project.model_project_milestone"/>
+            <field name="date_field_id" search="[('model', '=', 'project.milestone'), ('name', '=', 'deadline')]"/>
+            <field name="aggregation">ratio</field>
+            <field name="numerator_domain">[('is_reached_on_time', '=', True), ('project_id.user_id', 'in', ['$CURRENT_USER_ID'])]</field>
+            <field name="denominator_domain">[('project_id.user_id', 'in', ['$CURRENT_USER_ID'])]</field>
+            <field name="description">Milestone của dự án do Lead quản lý, có deadline trong kỳ, đã đạt không muộn hơn deadline / tổng milestone có deadline trong kỳ × 100. Milestone chưa đạt mà quá hạn tính là trễ; kỳ chưa kết thúc thì milestone chưa tới hạn cũng chưa đạt nên nên chốt sau kỳ.</field>
+        </record>
+        <record id="kpi_metric_p2" model="kpi.metric">
+            <field name="code">P2</field>
+            <field name="name">Điểm KPI trung bình của team</field>
+            <field name="category">collaboration</field>
+            <field name="unit">điểm</field>
+            <field name="direction">higher</field>
+            <field name="compute_mode">auto</field>
+            <field name="description">Điểm cuối trung bình của cấp dưới trực tiếp, chỉ tính phiếu cùng kỳ đã Gửi/Đã duyệt. Dưới khối lượng tối thiểu (số phiếu) thì Không áp dụng.</field>
+        </record>
+        <record id="kpi_metric_p3" model="kpi.metric">
+            <field name="code">P3</field>
+            <field name="name">Chất lượng dữ liệu dự án</field>
+            <field name="category">process</field>
+            <field name="unit">%</field>
+            <field name="direction">higher</field>
+            <field name="compute_mode">auto</field>
+            <field name="description">Bản ghi sạch / tổng bản ghi của các dự án Lead quản lý, theo báo cáo Kiểm tra dữ liệu (ảnh chụp hiện tại, không theo kỳ).</field>
+        </record>
+        <record id="kpi_metric_p5" model="kpi.metric">
+            <field name="code">P5</field>
+            <field name="name">Đánh giá của cấp trên (Lead/PM)</field>
+            <field name="category">collaboration</field>
+            <field name="unit">điểm</field>
+            <field name="direction">higher</field>
+            <field name="compute_mode">manual</field>
+            <field name="description">Cấp trên chấm thang 1-5 về điều phối, giao tiếp, giải quyết vướng mắc.</field>
+        </record>
+        <record id="kpi_template_lead" model="kpi.template">
+            <field name="name">Team Lead / PM</field>
+            <field name="description">Bộ KPI cho trưởng nhóm / quản lý dự án (P1, P2, P3, P5). Cài thêm module project_kpi_timesheet để có P4 (giờ thực tế so với kế hoạch).</field>
+            <field name="line_ids" eval="[
+                (0, 0, {'sequence': 1, 'metric_id': ref('kpi_metric_p1'), 'target': 80, 'weight': 25, 'min_volume': 2}),
+                (0, 0, {'sequence': 2, 'metric_id': ref('kpi_metric_p2'), 'target': 80, 'weight': 25, 'min_volume': 2}),
+                (0, 0, {'sequence': 3, 'metric_id': ref('kpi_metric_p3'), 'target': 90, 'weight': 20, 'min_volume': 10}),
+                (0, 0, {'sequence': 4, 'metric_id': ref('kpi_metric_p5'), 'target': 4, 'weight': 30, 'min_volume': 0}),
+            ]"/>
+        </record>
+        <record id="hr_job_pm" model="hr.job">
+            <field name="name">Quản lý dự án (PM)</field>
+            <field name="department_id" ref="hr_department_dev"/>
+            <field name="kpi_template_id" ref="kpi_template_lead"/>
+        </record>
         <!-- Bước 3: bảng bậc mẫu, chưa gắn vào bộ KPI nào (Admin gắn ở Bộ KPI > cột Bảng bậc để demo) -->
         <record id="kpi_score_scale_default" model="kpi.score.scale">
             <field name="name">Bậc 4 mức (mẫu)</field>

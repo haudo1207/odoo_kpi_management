@@ -91,7 +91,10 @@ class KpiEngine(models.AbstractModel):
         if not user:
             raise UserError(f"Nhân viên {employee.name} chưa gắn tài khoản người dùng, không lấy được số liệu task.")
         start, end = self._period_bounds(date_from, date_to)
-        return {"user": user, "start": start, "end": end, "cache": {}}
+        return {
+            "user": user, "employee": employee.sudo(), "date_from": date_from, "date_to": date_to,
+            "start": start, "end": end, "cache": {},
+        }
 
     @api.model
     def _period_bounds(self, date_from, date_to):
@@ -211,6 +214,35 @@ class KpiEngine(models.AbstractModel):
             ("project_id", "in", projects.ids), ("bug_resolution", "in", BUG_RESOLUTIONS_COUNTED),
         ])
         return self._ratio(len(bugs.filtered("is_production_bug")), len(bugs)), len(projects)
+
+    def _metric_p2(self, ctx):
+        """Bước 4 (P2): điểm KPI trung bình của cấp dưới trực tiếp, chỉ lấy phiếu CÙNG KỲ đã Gửi hoặc Đã duyệt
+        (điểm cuối). Phiếu cấp dưới chưa chốt thì không vào → ít phiếu hơn min_volume → "Không áp dụng", không
+        ra số sai; nên không cần ép thứ tự tạo phiếu trong wizard, và không tính phiếu của chính người này
+        nên không có vòng lặp. Khối lượng = số phiếu cấp dưới."""
+        subordinates = self.env["hr.employee"].sudo().search([("parent_id", "=", ctx["employee"].id)])
+        evaluations = self.env["kpi.evaluation"].sudo().search([
+            ("employee_id", "in", subordinates.ids), ("state", "in", ("submitted", "approved")),
+            ("period_id.date_from", "=", ctx["date_from"]), ("period_id.date_to", "=", ctx["date_to"]),
+        ])
+        if not evaluations:
+            return 0.0, 0
+        return sum(evaluations.mapped("final_score")) / len(evaluations), len(evaluations)
+
+    def _metric_p3(self, ctx):
+        """Bước 4 (P3): chất lượng dữ liệu của các dự án do người này quản lý (project.user_id), quy về một tỷ lệ
+        bản ghi sạch / tổng bản ghi từ kpi.data.quality.report (Feature xong có SP, task xong có ngày hoàn
+        thành, bug có task gốc, bug đủ phân loại). Báo cáo là ảnh chụp hiện tại, không theo kỳ — nên chốt kỳ
+        Lead khi dữ liệu đã được dọn. Khối lượng = tổng số bản ghi xét."""
+        projects = self.env["project.project"].sudo().search([("user_id", "=", ctx["user"].id)])
+        self.env["project.task"].flush_model()  # báo cáo là SQL view: phải đẩy thay đổi chưa ghi xuống DB trước khi đọc
+        rows = self.env["kpi.data.quality.report"].sudo().search([("project_id", "in", projects.ids)])
+        total = clean = 0
+        for row in rows:
+            total += row.done_feature_count + row.done_count + 2 * row.bug_count
+            clean += (row.done_feature_count - row.done_without_sp) + (row.done_count - row.done_without_date_end) \
+                + (row.bug_count - row.bug_without_origin) + (row.bug_count - row.bug_unclassified)
+        return self._ratio(clean, total), total
 
     @staticmethod
     def _ratio(part, total):
