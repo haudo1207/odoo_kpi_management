@@ -1061,7 +1061,7 @@ Container Odoo đọc code trực tiếp từ thư mục `addons` trên đĩa. N
 mốc tag bảo vệ (Chương 10) mà đến ngày bảo vệ quên chuyển về đúng tag, buổi demo sẽ chạy code
 đang làm dở — không phải bản đã kiểm chứng đủ 204 test (181 + 6 + 9 + 8 của ba module cầu nối) và các bước `pre_defense_check.py`.
 
-**Bản được chọn để bảo vệ: `v1.7-bao-ve`** (Bước 1–5 + Đợt A, B, C, D — toàn bộ kế hoạch ở Chương 9.6). Dự phòng theo thứ tự: `v1.6-bao-ve` (đến D2), `v1.5-bao-ve` (đến Đợt C), `v1.4-bao-ve` (đến Đợt B), `v1.3-bao-ve` (đến Đợt A), `v1.2-bao-ve` (Bước 1–5), `v1.1.1-bao-ve` (Bước 1–4), `v1.0-bao-ve` (bản gọn nhất, chưa có Bước 1–4). `v1.1-bao-ve` có lỗi P2 tính cả phiếu thiếu dữ liệu — **không dùng**. Mọi tag cũ giữ nguyên để truy vết, không di chuyển.
+**Bản được chọn để bảo vệ: `v1.7.1-bao-ve`** (Bước 1–5 + Đợt A, B, C, D — toàn bộ kế hoạch ở Chương 9.6; giống `v1.7-bao-ve` về code, thêm `prepare_defense.sh`, test kiểm tra quyền của wizard 360 và tài liệu đã rà nhất quán — `v1.7-bao-ve` không có script nên không dùng được quy trình dưới đây). Dự phòng theo thứ tự: `v1.7-bao-ve` (chỉ khác ở chỗ trên), `v1.6-bao-ve` (đến D2), `v1.5-bao-ve` (đến Đợt C), `v1.4-bao-ve` (đến Đợt B), `v1.3-bao-ve` (đến Đợt A), `v1.2-bao-ve` (Bước 1–5), `v1.1.1-bao-ve` (Bước 1–4), `v1.0-bao-ve` (bản gọn nhất, chưa có Bước 1–4). `v1.1-bao-ve` có lỗi P2 tính cả phiếu thiếu dữ liệu — **không dùng**. Mọi tag cũ giữ nguyên để truy vết, không di chuyển.
 
 **Ngày dừng:** đặt một ngày dừng cho bản bảo vệ (đề xuất 1 tuần trước buổi bảo vệ). Sau ngày đó, mọi thay đổi
 (các việc còn lại ở Chương 9, ví dụ Bước 6) chỉ nằm trên `main`, không gộp vào tag dùng để bảo vệ, dù xong hay chưa.
@@ -1072,7 +1072,7 @@ và nạp lại thì bị bỏ qua vì kỳ mẫu đã tồn tại. Chỉ lấy 
 
 ```bash
 git stash                      # nếu còn thay đổi chưa commit trên main
-git checkout v1.7-bao-ve
+git checkout v1.7.1-bao-ve
 docker exec odoo19-db dropdb -U odoo --force --if-exists kpi_defense
 docker exec odoo19-web odoo -d kpi_defense -i project_kpi_skills,project_kpi_survey --stop-after-init   # cài module (kéo theo project_kpi_management, hr_skills, survey)
 docker exec odoo19-web sh -c "echo 'env[\"kpi.demo\"]._load_scenario(); env.cr.commit()' | odoo shell -d kpi_defense --max-cron-threads=0 --http-port=8072"
@@ -1229,7 +1229,7 @@ buộc lý do) và **chấm chỉ số định tính** (D9) — số liệu tự
 
 ## Chương 9 — Hướng phát triển
 
-**Trạng thái:** mọi tính năng trong kế hoạch này đã được triển khai trừ **Bước 6** (kỳ khác nhau theo bộ KPI đã làm ở Đợt B1; còn lại nhân viên kiêm nhiệm — xem 9.6 "Không làm"). Bản dùng để bảo vệ là tag `v1.7-bao-ve` (Chương 5.7, 10), phát triển trực tiếp trên `main` (không tách nhánh riêng — tag đã giữ đúng từng mốc, không di chuyển). Các Bước 0–5 ở 9.1–9.4 là kế hoạch ban đầu và nay đều đã triển khai; 9.6 ghi các đợt hoàn thiện sau đó.
+**Trạng thái:** mọi tính năng trong kế hoạch này đã được triển khai trừ **Bước 6** (kỳ khác nhau theo bộ KPI đã làm ở Đợt B1; còn lại nhân viên kiêm nhiệm — xem 9.6 "Không làm"). Bản dùng để bảo vệ là tag `v1.7.1-bao-ve` (Chương 5.7, 10), phát triển trực tiếp trên `main` (không tách nhánh riêng — tag đã giữ đúng từng mốc, không di chuyển). Các Bước 0–5 ở 9.1–9.4 là kế hoạch ban đầu và nay đều đã triển khai; 9.6 ghi các đợt hoàn thiện sau đó.
 
 ### 9.1. Điểm nghẽn lớn nhất: chỉ số tự động phải viết code — ĐÃ TRIỂN KHAI
 
@@ -1465,7 +1465,7 @@ Nguyên tắc thiết kế cốt lõi — không hardcode vai trò — đã đư
 (Chương 7), không chỉ dừng ở khẳng định lý thuyết. Các giới hạn còn tồn tại (Chương 8.3) đều đã được
 xác định rõ ràng, có hướng xử lý cụ thể (Chương 9), phù hợp để trình bày minh bạch trước hội đồng.
 
-Bản dùng để bảo vệ được đóng băng ở tag Git `v1.7-bao-ve` (dự phòng: `v1.6-bao-ve`, `v1.5-bao-ve`, `v1.4-bao-ve`, `v1.3-bao-ve`, `v1.2-bao-ve`, `v1.1.1-bao-ve`; gọn nhất: `v1.0-bao-ve`) — quy trình
+Bản dùng để bảo vệ được đóng băng ở tag Git `v1.7.1-bao-ve` (dự phòng: `v1.7-bao-ve`, `v1.6-bao-ve`, `v1.5-bao-ve`, `v1.4-bao-ve`, `v1.3-bao-ve`, `v1.2-bao-ve`, `v1.1.1-bao-ve`; gọn nhất: `v1.0-bao-ve`) — quy trình
 chuyển đúng về bản này vào ngày bảo vệ và kịch bản demo nằm ở Chương 5.7, 5.8. Phát triển tiếp theo hướng
 Chương 9 đi trên `main`, không ảnh hưởng các tag này.
 
