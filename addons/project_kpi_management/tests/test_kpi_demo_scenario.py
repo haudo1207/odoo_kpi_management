@@ -333,3 +333,11 @@ class TestKpiDemoScenario(TransactionCase):
             "template_line_id": d2_line.id, "department_id": department.id, "target": 20,
         })
         self.assertEqual((override.suggestion_easy, override.suggestion_medium, override.suggestion_hard), (13.5, 15.0, 16.5))
+
+    def test_demo_managers_all_have_kpi_manager_group(self):
+        """Mọi quản lý trực tiếp trong dữ liệu mẫu (Quốc Việt, và PM Phúc của Dung, Khoa, Hà) thuộc nhóm KPI Manager —
+        dữ liệu mẫu không được chứa chính lỗi cấu hình mà danh sách "Quản lý chưa có quyền KPI" cảnh báo."""
+        issues = self.env["kpi.manager.issue"].action_open()
+        flagged = self.env["kpi.manager.issue"].search(issues["domain"]).mapped("employee_name")
+        demo_names = {self.env.ref(f"project_kpi_management.demo_employee_{k}").name for k in ("an", "binh", "chi", "ha", "dung", "khoa", "phuc", "lan")}
+        self.assertFalse(demo_names & set(flagged))

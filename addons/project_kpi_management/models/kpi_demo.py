@@ -91,7 +91,12 @@ class KpiDemo(models.AbstractModel):
             {"name": "Hoàn thành", "sequence": 3, "fold": True},
         ])
         # Phúc (PM, Bước 4): quản lý dự án mẫu — "dự án của Lead" xác định bằng project.user_id
-        pm_user = self.env["res.users"].create({"name": "Hoàng Văn Phúc", "login": "phuc", "password": "phuc", "tz": tz.zone})
+        # PM quản lý trực tiếp Dung, Khoa, Hà nên phải thuộc nhóm KPI Manager (nếu không không đọc được phiếu của họ và
+        # nhắc việc phải chuyển cho người duyệt mặc định — chính là lỗi cấu hình mà "Quản lý chưa có quyền KPI" báo)
+        pm_user = self.env["res.users"].create({
+            "name": "Hoàng Văn Phúc", "login": "phuc", "password": "phuc", "tz": tz.zone,
+            "group_ids": [(4, self.env.ref(XMLID % "group_kpi_manager").id)],
+        })
         pm_employee = self.env["hr.employee"].create({
             "name": "Hoàng Văn Phúc", "user_id": pm_user.id, "job_id": self.env.ref(XMLID % "hr_job_pm").id,
             "department_id": department.id, "parent_id": manager_employee.id,

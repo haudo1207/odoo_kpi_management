@@ -182,7 +182,7 @@ addons/project_kpi_management/
 ├── data/                             Dữ liệu cấu hình chuẩn (D1–D9, bộ Developer/Tester, cron, loại nhắc việc PIP...)
 ├── views/                           View cho từng model + menu
 ├── report/                          Mẫu in PDF
-└── tests/                           19 file, 181 test
+└── tests/                           19 file, 182 test
 
 addons/project_kpi_timesheet/            Module cầu nối (Bước 4): P4 + bộ "Team Lead / PM (có giờ làm)", 6 test riêng
 addons/project_kpi_skills/               Module cầu nối (Đợt D2): S1 mức đáp ứng kỹ năng + bộ "Developer (có năng lực)", 9 test riêng
@@ -646,7 +646,7 @@ docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management \
   --test-tags /project_kpi_management --stop-after-init --http-port 8070
 ```
 
-### 5.3. Danh sách test case (181 test, 19 file)
+### 5.3. Danh sách test case (182 test, 19 file)
 
 #### `tests/test_kpi_config.py` — 9 test (Phase 1: chỉ số, bộ KPI)
 
@@ -733,7 +733,7 @@ docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management \
 | `test_employee_without_user` | Nhân viên chưa có tài khoản → báo lỗi rõ ràng, không trả về 0 |
 | `test_compute_on_evaluation` | Gọi qua `action_compute_kpi()` từ phiếu, không ghi đè chỉ số nhập tay |
 
-#### `tests/test_kpi_demo_scenario.py` — 16 test (đối chiếu bảng tính tay; từ Bước 2 trở đi thêm test cho Dung, Phúc, Lan, người duyệt mặc định và lịch sử gợi ý — mô tả ở các mục tương ứng bên dưới)
+#### `tests/test_kpi_demo_scenario.py` — 17 test (đối chiếu bảng tính tay; từ Bước 2 trở đi thêm test cho Dung, Phúc, Lan, người duyệt mặc định và lịch sử gợi ý — mô tả ở các mục tương ứng bên dưới)
 
 | Test | Kiểm tra |
 |---|---|
@@ -965,7 +965,7 @@ Dữ liệu cố định, số đếm tính tay trước khi chạy: team của 
 
 ### 5.4. Kết quả kiểm thử
 
-**Tổng cộng 204 test, 0 failed, 0 error:** 181 test của module chính (`project_kpi_management`) + 6 của `project_kpi_timesheet` + 9 của `project_kpi_skills` + 8 của `project_kpi_survey`. Lần gần nhất 2026-10-16, đều trên database tạo mới hoàn toàn (không chỉ chạy lại trên database cũ): module chính một mình; module chính + `project_kpi_timesheet`; và **cả ba module cầu nối cài cùng lúc** (203 test tại thời điểm chạy — chưa tính test thêm sau đó) để chắc các hàm `_metric_*` của chúng (đều kế thừa `kpi.engine`) không đè nhau. Từng module cầu nối cũng được chạy riêng bằng `--test-tags`.
+**Tổng cộng 205 test, 0 failed, 0 error:** 182 test của module chính (`project_kpi_management`) + 6 của `project_kpi_timesheet` + 9 của `project_kpi_skills` + 8 của `project_kpi_survey`. Lần gần nhất 2026-10-16, đều trên database tạo mới hoàn toàn (không chỉ chạy lại trên database cũ): module chính một mình; module chính + `project_kpi_timesheet`; và **cả ba module cầu nối cài cùng lúc** (203 test tại thời điểm chạy — chưa tính test thêm sau đó) để chắc các hàm `_metric_*` của chúng (đều kế thừa `kpi.engine`) không đè nhau. Từng module cầu nối cũng được chạy riêng bằng `--test-tags`.
 
 **Các lỗi thật phát hiện nhờ kiểm tra qua đường đi thật** (không phải qua unit test gọi thẳng hàm), đã sửa và có test khoá lại:
 
@@ -1027,11 +1027,11 @@ không ảnh hưởng dữ liệu demo dùng để trình bày:
 Cách chạy trước khi bảo vệ:
 
 ```bash
-bash addons/project_kpi_management/scripts/prepare_defense.sh kpi_dev   # gói cả ba bước dưới đây
+bash addons/project_kpi_management/scripts/prepare_defense.sh kpi_defense   # gói cả ba bước dưới đây
 # tương đương làm tay (dễ quên bước giữa):
-#   docker compose exec odoo odoo -d kpi_dev -u project_kpi_management --stop-after-init
+#   docker compose exec odoo odoo -d kpi_defense -u project_kpi_management --stop-after-init
 #   docker compose restart odoo
-#   docker compose exec odoo python3 /mnt/extra-addons/project_kpi_management/scripts/pre_defense_check.py --db kpi_dev
+#   docker compose exec odoo python3 /mnt/extra-addons/project_kpi_management/scripts/pre_defense_check.py --db kpi_defense
 ```
 
 In `KẾT QUẢ: tất cả OK — có thể demo.` thì yên tâm. Script này tự nó đã bắt được nhiều lỗi thật khi
@@ -1059,7 +1059,7 @@ Mật khẩu `admin` cũ của dev vẫn còn trong lịch sử Git; môi trư�
 
 Container Odoo đọc code trực tiếp từ thư mục `addons` trên đĩa. Nếu phát triển tiếp trên `main` sau
 mốc tag bảo vệ (Chương 10) mà đến ngày bảo vệ quên chuyển về đúng tag, buổi demo sẽ chạy code
-đang làm dở — không phải bản đã kiểm chứng đủ 204 test (181 + 6 + 9 + 8 của ba module cầu nối) và các bước `pre_defense_check.py`.
+đang làm dở — không phải bản đã kiểm chứng đủ 205 test (182 + 6 + 9 + 8 của ba module cầu nối) và các bước `pre_defense_check.py`.
 
 **Bản được chọn để bảo vệ: `v1.7.1-bao-ve`** (Bước 1–5 + Đợt A, B, C, D — toàn bộ kế hoạch ở Chương 9.6; giống `v1.7-bao-ve` về code, thêm `prepare_defense.sh`, test kiểm tra quyền của wizard 360 và tài liệu đã rà nhất quán — `v1.7-bao-ve` không có script nên không dùng được quy trình dưới đây). Dự phòng theo thứ tự: `v1.7-bao-ve` (chỉ khác ở chỗ trên), `v1.6-bao-ve` (đến D2), `v1.5-bao-ve` (đến Đợt C), `v1.4-bao-ve` (đến Đợt B), `v1.3-bao-ve` (đến Đợt A), `v1.2-bao-ve` (Bước 1–5), `v1.1.1-bao-ve` (Bước 1–4), `v1.0-bao-ve` (bản gọn nhất, chưa có Bước 1–4). `v1.1-bao-ve` có lỗi P2 tính cả phiếu thiếu dữ liệu — **không dùng**. Mọi tag cũ giữ nguyên để truy vết, không di chuyển.
 
@@ -1094,7 +1094,20 @@ Sau buổi bảo vệ xoá hai dòng này. Lưu ý: khi đang khoá, `pre_defens
 
 **Module cầu nối cài trên `kpi_defense`:** `project_kpi_skills` (thêm tab Kỹ năng vào hồ sơ nhân viên, ít xáo trộn) và `project_kpi_survey` (thêm app Surveys; khảo sát 360 mẫu nằm trong đó). **Không** cài `hr_timesheet`/`project_kpi_timesheet` (thêm app Timesheet). Các bước tương ứng trong `pre_defense_check.py` tự bỏ qua khi module chưa cài.
 
-Tài khoản demo trên `kpi_defense`: `admin`/`admin` và các tài khoản ở Chương 5.8 (mật khẩu trùng tên đăng nhập).
+**Database duy nhất của môi trường:** chỉ giữ `kpi_defense` (các database kiểm thử/phát triển như `kpi_dev`, `kpi_fresh_check` đã xoá; khi cần chạy test thì dựng database tạm rồi xoá lại).
+
+**Tài khoản test theo vai trò trên `kpi_defense`** (mật khẩu trùng tên đăng nhập):
+
+| Đăng nhập | Họ tên | Vai trò KPI | Dùng để |
+|---|---|---|---|
+| `admin` | Administrator | **KPI Administrator** | Cấu hình, tạo/duyệt/trả về/mở lại phiếu, Thiết lập, mọi báo cáo; xem Tổng quan toàn bộ |
+| `quocviet` | Phạm Quốc Việt | **KPI Manager** | Quản lý trực tiếp của An, Bình, Chi, Phúc, Lan: tính KPI, chấm tay, gửi duyệt; Tổng quan chỉ thấy team mình; bị chặn khi duyệt phiếu nhân viên mình quản lý dù được gán thêm quyền Admin (demo xung đột vai trò) |
+| `phuc` | Hoàng Văn Phúc | **KPI Manager** (PM) | Quản lý trực tiếp của Dung, Khoa, Hà; bộ Team Lead/PM (P1, P2, P3, P5) |
+| `an`, `binh`, `chi`, `ha` | Nguyễn Văn An, Trần Thị Bình, Lê Minh Chi, Lý Thanh Hà | KPI User — Lập trình viên | Xem phiếu của mình, Tự đánh giá (Nháp), Xác nhận kết quả (Đã duyệt), trả lời khảo sát 360 khi được mời |
+| `dung`, `khoa` | Đỗ Thị Dung, Vũ Minh Khoa | KPI User — Tester (QA) | Bộ Tester tự động; Khoa là tester mới (thiếu dữ liệu) |
+| `lan` | Trịnh Thu Lan | KPI User — BA | Bộ Business Analyst (B1–B4) |
+
+Mọi quản lý trực tiếp trong dữ liệu mẫu đều thuộc nhóm KPI Manager (có test `test_demo_managers_all_have_kpi_manager_group`); Phúc được thêm nhóm này ở bản `v1.7.2-bao-ve` — trước đó Dung, Khoa, Hà có quản lý không đọc được phiếu của họ và nhắc việc chuyển cho người duyệt mặc định.
 Khi đã có database dựng từ bản này: `git checkout` tag rồi chạy lại `prepare_defense.sh <tên database>` (script tự tìm các module KPI đã cài để nạp lại).
 
 Nạp lại module (`-u`) + khởi động lại container là bắt buộc, không phải tuỳ chọn — `prepare_defense.sh` làm sẵn cả hai và chờ server sẵn sàng, để không còn bước nào phải nhớ làm tay. Lý do
@@ -1104,7 +1117,7 @@ trình Odoo đang chạy. Lần `-u` đầu trên database còn ở bản cũ s�
 ### 5.8. Kịch bản demo (10–15 phút, chọn lọc)
 
 Không demo hết được — chọn 4–5 phần đầu (bắt buộc) rồi lấy thêm các phần "nếu còn thời gian" theo câu hỏi của hội đồng, thứ tự từ nền tảng tới mở rộng. **Mở đầu** bằng màn hình **KPI › Tổng quan** (vào app là thấy ngay): thẻ kỳ mẫu lúc đầu còn trống — nói đây là bức tranh tổng của mọi kỳ; sau phần 1 quay lại màn hình này để thấy thẻ đã đầy số và bấm vào số **Cần cải thiện** để đi thẳng vào phiếu cụ thể. Dữ liệu mẫu: kỳ "Tháng ... (dữ liệu mẫu)", tài khoản
-`admin`, `quocviet` (quản lý), `an`, `binh`, `phuc` (PM), `dung`, `khoa` (tester), `ha` (Developer, cấp dưới của Phúc), `lan` (BA); người duyệt mặc định đã đặt sẵn là `admin`; mật khẩu trùng tên đăng nhập.
+`admin` (KPI Admin), `quocviet` và `phuc` (KPI Manager), `an`, `binh`, `chi`, `ha` (Developer), `dung`, `khoa` (tester), `lan` (BA) — bảng vai trò ở Chương 5.7; người duyệt mặc định đã đặt sẵn là `admin`; mật khẩu trùng tên đăng nhập.
 
 | # | Phần (thời gian) | Thao tác | Điều cần nói |
 |---|---|---|---|
@@ -1119,7 +1132,7 @@ Không demo hết được — chọn 4–5 phần đầu (bắt buộc) rồi l
 | 9 | (nếu còn thời gian, 2') Một bug, hai trách nhiệm | Phiếu `lan` (BA): B2 = 2/3 vì bug "yêu cầu sai" của task t6 quy về BA; mở phiếu `binh`: D3 không tính bug đó | Một lần phân loại bug (`bug_root_cause`), trách nhiệm quy đúng người |
 | 10 | (nếu còn thời gian, 2') Chấm theo bậc | Bộ KPI → gắn "Bậc 4 mức (mẫu)" vào một dòng → tạo phiếu mới → cột "% đạt mục tiêu" và bậc hiển thị | Phiếu cũ không đổi vì bảng bậc được chụp lúc tạo phiếu |
 
-Trước buổi demo chạy `pre_defense_check.py` (5.6). Không cài `hr_timesheet` trên `kpi_dev`; P4 chỉ nói bằng lời nếu hội đồng hỏi, kèm bằng chứng là test của module cầu nối.
+Trước buổi demo chạy `pre_defense_check.py` (5.6). Không cài `hr_timesheet` trên `kpi_defense`; P4 chỉ nói bằng lời nếu hội đồng hỏi, kèm bằng chứng là test của module cầu nối.
 
 ---
 
@@ -1457,7 +1470,7 @@ Sau Bước 5 các tính năng còn lại được chia theo giá trị cho báo
 MVP (31/31 hạng mục) và phần lớn phạm vi Nên có/Mở rộng (7/7 hạng mục), tổng cộng 38/38 hạng mục
 trong bảng thống kê triển khai, cộng thêm 6 mục mở rộng sau khi đối chiếu với các hệ thống KPI tương
 tự (màu xếp loại, chặn xung đột vai trò, nhắc việc PIP, mục tiêu theo phòng ban, chỉ số theo dự án,
-tự đánh giá — Chương 9 cũ, nay đã triển khai). Hệ thống có 204 unit test tự động (181 ở module chính, 6 + 9 + 8 ở ba module cầu nối; 0 lỗi) cộng với
+tự đánh giá — Chương 9 cũ, nay đã triển khai). Hệ thống có 205 unit test tự động (182 ở module chính, 6 + 9 + 8 ở ba module cầu nối; 0 lỗi) cộng với
 kiểm thử thủ công trên REST API, báo cáo PDF, phân quyền, luồng nghiệp vụ hoàn chỉnh trên dữ liệu
 thật, và kiểm tra qua đúng tài khoản thật bằng XML-RPC (`scripts/pre_defense_check.py`, Chương 5.6)
 — cách kiểm tra này tự nó đã bắt được một số lỗi mà unit test (chạy bằng superuser) không bắt được.
