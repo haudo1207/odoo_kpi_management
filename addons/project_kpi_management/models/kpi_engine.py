@@ -23,8 +23,10 @@ class KpiEngine(models.AbstractModel):
     _description = "KPI Engine"
 
     @api.model
-    def compute_actual(self, metric, employee, date_from, date_to):
-        """Trả về (actual, volume) của một chỉ số, hoặc None nếu chỉ số nhập tay."""
+    def compute_actual(self, metric, employee, date_from, date_to, job=None):
+        """Trả về (actual, volume) của một chỉ số, hoặc None nếu chỉ số nhập tay. `job` là chức danh ĐÃ CHỤP trên phiếu
+        (hr.job); chỉ số theo chức danh (ví dụ mức đáp ứng kỹ năng) so theo chức danh này chứ không theo chức danh hiện
+        tại của nhân viên. Không truyền thì dùng chức danh hiện tại."""
         if not metric._is_engine_computed():
             return None
         if metric.compute_mode == "domain":
@@ -32,7 +34,7 @@ class KpiEngine(models.AbstractModel):
         method = getattr(self, f"_metric_{metric.code.lower()}", None)
         if not method:
             raise UserError(f"Chưa có hàm tính cho chỉ số tự động {metric.code}.")
-        return method(self._context_for(employee, date_from, date_to))
+        return method(self._context_for(employee, date_from, date_to, job=job))
 
     @api.model
     def _compute_domain_metric(self, metric, employee, date_from, date_to):
@@ -86,13 +88,14 @@ class KpiEngine(models.AbstractModel):
         return self._period_bounds(date_from, date_to)
 
     @api.model
-    def _context_for(self, employee, date_from, date_to):
+    def _context_for(self, employee, date_from, date_to, job=None):
         user = employee.sudo().user_id
         if not user:
             raise UserError(f"Nhân viên {employee.name} chưa gắn tài khoản người dùng, không lấy được số liệu task.")
         start, end = self._period_bounds(date_from, date_to)
         return {
-            "user": user, "employee": employee.sudo(), "date_from": date_from, "date_to": date_to,
+            "user": user, "employee": employee.sudo(), "job": (job or employee.sudo().job_id).sudo(),
+            "date_from": date_from, "date_to": date_to,
             "start": start, "end": end, "cache": {},
         }
 

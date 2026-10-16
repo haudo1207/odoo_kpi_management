@@ -277,7 +277,7 @@ class KpiEvaluation(models.Model):
                 raise UserError(f"Phiếu {ev.name} không ở trạng thái Nháp, không tính lại được.")
             for line in ev.line_ids.filtered(lambda l: l.metric_id._is_engine_computed()):
                 actual, volume = engine.compute_actual(
-                    line.metric_id, ev.employee_id, ev.period_id.date_from, ev.period_id.date_to
+                    line.metric_id, ev.employee_id, ev.period_id.date_from, ev.period_id.date_to, job=ev.job_id
                 )
                 line.write({"actual": actual, "volume": volume})
             now = fields.Datetime.now()

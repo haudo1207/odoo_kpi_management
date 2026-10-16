@@ -591,6 +591,55 @@ def check_dashboard(s):
         s.fail("Màn hình tổng quan", f"số liệu/nút không khớp: {row}, nút mở {opened}")
 
 
+def _module_installed(s, name):
+    return bool(s.call("admin", "ir.module.module", "search_count", [("name", "=", name), ("state", "=", "installed")]))
+
+
+def check_skills_bridge(s):
+    """Đợt D2: chỉ chạy khi module project_kpi_skills đã cài. Chức danh yêu cầu Python 75, Odoo 50, SQL 50; nhân viên có
+    Python 100, Odoo 50, SQL 25 → đạt 2/3 → S1 = 66,67%, mục tiêu 80% → điểm dòng 83,33 (tính tay trước khi chạy)."""
+    if not _module_installed(s, "project_kpi_skills"):
+        print("[SKIP] S1 (mức đáp ứng kỹ năng): module project_kpi_skills chưa cài trên database này")
+        return
+    suffix = time.strftime("%H%M%S")
+    skill_type = s.call("admin", "hr.skill.type", "create", {
+        "name": f"Kỹ năng kiểm tra {suffix}",
+        "skill_ids": [(0, 0, {"name": n}) for n in ("Python", "Odoo", "SQL")],
+        "skill_level_ids": [(0, 0, {"name": f"M{p}", "level_progress": p}) for p in (25, 50, 75, 100)],
+    })
+    s.add_cleanup(lambda: s.call("admin", "hr.skill.type", "unlink", [skill_type]))
+    type_row = s.call("admin", "hr.skill.type", "read", [skill_type], fields=["skill_ids", "skill_level_ids"])[0]
+    skills = {r["name"]: r["id"] for r in s.call("admin", "hr.skill", "read", type_row["skill_ids"], fields=["name"])}
+    levels = {r["level_progress"]: r["id"] for r in s.call("admin", "hr.skill.level", "read", type_row["skill_level_ids"], fields=["level_progress"])}
+    _, template_id = s.ref("project_kpi_skills.kpi_template_developer_skills")
+    job_id = s.call("admin", "hr.job", "create", {"name": f"Dev kỹ năng kiểm tra {suffix}", "kpi_template_id": template_id})
+    s.add_cleanup(lambda: s.call("admin", "hr.job", "unlink", [job_id]))
+    for name, progress in (("Python", 75), ("Odoo", 50), ("SQL", 50)):
+        s.call("admin", "hr.job.skill", "create", {
+            "job_id": job_id, "skill_type_id": skill_type, "skill_id": skills[name], "skill_level_id": levels[progress],
+            "valid_from": "2000-01-01",
+        })
+    _, _, employee_id, _ = _make_pm(s, suffix + "k", "project_kpi_management.hr_job_developer")
+    s.call("admin", "hr.employee", "write", [employee_id], {"job_id": job_id})
+    for name, progress in (("Python", 100), ("Odoo", 50), ("SQL", 25)):
+        s.call("admin", "hr.employee.skill", "create", {
+            "employee_id": employee_id, "skill_type_id": skill_type, "skill_id": skills[name],
+            "skill_level_id": levels[progress], "valid_from": "2000-01-01",
+        })
+    period_id = s.call("admin", "kpi.period", "create", {
+        "name": f"Kiểm tra kỹ năng {suffix}", "period_type": "month", "date_from": "2000-01-01", "date_to": "2099-12-31",
+    })
+    s.add_cleanup(lambda: s.call("admin", "kpi.period", "unlink", [period_id]))
+    ev_id = create_evaluation(s, None, period_id, employee_id=employee_id)
+    s.call("admin", "kpi.evaluation", "action_compute_kpi", [ev_id])
+    line = s.call("admin", "kpi.evaluation.line", "search_read",
+                  [("evaluation_id", "=", ev_id), ("metric_id.code", "=", "S1")], fields=["actual", "volume", "score"])[0]
+    if abs(line["actual"] - 200 / 3) < 0.01 and line["volume"] == 3 and abs(line["score"] - 200 / 3 / 80 * 100) < 0.01:
+        s.ok("S1 mức đáp ứng kỹ năng: 2/3 kỹ năng đạt → 66,67%, điểm dòng 83,33, khớp bảng tính tay")
+    else:
+        s.fail("S1 mức đáp ứng kỹ năng", f"mong đợi 66,67 / khối lượng 3 / điểm 83,33, thực tế {line}")
+
+
 def check_timesheet_bridge(s):
     """Bước 4 (P4): chỉ chạy khi module cầu nối project_kpi_timesheet đã cài. Dự án giờ kế hoạch 100, thực tế 130
     → lệch 30%; mục tiêu 15 (thấp tốt) → 15/30 = 50 điểm. Tính tay trước khi chạy."""
@@ -678,6 +727,7 @@ def main():
         check_workflow(s)
         check_period_type_and_suggestion(s)
         check_dashboard(s)
+        check_skills_bridge(s)
         check_timesheet_bridge(s)
     finally:
         s.run_cleanups()
