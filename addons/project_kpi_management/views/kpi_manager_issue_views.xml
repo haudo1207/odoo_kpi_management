@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="kpi_manager_issue_view_list" model="ir.ui.view">
+        <field name="name">kpi.manager.issue.list</field>
+        <field name="model">kpi.manager.issue</field>
+        <field name="arch" type="xml">
+            <list create="0" edit="0" delete="0">
+                <field name="employee_name"/>
+                <field name="job_name"/>
+                <field name="manager_name"/>
+                <field name="reason"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="kpi_manager_issue_server_action" model="ir.actions.server">
+        <field name="name">Quản lý chưa có quyền KPI</field>
+        <field name="model_id" ref="model_kpi_manager_issue"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_open()</field>
+    </record>
+</odoo>

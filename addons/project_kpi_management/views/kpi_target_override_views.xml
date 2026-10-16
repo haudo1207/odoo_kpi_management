@@ -25,6 +25,18 @@
                     <field name="department_id"/>
                     <field name="target"/>
                 </group>
+                <group string="Gợi ý từ lịch sử (chỉ để tham khảo)">
+                    <field name="suggestion_available" invisible="1"/>
+                    <field name="suggestion_note"/>
+                    <field name="suggestion_easy" invisible="not suggestion_available"/>
+                    <field name="suggestion_medium" invisible="not suggestion_available"/>
+                    <field name="suggestion_hard" invisible="not suggestion_available"/>
+                </group>
+                <div invisible="not suggestion_available or not id">
+                    <button name="action_apply_easy" string="Áp dụng mức Dễ" type="object" groups="project_kpi_management.group_kpi_admin"/>
+                    <button name="action_apply_medium" string="Áp dụng mức Vừa" type="object" class="btn-primary" groups="project_kpi_management.group_kpi_admin"/>
+                    <button name="action_apply_hard" string="Áp dụng mức Khó" type="object" groups="project_kpi_management.group_kpi_admin"/>
+                </div>
             </form>
         </field>
     </record>

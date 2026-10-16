@@ -11,5 +11,6 @@ from . import kpi_evaluation
 from . import kpi_engine
 from . import kpi_demo
 from . import kpi_data_quality
+from . import kpi_manager_issue
 from . import kpi_team_report
 from . import res_config_settings

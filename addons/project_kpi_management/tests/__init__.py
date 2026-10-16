@@ -14,3 +14,5 @@ from . import test_kpi_score_scale
 from . import test_kpi_lead
 from . import test_kpi_ba
 from . import test_kpi_workflow
+from . import test_kpi_period_types
+from . import test_kpi_target_suggestion

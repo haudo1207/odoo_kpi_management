@@ -1,5 +1,7 @@
 from odoo import api, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
+
+PERIOD_TYPES = [("month", "Tháng"), ("sprint", "Sprint"), ("quarter", "Quý")]
 
 
 class KpiTemplate(models.Model):
@@ -10,9 +12,26 @@ class KpiTemplate(models.Model):
     name = fields.Char("Tên bộ KPI", required=True)
     description = fields.Text("Mô tả")
     active = fields.Boolean(default=True)
+    period_type = fields.Selection(
+        PERIOD_TYPES, string="Loại kỳ", required=True, default="month",
+        help="Wizard và tác vụ cuối kỳ chỉ tạo phiếu cho nhân viên có bộ KPI cùng loại kỳ với kỳ đánh giá. "
+             "Mục tiêu tính theo độ dài kỳ (ví dụ 20 SP/tháng khác 60 SP/quý): bộ theo quý cần mục tiêu riêng.",
+    )
     line_ids = fields.One2many("kpi.template.line", "template_id", string="Chỉ số", copy=True)
     job_ids = fields.One2many("hr.job", "kpi_template_id", string="Chức danh áp dụng")
     total_weight = fields.Integer("Tổng trọng số", compute="_compute_total_weight")
+
+    def write(self, vals):
+        if "period_type" in vals:
+            for template in self.filtered(lambda t: t.period_type != vals["period_type"]):
+                if self.env["kpi.evaluation"].sudo().search_count(
+                    [("template_id", "=", template.id), ("period_id.state", "=", "open")]
+                ):
+                    raise UserError(
+                        f"Bộ KPI \"{template.name}\" còn phiếu ở kỳ đang mở, không đổi loại kỳ được. "
+                        "Đóng kỳ hoặc hoàn tất các phiếu đó trước."
+                    )
+        return super().write(vals)
 
     @api.depends("line_ids.weight")
     def _compute_total_weight(self):

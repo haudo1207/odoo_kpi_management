@@ -14,6 +14,8 @@
     <menuitem id="menu_kpi_report_department" name="Theo phòng ban" parent="menu_kpi_report" action="kpi_evaluation_department_action" sequence="32"/>
     <menuitem id="menu_kpi_report_department_metric" name="Chỉ số theo phòng ban" parent="menu_kpi_report" action="kpi_evaluation_line_department_action" sequence="34"/>
     <menuitem id="menu_kpi_report_data_quality" name="Kiểm tra dữ liệu" parent="menu_kpi_report" action="kpi_data_quality_report_action" sequence="40"/>
+    <menuitem id="menu_kpi_report_manager_issue" name="Quản lý chưa có quyền KPI" parent="menu_kpi_report"
+              action="kpi_manager_issue_server_action" sequence="42" groups="group_kpi_admin"/>
     <menuitem id="menu_kpi_report_team" name="Chỉ số theo dự án" parent="menu_kpi_report" action="kpi_team_report_action" sequence="45"/>
 
     <menuitem id="menu_kpi_config" name="Cấu hình" parent="menu_kpi_root" sequence="100" groups="group_kpi_manager"/>

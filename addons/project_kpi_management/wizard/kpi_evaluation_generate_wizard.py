@@ -26,7 +26,7 @@ class KpiEvaluationGenerateWizard(models.TransientModel):
             raise UserError("Chỉ tạo phiếu cho kỳ đang mở.")
         evaluations = self.period_id._generate_evaluations(self.department_ids, compute=self.compute)
         if not evaluations:
-            raise UserError("Không có nhân viên nào cần tạo phiếu: đã có phiếu, hoặc chưa có tài khoản / chức danh chưa gắn bộ KPI.")
+            raise UserError("Không có nhân viên nào cần tạo phiếu: đã có phiếu, chưa có tài khoản, chức danh chưa gắn bộ KPI, hoặc bộ KPI khác loại kỳ với kỳ này.")
         return {
             "type": "ir.actions.act_window",
             "name": f"Phiếu vừa tạo — {self.period_id.name}",

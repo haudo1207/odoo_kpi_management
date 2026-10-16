@@ -2,6 +2,8 @@ import logging
 
 from odoo import api, fields, models
 
+from .kpi_template import PERIOD_TYPES
+
 _logger = logging.getLogger(__name__)
 
 
@@ -12,7 +14,7 @@ class KpiPeriod(models.Model):
 
     name = fields.Char("Tên kỳ", required=True)
     period_type = fields.Selection(
-        [("month", "Tháng"), ("sprint", "Sprint"), ("quarter", "Quý")],
+        PERIOD_TYPES,
         string="Loại kỳ",
         required=True,
         default="month",
@@ -59,13 +61,16 @@ class KpiPeriod(models.Model):
         }
 
     def _eligible_employees(self, departments=None):
-        """Nhân viên đủ điều kiện tạo phiếu: có tài khoản người dùng và chức danh đã gắn bộ KPI.
-        Đọc bằng sudo vì chức danh, phòng ban nằm ở hr.version."""
+        """Nhân viên đủ điều kiện tạo phiếu: có tài khoản người dùng, chức danh đã gắn bộ KPI VÀ bộ KPI đó cùng
+        loại kỳ với kỳ này (Đợt B1: Developer theo tháng, BA/PM theo quý...). Đọc bằng sudo vì chức danh,
+        phòng ban nằm ở hr.version."""
         domain = [("user_id", "!=", False)]
         if departments:
             domain.append(("department_id", "child_of", departments.ids))
         employees = self.env["hr.employee"].sudo().search(domain)
-        return employees.filtered(lambda e: e.job_id.kpi_template_id.line_ids)
+        return employees.filtered(
+            lambda e: e.job_id.kpi_template_id.line_ids and e.job_id.kpi_template_id.period_type == self.period_type
+        )
 
     def _generate_evaluations(self, departments=None, compute=True):
         """Tạo phiếu cho mọi nhân viên đủ điều kiện chưa có phiếu trong kỳ, rồi Tính KPI.

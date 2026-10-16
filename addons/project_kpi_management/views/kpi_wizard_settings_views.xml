@@ -13,8 +13,8 @@
                     <field name="preview_count" invisible="not period_id"/>
                 </group>
                 <p class="text-muted">
-                    Tạo phiếu cho nhân viên có tài khoản người dùng và chức danh đã gắn bộ KPI.
-                    Nhân viên đã có phiếu trong kỳ được bỏ qua.
+                    Tạo phiếu cho nhân viên có tài khoản người dùng và chức danh đã gắn bộ KPI cùng loại kỳ với kỳ này
+                    (bộ theo quý chỉ tạo phiếu ở kỳ loại Quý). Nhân viên đã có phiếu trong kỳ được bỏ qua.
                 </p>
                 <footer>
                     <button name="action_generate" string="Tạo phiếu" type="object" class="btn-primary"/>

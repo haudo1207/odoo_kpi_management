@@ -235,8 +235,11 @@ class KpiEngine(models.AbstractModel):
         return bugs / len(requirements), len(requirements)
 
     def _metric_p2(self, ctx):
-        """Bước 4 (P2): điểm KPI trung bình của cấp dưới trực tiếp, chỉ lấy phiếu CÙNG KỲ đã Gửi hoặc Đã duyệt
-        (điểm cuối) VÀ đủ dữ liệu (insufficient_data = False). Phiếu chưa chốt hoặc thiếu dữ liệu (ví dụ nhân viên
+        """Bước 4 (P2): điểm KPI trung bình của cấp dưới trực tiếp, chỉ lấy phiếu đã Gửi hoặc Đã duyệt
+        (điểm cuối) VÀ đủ dữ liệu (insufficient_data = False), có kỳ NẰM TRỌN trong kỳ của người này (Đợt B1: PM theo
+        quý lấy các phiếu theo tháng trong quý; cùng loại kỳ thì chính là cùng kỳ như trước; kỳ cấp dưới dài hơn kỳ
+        của PM không nằm trọn nên không tính). Giá trị = trung bình các trung bình theo từng người; khối lượng = số cấp
+        dưới có ít nhất một phiếu hợp lệ. Phiếu chưa chốt hoặc thiếu dữ liệu (ví dụ nhân viên
         mới) bị bỏ cả ở giá trị lẫn khối lượng: điểm của phiếu thiếu dữ liệu chỉ tính trên phần nhỏ chỉ số áp
         dụng, không phản ánh hiệu suất, nên không được kéo điểm của quản lý xuống. Ít phiếu hơn min_volume thì
         "Không áp dụng", không ra số sai; không cần ép thứ tự tạo phiếu trong wizard, và không tính phiếu của chính
@@ -245,11 +248,17 @@ class KpiEngine(models.AbstractModel):
         evaluations = self.env["kpi.evaluation"].sudo().search([
             ("employee_id", "in", subordinates.ids), ("state", "in", ("submitted", "approved")),
             ("insufficient_data", "=", False),
-            ("period_id.date_from", "=", ctx["date_from"]), ("period_id.date_to", "=", ctx["date_to"]),
+            ("period_id.date_from", ">=", ctx["date_from"]), ("period_id.date_to", "<=", ctx["date_to"]),
         ])
-        if not evaluations:
+        # Trung bình theo từng người trước, rồi mới giữa các người: nếu gộp chung mọi phiếu, người làm đủ 3 tháng
+        # của một quý sẽ có trọng số gấp 3 người mới vào giữa quý.
+        per_person = []
+        for employee in evaluations.employee_id:
+            scores = evaluations.filtered(lambda e: e.employee_id == employee).mapped("final_score")
+            per_person.append(sum(scores) / len(scores))
+        if not per_person:
             return 0.0, 0
-        return sum(evaluations.mapped("final_score")) / len(evaluations), len(evaluations)
+        return sum(per_person) / len(per_person), len(per_person)
 
     def _metric_p3(self, ctx):
         """Bước 4 (P3), theo kỳ từ Đợt A4: chất lượng dữ liệu của các dự án do người này quản lý (project.user_id),

@@ -210,3 +210,23 @@ class TestKpiWorkflow(TransactionCase):
         self.env.ref("project_kpi_management.kpi_evaluation_line_department_action")
         groups = self.env["kpi.evaluation"].read_group([], ["final_score:avg"], ["department_id"])
         self.assertIsInstance(groups, list)
+
+    # ---- Quản lý chưa có quyền KPI (báo cáo cấu hình) ----
+
+    def test_manager_without_kpi_permission_is_listed(self):
+        job = self.env.ref("project_kpi_management.hr_job_developer")
+        plain_manager = self.env["hr.employee"].create({
+            "name": "Sếp thường", "user_id": new_test_user(self.env, login="wf_plain_boss", groups="base.group_user").id,
+        })
+        no_account_manager = self.env["hr.employee"].create({"name": "Sếp chưa có tài khoản"})
+        flagged = [
+            self.env["hr.employee"].create({
+                "name": name, "user_id": new_test_user(self.env, login=login, groups="base.group_user").id,
+                "job_id": job.id, "parent_id": boss.id,
+            })
+            for name, login, boss in (("NV dưới sếp thường", "wf_i1", plain_manager), ("NV dưới sếp không tài khoản", "wf_i2", no_account_manager))
+        ]
+        # self.employee có quản lý thuộc nhóm KPI Manager: không bị liệt kê
+        action = self.env["kpi.manager.issue"].action_open()
+        names = self.env["kpi.manager.issue"].browse(self.env["kpi.manager.issue"].search(action["domain"]).ids).mapped("employee_name")
+        self.assertEqual(sorted(n for n in names if n in {e.name for e in flagged} | {self.employee.name}), sorted(e.name for e in flagged))

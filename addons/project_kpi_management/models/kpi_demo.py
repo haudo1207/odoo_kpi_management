@@ -23,6 +23,12 @@ class KpiDemo(models.AbstractModel):
 
     @api.model
     def _load_scenario(self):
+        # Người duyệt mặc định = admin, để demo thấy ngay nhắc việc duyệt phiếu mà không phải nhớ vào Thiết lập.
+        # Chỉ đặt trong dữ liệu mẫu (không phải data của module) và không ghi đè giá trị đã có: doanh nghiệp thật tự cấu hình.
+        # admin không là quản lý trực tiếp của nhân viên mẫu nào nên không vướng quy tắc xung đột vai trò.
+        params = self.env["ir.config_parameter"].sudo()
+        if not params.get_param("project_kpi_management.default_approver_id"):
+            params.set_param("project_kpi_management.default_approver_id", str(self.env.ref("base.user_admin").id))
         if self.env.ref(XMLID % "demo_period_previous_month", raise_if_not_found=False):
             return  # demo được nạp lại khi -u: không tạo trùng
         today = date.today()
@@ -234,6 +240,25 @@ class KpiDemo(models.AbstractModel):
             self.env.cr.execute("UPDATE project_task SET create_date = %s WHERE id = %s", (at(2 + i, 10), bug.id))
             bug.invalidate_recordset(["create_date"])
             xmlids.append((f"demo_task_dung_bug{i + 1}", bug))
+
+        # ---- Lịch sử cho gợi ý mục tiêu (Đợt B2): phòng ban riêng, 4 kỳ đã duyệt, không đụng nhân viên của kịch bản chính ----
+        # D2 (story point) lần lượt 12, 14, 16, 18 → gợi ý (cao là tốt): Dễ 13,5 / Vừa 15 / Khó 16,5
+        history_department = self.env["hr.department"].create({"name": "Phòng Kỹ thuật (lịch sử mẫu)"})
+        history_employee = self.env["hr.employee"].create({
+            "name": "Ngô Minh Tuấn (lịch sử mẫu)", "job_id": dev_job.id, "department_id": history_department.id,
+        })
+        xmlids += [("demo_department_history", history_department), ("demo_employee_history", history_employee)]
+        for months_back, sp in ((4, 12), (3, 14), (2, 16), (1, 18)):
+            start = first - relativedelta(months=months_back)
+            end = start + relativedelta(months=1) - timedelta(days=1)
+            hist_period = self.env["kpi.period"].create({
+                "name": f"Tháng {start:%m/%Y} (lịch sử mẫu)", "period_type": "month", "date_from": start, "date_to": end,
+            })
+            hist_ev = self.env["kpi.evaluation"].create({"employee_id": history_employee.id, "period_id": hist_period.id})
+            hist_ev.line_ids.write({"volume": 10})  # mọi chỉ số được áp dụng → phiếu đủ dữ liệu
+            hist_ev.line_ids.filtered(lambda l: l.metric_id.code == "D2").actual = sp
+            hist_ev.write({"state": "approved", "approved_date": datetime.combine(end, datetime.min.time())})
+            hist_period.state = "closed"
 
         # ---- D8: buổi chia sẻ kiến thức ----
         sharing = self.env.ref(XMLID % "calendar_event_type_knowledge_sharing")

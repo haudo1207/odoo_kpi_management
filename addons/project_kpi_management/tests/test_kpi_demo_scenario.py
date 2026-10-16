@@ -312,3 +312,19 @@ class TestKpiDemoScenario(TransactionCase):
         self.assertEqual(by["B2"].volume, 3)
         self.assertAlmostEqual(by["B3"].actual, 200 / 3, places=4)
         self.assertAlmostEqual(ev.kpi_score, 75.828, places=3)
+
+    def test_demo_default_approver_is_admin(self):
+        admin = self.env.ref("base.user_admin")
+        self.assertEqual(self.env["ir.config_parameter"].sudo().get_param("project_kpi_management.default_approver_id"), str(admin.id))
+        self.assertTrue(admin.has_group("project_kpi_management.group_kpi_admin"))
+
+    def test_demo_history_gives_target_suggestions(self):
+        """Đợt B2: phòng "Phòng Kỹ thuật (lịch sử mẫu)" có 4 kỳ đã duyệt, D2 = 12, 14, 16, 18 →
+        P25 = 12 + 0,75·2 = 13,5; P50 = 15; P75 = 16 + 0,25·2 = 16,5 (chỉ số cao là tốt: Dễ / Vừa / Khó)."""
+        department = self.env.ref("project_kpi_management.demo_department_history")
+        template = self.env.ref("project_kpi_management.kpi_template_developer")
+        d2_line = template.line_ids.filtered(lambda l: l.metric_id.code == "D2")
+        override = self.env["kpi.target.override"].create({
+            "template_line_id": d2_line.id, "department_id": department.id, "target": 20,
+        })
+        self.assertEqual((override.suggestion_easy, override.suggestion_medium, override.suggestion_hard), (13.5, 15.0, 16.5))

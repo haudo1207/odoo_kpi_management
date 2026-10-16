@@ -26,6 +26,7 @@
         "views/kpi_self_assessment_wizard_views.xml",
         "views/kpi_acknowledge_wizard_views.xml",
         "views/kpi_report_views.xml",
+        "views/kpi_manager_issue_views.xml",
         "views/hr_job_views.xml",
         "views/project_task_views.xml",
         "views/menus.xml",

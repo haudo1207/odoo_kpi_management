@@ -7,6 +7,7 @@
             <list>
                 <field name="name"/>
                 <field name="job_ids" widget="many2many_tags"/>
+                <field name="period_type"/>
                 <field name="total_weight"/>
             </list>
         </field>
@@ -25,6 +26,7 @@
                     </div>
                     <group>
                         <group>
+                            <field name="period_type"/>
                             <field name="total_weight" decoration-danger="total_weight != 100" decoration-success="total_weight == 100"/>
                             <field name="active" invisible="1"/>
                         </group>

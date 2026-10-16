@@ -488,6 +488,72 @@ def check_workflow(s):
         s.fail("Xác nhận kết quả", e.faultString[:200])
 
 
+def check_default_approver(s):
+    """Người duyệt mặc định phải đã được đặt và là KPI Admin — nếu không, nhắc việc duyệt phiếu sẽ "không có gì xảy ra"
+    ngay lúc demo. Dữ liệu mẫu tự đặt admin; database cũ thì đặt ở KPI › Cấu hình › Thiết lập › Quy trình."""
+    value = s.call("admin", "ir.config_parameter", "get_param", "project_kpi_management.default_approver_id")
+    if not value:
+        s.fail("Người duyệt mặc định", "chưa đặt (vào Thiết lập › Quy trình)")
+        return
+    is_admin = s.call("admin", "res.users", "has_group", [int(value)], "project_kpi_management.group_kpi_admin")
+    if is_admin:
+        s.ok("Người duyệt mặc định đã đặt và là KPI Admin")
+    else:
+        s.fail("Người duyệt mặc định", f"user {value} không thuộc nhóm KPI Administrator")
+
+
+def check_period_type_and_suggestion(s):
+    """Đợt B (v1.4): (1) không đổi loại kỳ của bộ KPI khi còn phiếu ở kỳ đang mở; (2) gợi ý mục tiêu từ 3 kỳ đã duyệt
+    (D2 = 10, 20, 30 → Dễ 15 / Vừa 20 / Khó 25, tính tay trước khi chạy). Tự tạo dữ liệu, tự dọn."""
+    suffix = time.strftime("%H%M%S")
+    _, d2_id = s.ref("project_kpi_management.kpi_metric_d2")
+    template_id = s.call("admin", "kpi.template", "create", {
+        "name": f"Kiểm tra kỳ {suffix}", "period_type": "quarter",
+        "line_ids": [(0, 0, {"metric_id": d2_id, "target": 20, "weight": 100})],
+    })
+    s.add_cleanup(lambda: s.call("admin", "kpi.template", "unlink", [template_id]))
+    job_id = s.call("admin", "hr.job", "create", {"name": f"Job kiểm tra kỳ {suffix}", "kpi_template_id": template_id})
+    s.add_cleanup(lambda: s.call("admin", "hr.job", "unlink", [job_id]))
+    department_id = s.call("admin", "hr.department", "create", {"name": f"Phòng kiểm tra {suffix}"})
+    s.add_cleanup(lambda: s.call("admin", "hr.department", "unlink", [department_id]))
+    employee_id = s.call("admin", "hr.employee", "create", {
+        "name": f"NV kiểm tra kỳ {suffix}", "job_id": job_id, "department_id": department_id,
+    })
+    s.add_cleanup(lambda: s.call("admin", "hr.employee", "unlink", [employee_id]))
+    approved = []
+    for index, actual in enumerate((10, 20, 30)):
+        start = f"{2001 + index}-01-01"
+        period_id = s.call("admin", "kpi.period", "create", {
+            "name": f"Lịch sử kiểm tra {suffix}-{index}", "period_type": "quarter", "date_from": start, "date_to": f"{2001 + index}-03-31",
+        })
+        s.add_cleanup(lambda i=period_id: s.call("admin", "kpi.period", "unlink", [i]))
+        ev_id = s.call("admin", "kpi.evaluation", "create", {"employee_id": employee_id, "period_id": period_id, "template_id": template_id})
+        s.add_cleanup(lambda i=ev_id: _force_unlink_evaluation(s, i))
+        line_ids = s.call("admin", "kpi.evaluation.line", "search", [("evaluation_id", "=", ev_id)])
+        s.call("admin", "kpi.evaluation.line", "write", line_ids, {"actual": actual, "volume": 10})
+        approved.append(ev_id)
+    # (1) còn phiếu ở kỳ đang mở → không đổi được loại kỳ
+    try:
+        s.call("admin", "kpi.template", "write", [template_id], {"period_type": "month"})
+        s.fail("Đổi loại kỳ bộ KPI", "đổi được dù còn phiếu ở kỳ đang mở")
+    except xmlrpc.client.Fault:
+        s.ok("Bộ KPI còn phiếu ở kỳ đang mở thì không đổi được loại kỳ")
+    for ev_id in approved:
+        s.call("admin", "kpi.evaluation", "write", [ev_id], {"state": "approved"})
+    # (2) gợi ý mục tiêu
+    line_id = s.call("admin", "kpi.template.line", "search", [("template_id", "=", template_id)])[0]
+    override_id = s.call("admin", "kpi.target.override", "create", {
+        "template_line_id": line_id, "department_id": department_id, "target": 1,
+    })
+    s.add_cleanup(lambda: s.call("admin", "kpi.target.override", "unlink", [override_id]))
+    row = s.call("admin", "kpi.target.override", "read", [override_id],
+                 fields=["suggestion_easy", "suggestion_medium", "suggestion_hard"])[0]
+    if (row["suggestion_easy"], row["suggestion_medium"], row["suggestion_hard"]) == (15.0, 20.0, 25.0):
+        s.ok("Gợi ý mục tiêu từ lịch sử: Dễ 15 / Vừa 20 / Khó 25, khớp bảng tính tay")
+    else:
+        s.fail("Gợi ý mục tiêu", f"mong đợi (15, 20, 25), thực tế {row}")
+
+
 def check_timesheet_bridge(s):
     """Bước 4 (P4): chỉ chạy khi module cầu nối project_kpi_timesheet đã cài. Dự án giờ kế hoạch 100, thực tế 130
     → lệch 30%; mục tiêu 15 (thấp tốt) → 15/30 = 50 điểm. Tính tay trước khi chạy."""
@@ -568,10 +634,12 @@ def main():
             check_role_conflict_and_pip(s, period_id)
             check_self_assessment(s, period_id)
             check_target_override(s, period_id)
+            check_default_approver(s)
         check_tester(s, period_id)
         check_lead(s)
         check_ba(s)
         check_workflow(s)
+        check_period_type_and_suggestion(s)
         check_timesheet_bridge(s)
     finally:
         s.run_cleanups()
