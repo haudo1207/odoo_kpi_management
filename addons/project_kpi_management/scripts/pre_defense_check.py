@@ -118,8 +118,9 @@ def _force_unlink_evaluation(s, ev_id):
     s.call("admin", "kpi.evaluation", "unlink", [ev_id])
 
 
-def create_evaluation(s, employee_xmlid, period_id):
-    _, employee_id = s.ref(employee_xmlid)
+def create_evaluation(s, employee_xmlid, period_id, employee_id=None):
+    if employee_id is None:
+        _, employee_id = s.ref(employee_xmlid)
     ev_id = s.call("admin", "kpi.evaluation", "create", {
         "employee_id": employee_id, "period_id": period_id,
     })
@@ -226,6 +227,65 @@ def check_self_assessment(s, period_id):
         s.ok("Tự đánh giá: quản lý không tạo được phiếu kèm employee_comment")
 
 
+def check_tester(s, period_id):
+    """Bước 2: bộ KPI Tester tự động. Tự tạo tester + dự án + 3 bug riêng (không phụ thuộc dữ liệu
+    mẫu), đăng nhập bằng chính tester để xác nhận không tự sửa được bug_reporter_id, rồi Admin tính
+    phiếu và đối chiếu điểm với bảng tính tay."""
+    suffix = time.strftime("%H%M%S")
+    login = f"chk_tester_{suffix}"
+    s.passwords[login] = login
+    _, user_group = s.ref("base.group_user")
+    _, project_group = s.ref("project.group_project_user")
+    user_id = s.call("admin", "res.users", "create", {
+        "name": f"Tester kiểm tra {suffix}", "login": login, "password": login,
+        "group_ids": [(6, 0, [user_group, project_group])],
+    })
+
+    def _drop_user():
+        try:
+            s.call("admin", "res.users", "unlink", [user_id])
+        except xmlrpc.client.Fault:
+            s.call("admin", "res.users", "write", [user_id], {"active": False})  # còn tham chiếu: chỉ ẩn
+    s.add_cleanup(_drop_user)
+    _, job_id = s.ref("project_kpi_management.hr_job_tester")
+    employee_id = s.call("admin", "hr.employee", "create", {
+        "name": f"Tester kiểm tra {suffix}", "user_id": user_id, "job_id": job_id,
+    })
+    s.add_cleanup(lambda: s.call("admin", "hr.employee", "unlink", [employee_id]))
+    project_id = s.call("admin", "project.project", "create", {"name": f"Dự án kiểm tra Tester {suffix}"})
+    s.add_cleanup(lambda: s.call("admin", "project.project", "unlink", [project_id]))
+    bug_ids = []
+    for resolution, cause in (("valid", "code"), ("valid", "requirement"), ("invalid", "code")):
+        origin_id = s.call("admin", "project.task", "create", {"name": "Task gốc", "project_id": project_id})
+        bug_id = s.call("admin", "project.task", "create", {
+            "name": "Bug kiểm tra", "project_id": project_id, "task_type": "bug", "bug_reporter_id": user_id,
+            "bug_resolution": resolution, "bug_root_cause": cause, "origin_task_id": origin_id,
+        })
+        bug_ids.append(bug_id)
+        s.add_cleanup(lambda i=origin_id: s.call("admin", "project.task", "unlink", [i]))
+        s.add_cleanup(lambda i=bug_id: s.call("admin", "project.task", "unlink", [i]))
+
+    try:
+        s.call(login, "project.task", "write", [bug_ids[0]], {"bug_reporter_id": 1})
+        s.fail("Tester không tự sửa bug_reporter_id", "tester ghi được bug_reporter_id")
+    except xmlrpc.client.Fault as e:
+        if "người phát hiện bug" in e.faultString:
+            s.ok("Tester không tự sửa được bug_reporter_id (bị chặn đúng lý do)")
+        else:
+            s.fail("Tester không tự sửa bug_reporter_id", f"bị chặn nhưng sai lý do: {e.faultString[:200]}")
+
+    ev_id = create_evaluation(s, None, period_id, employee_id=employee_id)
+    t8_lines = s.call("admin", "kpi.evaluation.line", "search", [("evaluation_id", "=", ev_id), ("metric_id.code", "=", "T8")])
+    s.call("admin", "kpi.evaluation.line", "write", t8_lines, {"actual": 4})
+    s.call("admin", "kpi.evaluation", "action_compute_kpi", [ev_id])
+    score = s.call("admin", "kpi.evaluation", "read", [ev_id], fields=["kpi_score"])[0]["kpi_score"]
+    # T4 2/15·25 + T5 10/33.33·20 + T6 100/90·15 + T7 (0% → trần 120)·25 + T8 4/4·15 = 71.0
+    if abs(score - 71.0) < 0.01:
+        s.ok("Phiếu Tester: admin tính ra 71.0 điểm, khớp bảng tính tay")
+    else:
+        s.fail("Phiếu Tester", f"mong đợi 71.0, thực tế {score}")
+
+
 def check_target_override(s, period_id):
     """Mục 4: mục tiêu riêng theo phòng ban được áp dụng khi tạo phiếu mới."""
     _, chi_id = s.ref("project_kpi_management.demo_employee_chi")
@@ -270,6 +330,7 @@ def main():
         check_role_conflict_and_pip(s, period_id)
         check_self_assessment(s, period_id)
         check_target_override(s, period_id)
+        check_tester(s, period_id)
     finally:
         s.run_cleanups()
 

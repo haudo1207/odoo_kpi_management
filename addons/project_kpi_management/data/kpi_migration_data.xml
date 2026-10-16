@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Chạy lại mỗi lần cài/cập nhật module (khác bản ghi noupdate, <function> không bị bỏ qua khi -u):
+         dùng cho việc phải áp dụng được lên database đã cài trước đó. Mỗi hàm tự idempotent. -->
+    <function model="project.task" name="_migrate_bug_reporter_id"/>
+    <function model="hr.job" name="_migrate_tester_template"/>
+</odoo>

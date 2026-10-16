@@ -197,6 +197,21 @@ class KpiEngine(models.AbstractModel):
         ])
         return count, count
 
+    def _metric_t7(self, ctx):
+        """Bước 2: lỗi lọt production của các dự án tester tham gia = bug production / bug hợp lệ
+        (valid, wont_fix) trong các dự án đó, tính theo ngày tạo bug trong kỳ. "Dự án tham gia" là
+        dự án tester đã log ít nhất 1 bug trong kỳ. Khối lượng = số dự án tham gia. Cần hàm Python
+        vì tập dự án suy ra từ chính dữ liệu bug — domain một bước không diễn đạt được."""
+        Task = self.env["project.task"].sudo()
+        in_period = [("task_type", "=", "bug"), ("create_date", ">=", ctx["start"]), ("create_date", "<", ctx["end"])]
+        projects = Task.search(in_period + [("bug_reporter_id", "=", ctx["user"].id)]).project_id
+        if not projects:
+            return 0.0, 0
+        bugs = Task.search(in_period + [
+            ("project_id", "in", projects.ids), ("bug_resolution", "in", BUG_RESOLUTIONS_COUNTED),
+        ])
+        return self._ratio(len(bugs.filtered("is_production_bug")), len(bugs)), len(projects)
+
     @staticmethod
     def _ratio(part, total):
         return part / total * 100 if total else 0.0

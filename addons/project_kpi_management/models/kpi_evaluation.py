@@ -236,7 +236,7 @@ class KpiEvaluation(models.Model):
         for ev in self:
             if ev.state != "draft":
                 raise UserError(f"Phiếu {ev.name} không ở trạng thái Nháp, không tính lại được.")
-            for line in ev.line_ids.filtered(lambda l: l.compute_mode == "auto"):
+            for line in ev.line_ids.filtered(lambda l: l.compute_mode in ("auto", "domain")):
                 actual, volume = engine.compute_actual(
                     line.metric_id, ev.employee_id, ev.period_id.date_from, ev.period_id.date_to
                 )

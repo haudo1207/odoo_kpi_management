@@ -108,7 +108,7 @@
                                     <field name="weight" readonly="1"/>
                                     <field name="min_volume" optional="hide" readonly="1"/>
                                     <field name="volume" optional="show" readonly="1" digits="[16, 2]"/>
-                                    <field name="actual" readonly="compute_mode == 'auto'" digits="[16, 4]"/>
+                                    <field name="actual" readonly="compute_mode in ('auto', 'domain')" digits="[16, 4]"/>
                                     <field name="actual_entered" invisible="compute_mode != 'manual'"/>
                                     <field name="is_applicable"/>
                                     <field name="score" digits="[16, 2]"/>

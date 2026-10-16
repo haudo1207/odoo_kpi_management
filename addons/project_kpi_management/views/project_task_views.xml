@@ -24,6 +24,7 @@
                         <group>
                             <field name="origin_task_id"/>
                             <field name="is_production_bug"/>
+                            <field name="bug_reporter_id" readonly="not kpi_can_review"/>
                         </group>
                         <group>
                             <field name="bug_resolution"/>

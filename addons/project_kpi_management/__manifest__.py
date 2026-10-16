@@ -13,6 +13,7 @@
         "data/kpi_calendar_data.xml",
         "data/kpi_template_data.xml",
         "data/kpi_org_data.xml",
+        "data/kpi_migration_data.xml",
         "data/kpi_activity_data.xml",
         "data/ir_cron_data.xml",
         "views/kpi_metric_views.xml",

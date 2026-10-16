@@ -182,7 +182,7 @@ addons/project_kpi_management/
 ├── data/                             Dữ liệu cấu hình chuẩn (D1–D9, bộ Developer/Tester, cron, loại nhắc việc PIP...)
 ├── views/                           View cho từng model + menu
 ├── report/                          Mẫu in PDF
-└── tests/                           10 file, 89 test
+└── tests/                           11 file, 102 test
 ```
 
 ### 2.4. Nguyên tắc thiết kế cốt lõi: không hardcode vai trò
@@ -212,7 +212,7 @@ thiết kế. Chỉ số *Nhập tay* (`compute_mode = manual`) không có giớ
 
 | Model gốc | Field/khả năng được tái sử dụng | Field module KPI thêm vào |
 |---|---|---|
-| `project.task` | `date_deadline`, `date_end`, `state`, `priority`, `working_hours_close`, `user_ids` | `task_type`, `story_points`, `origin_task_id`, `bug_ids`, `is_production_bug`, `bug_resolution`, `bug_root_cause`, `review_reject_count`, `review_approve_count`, `has_unit_test`, `kpi_can_review`, `days_late` |
+| `project.task` | `date_deadline`, `date_end`, `state`, `priority`, `working_hours_close`, `user_ids` | `task_type`, `story_points`, `origin_task_id`, `bug_ids`, `is_production_bug`, `bug_resolution`, `bug_root_cause`, `bug_reporter_id`, `review_reject_count`, `review_approve_count`, `has_unit_test`, `kpi_can_review`, `days_late` |
 | `project.task.type` | Field `fold` có sẵn (ẩn trong Kanban) | — (chỉ yêu cầu cấu hình, không thêm field) |
 | `hr.employee` | `user_id`, `parent_id`, `job_id`, `department_id` (qua `hr.version`) | `kpi_evaluation_count` (compute) |
 | `hr.job` | Model chức danh có sẵn | `kpi_template_id` |
@@ -514,6 +514,7 @@ giữ nguyên dự án của chính nó.
 | `is_production_bug` | Boolean | D4 |
 | `bug_resolution` | Selection (valid/wont_fix/duplicate/invalid) | Lọc bug tính KPI |
 | `bug_root_cause` | Selection (code/requirement/environment) | Lọc bug tính KPI |
+| `bug_reporter_id` | Many2one `res.users`, default người tạo | T4–T7 (Bước 2) — người phát hiện bug; **không dùng `create_uid`** vì PM có thể log bug hộ tester hoặc bug được import. Chỉ KPI Manager trở lên ghi được (kiểm ở `create`/`write`, và khoá trên form); bug cũ được bù `bug_reporter_id = create_uid` mỗi lần `-u` (`_migrate_bug_reporter_id`, gọi qua `<function>` trong `data/kpi_migration_data.xml`) |
 | `review_reject_count`, `review_approve_count` | Integer, readonly | D5 — tăng trong `write()` khi đổi state |
 | `has_unit_test` | Boolean | D6 — chỉ KPI Manager ghi được (kiểm ở `create`/`write`) |
 | `kpi_can_review` | Boolean, compute | Khoá ô `has_unit_test` trên form nếu không phải Manager |
@@ -627,7 +628,7 @@ docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management \
   --test-tags /project_kpi_management --stop-after-init --http-port 8070
 ```
 
-### 5.3. Danh sách test case (89 test, 10 file)
+### 5.3. Danh sách test case (102 test, 11 file)
 
 #### `tests/test_kpi_config.py` — 9 test (Phase 1: chỉ số, bộ KPI)
 
@@ -753,7 +754,26 @@ docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management \
 | `test_team_report_by_project` | SQL view `kpi.team.report` tính đúng tỷ lệ đúng hạn, mật độ lỗi, tỷ lệ lỗi production, giờ sửa bug trung bình (Mục 5) |
 | `test_team_report_attributes_bug_to_origin_project` | Bug ở dự án khác nhưng có task gốc thì tính vào dự án của task gốc (đúng quy ước D3/D4); bug không có task gốc vẫn giữ dự án của chính nó |
 | `test_line_report_fields_and_employee_button` | Field lưu sẵn trên dòng phiếu đúng; smart button trên hồ sơ nhân viên đúng domain |
-| `test_tester_template_without_code` | Bộ KPI Tester (toàn nhập tay) tính điểm và gửi duyệt đúng — không cần sửa code |
+| `test_tester_template_without_code` | Chức danh Tester gắn bộ "Tester (tự động)" gồm T4–T8 và tính điểm đúng — không cần sửa code |
+
+#### `tests/test_kpi_tester.py` — 12 test (Bước 2, Chương 9.2: bộ KPI Tester tự động)
+
+| Test | Kiểm tra |
+|---|---|
+| `test_t4_t6_have_no_python_code` | T4–T6 có `compute_mode = domain` và không tồn tại hàm `_metric_t4/t5/t6`; T7 có hàm riêng; T8 nhập tay |
+| `test_t4_counts_valid_bugs_of_reporter_only` | T4 chỉ đếm bug valid/wont_fix của đúng người phát hiện |
+| `test_t4_ignores_bugs_outside_period` | Bug ngoài kỳ không tính |
+| `test_t5_t6_ratio` | Tử số/mẫu số T5 (mẫu số = bug đã phân loại) và T6 đúng |
+| `test_below_min_volume_not_applicable` | Dưới khối lượng tối thiểu (3 bug) thì T5, T6 "Không áp dụng" |
+| `test_t7_only_projects_where_tester_logged_bugs` | T7 chỉ tính dự án tester có log bug trong kỳ, mẫu số gồm cả bug của người khác trong dự án đó |
+| `test_t7_no_project_not_applicable` | Không log bug nào thì T7 có khối lượng 0 |
+| `test_bug_reporter_defaults_to_creator` | `bug_reporter_id` mặc định là người tạo |
+| `test_bug_reporter_only_manager_edits` | Tester không sửa/không tạo kèm được `bug_reporter_id`; Manager sửa được |
+| `test_migrate_backfills_old_bugs` | Bug cũ thiếu `bug_reporter_id` được bù bằng `create_uid` |
+| `test_migrate_tester_template_on_upgraded_database` | Mô phỏng database đã cài bản cũ: chức danh Tester chuyển sang bộ mới, bộ cũ và T1–T3 bị ẩn, chạy lại không lỗi |
+| `test_full_evaluation_matches_hand_calculation` | Phiếu đầy đủ cho 1 tester ra 46,5833 điểm đúng bảng tính tay (bắt luôn lỗi phiếu không tính chỉ số `domain`, xem 5.4) |
+
+(`tests/test_kpi_demo_scenario.py` có thêm `test_dung_tester_evaluation`: tester mẫu Dung, 10 bug, ra 55,875 điểm.)
 
 #### `tests/test_kpi_integration.py` — 8 test (Phase 9: cron, PDF, REST API)
 
@@ -770,14 +790,14 @@ docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management \
 
 ### 5.4. Kết quả kiểm thử
 
-**89/89 test đạt (0 failed, 0 error)**, xác nhận trên database tạo mới hoàn toàn (không chỉ chạy
+**102/102 test đạt (0 failed, 0 error)**, xác nhận trên database tạo mới hoàn toàn (không chỉ chạy
 lại trên database cũ), lần gần nhất 2026-10-12 — sau khi bổ sung 6 mục ở Chương 9 cũ (màu xếp loại,
 chặn xung đột vai trò, nhắc việc PIP, mục tiêu theo phòng ban, chỉ số theo dự án, tự đánh giá), vá
 thêm các phát hiện khi kiểm tra qua đường đi thật (xem 5.6): quản lý ghi trực tiếp được
 `employee_comment`/`self_score` (cả qua `write()` lẫn `create()`), thiếu `copy=False` trên `self_score`
 (Nhân bản phiếu đã tự đánh giá sẽ bị chặn nhầm), cron ghi `write_date` thừa, bug trong
 `kpi.team.report` quy sai dự án (đã sửa ở Mục 5, Chương 3.3), và triển khai Bước 1 — chỉ số cấu hình
-không cần code và rà soát bảo mật/kỹ thuật Bước 0 (Chương 9.1, +11 test).
+không cần code và rà soát bảo mật/kỹ thuật Bước 0 (Chương 9.1, +11 test), rồi Bước 2 — bộ KPI Tester tự động (Chương 9.2, +13 test). **Lỗi thật phát hiện khi làm Bước 2:** phiếu KPI chỉ tự tính các chỉ số `compute_mode = auto`, bỏ sót `domain` — nên chỉ số cấu hình của Bước 1 chạy đúng ở `kpi.engine` nhưng bấm "Tính KPI" trên phiếu không ra số (test Bước 1 chỉ gọi thẳng engine nên không thấy); đã sửa ở `kpi_evaluation.action_compute_kpi` và khoá ô `actual` của chỉ số domain trên form. Kiểm thử qua đường đi thật cũng chạy `-u` lên bản sao của `kpi_dev` để xác nhận migration (xem 9.2).
 
 **Quan trọng — hạn chế của `TransactionCase`:** unit test chạy bằng superuser (`env.su = True`),
 nên bỏ qua một số kiểm tra chỉ áp dụng cho người dùng thật (ví dụ chặn xung đột vai trò). Vì vậy 77
@@ -894,10 +914,10 @@ Stage "Done"/"Hoàn thành" của **mọi dự án** phải bật **Folded** (xe
 
 ### 7.1. Bộ KPI "Tester" (có sẵn trong dữ liệu cấu hình, Phase 8)
 
-Cài sẵn 3 chỉ số nhập tay (T1 — Test case thực hiện, T2 — Bug phát hiện trước release, T3 — Bug lọt
-production do bỏ sót) + D9, gộp thành bộ KPI "Tester", gắn vào chức danh "Kiểm thử phần mềm (QA)".
-Toàn bộ chỉ nằm trong file dữ liệu (`data/kpi_org_data.xml`), **không có một dòng code nào** xử lý
-riêng cho vai trò Tester.
+Phase 8 cài sẵn bộ "Tester" gồm 3 chỉ số nhập tay (T1–T3) + D9. **Từ Bước 2 bộ này được thay bằng
+"Tester (tự động)"** (T4–T8, xem Chương 9.2), vẫn gắn vào chức danh "Kiểm thử phần mềm (QA)". T4–T6
+chỉ nằm trong file dữ liệu (`data/kpi_org_data.xml`), **không có một dòng code nào** — đúng tinh thần của
+phần này; riêng T7 cần một hàm Python vì tập dự án suy ra từ chính dữ liệu bug.
 
 ### 7.2. Demo trực tiếp: dựng vai trò "Sales" hoàn toàn mới khi thuyết trình
 
@@ -949,7 +969,7 @@ buộc lý do) và **chấm chỉ số định tính** (D9) — số liệu tự
 **Hệ thống đã qua điểm dừng tính năng trước bảo vệ** (xem Chương 5.6) — bản dùng để bảo vệ đóng
 băng ở tag `v1.0-bao-ve` (Chương 10), không đổi. Nội dung chương này là kế hoạch mở rộng cho giai
 đoạn **sau bảo vệ**, phát triển trực tiếp trên `main` (không tách nhánh riêng — tag đã giữ đúng mốc
-bảo vệ nên không cần). **Bước 0+1 (9.1) đã triển khai** (+11 test, 89/89 đạt); **Bước 2–6 (9.2–9.4)
+bảo vệ nên không cần). **Bước 0+1 (9.1) và Bước 2 (9.2, Tester) đã triển khai** (102/102 test đạt); **Bước 3–6
 chưa triển khai**, còn ở dạng thiết kế.
 
 ### 9.1. Điểm nghẽn lớn nhất: chỉ số tự động phải viết code — ĐÃ TRIỂN KHAI
@@ -986,19 +1006,33 @@ hoàn toàn trên giao diện (xem nút "Thử tính" trên form chỉ số), m�
 Thứ tự dựa trên mức quan trọng trong công ty sản xuất phần mềm và dữ liệu đã có sẵn trong Odoo tới
 đâu — team nào dữ liệu có sẵn càng nhiều thì làm càng sớm.
 
-**Ưu tiên 1 — Tester/QA (nâng từ nhập tay lên tự động):** gần Dev nhất, dữ liệu bug ở Phase 2 dùng
-lại gần hết. Người log bug chính là `create_uid` của task bug (field có sẵn của Odoo) nên không cần
-thêm field "người phát hiện".
+**Ưu tiên 1 — Tester/QA (nâng từ nhập tay lên tự động) — ĐÃ TRIỂN KHAI (Bước 2):** gần Dev nhất, dữ liệu
+bug ở Phase 2 dùng lại gần hết. Khi triển khai đã **đổi thiết kế so với bản đề xuất ban đầu**: người log
+bug không dùng `create_uid` mà thêm field `bug_reporter_id` (xem Chương 3.3), vì PM có thể log bug hộ tester
+hoặc bug được import — dùng `create_uid` sẽ quy sai người. Field này chỉ KPI Manager sửa được, nếu không
+tester có thể gán bug người khác log về mình để tăng T4.
 
-| Mã | Chỉ số | Nguồn dữ liệu | Chiều |
-|---|---|---|---|
-| T1 | Số bug hợp lệ tìm được | Bug có `create_uid` = tester, `bug_resolution` ∈ {valid, wont_fix} | Cao tốt |
-| T2 | Tỷ lệ bug bị từ chối | Bug invalid + duplicate / tổng bug tester log | Thấp tốt |
-| T3 | Tỷ lệ lỗi lọt production của dự án phụ trách | `is_production_bug` theo dự án tester tham gia | Thấp tốt |
-| T4 | Tỷ lệ bug đủ phân loại | Bug tester log có đủ `origin_task_id`, `bug_root_cause` | Cao tốt |
-| T5 | Đánh giá của quản lý | Nhập tay (như D9) | Cao tốt |
+| Mã | Chỉ số | Cách tính | Chiều | Mục tiêu | Trọng số | Khối lượng tối thiểu |
+|---|---|---|---|---|---|---|
+| T4 | Số bug hợp lệ tìm được | **Domain, đếm**: `bug_resolution` ∈ {valid, wont_fix}, người = `bug_reporter_id`, ngày = `create_date` | Cao tốt | 15 | 25 | 0 |
+| T5 | Tỷ lệ bug bị từ chối | **Domain, tỷ lệ**: invalid + duplicate / bug đã phân loại (`bug_resolution` khác rỗng) | Thấp tốt | 10% | 20 | 3 |
+| T6 | Tỷ lệ bug đủ phân loại | **Domain, tỷ lệ**: bug có `origin_task_id` và `bug_root_cause` / mọi bug tester log | Cao tốt | 90% | 15 | 3 |
+| T7 | Lỗi lọt production của dự án tham gia | **Python `_metric_t7()`**: bug production / bug hợp lệ trong các dự án tester đã log bug trong kỳ; khối lượng = số dự án | Thấp tốt | 5% | 25 | 1 dự án |
+| T8 | Đánh giá của quản lý | Nhập tay (như D9) | Cao tốt | 4 | 15 | 0 |
 
-T4 gắn trực tiếp với báo cáo kiểm tra dữ liệu (Chương 3.3): tester log bug sạch thì KPI của Dev mới
+**Vì sao mã là T4–T8, không phải T1–T5 như đề xuất:** T1–T3 đã bị bộ Tester cũ (Phase 8, nhập tay) chiếm
+trên database đã cài, mà mã chỉ số là `UNIQUE`; các bản ghi cũ nằm trong dữ liệu `noupdate="1"` nên sửa XML rồi
+chạy `-u` **không** đổi được chúng. Vì vậy tạo bộ mới "Tester (tự động)", và hàm `hr.job._migrate_tester_template()`
+(gọi qua `<function>` trong `data/kpi_migration_data.xml`, chạy lại mỗi lần `-u` — khác bản ghi `noupdate`
+không bị bỏ qua) chuyển chức danh Tester sang bộ mới, ẩn bộ cũ và T1–T3 cũ; chỉ chuyển khi chức danh còn
+trỏ về bộ cũ nên không ghi đè lựa chọn của admin. Đã kiểm trên bản sao của `kpi_dev`.
+
+**Rủi ro đã biết của T4:** có thể bị lách bằng cách tách một lỗi thành nhiều bug để tăng số lượng. Hai lớp
+chặn: T5 (bug trùng/không hợp lệ làm tăng tỷ lệ bị từ chối, tính trừ điểm) và việc quản lý phân loại bug
+(`bug_resolution`) trước khi chốt kỳ — hệ thống không tự chặn hoàn toàn được, giống rủi ro của các chỉ số
+proxy ở Chương 8.
+
+T6 gắn trực tiếp với báo cáo kiểm tra dữ liệu (Chương 3.3): tester log bug sạch thì KPI của Dev mới
 đúng — một team phụ thuộc chất lượng dữ liệu của team khác.
 
 **Ưu tiên 2 — Team Lead/PM:** Odoo Project có sẵn dữ liệu cấp dự án. `project.milestone` (đã kiểm
@@ -1046,8 +1080,8 @@ việc dữ liệu có sạch hay không — không chỉ Dev mới bị ràng b
 
 | Bước | Việc | Lý do thứ tự |
 |---|---|---|
-| 1 | ~~Chỉ số cấu hình không cần code (9.1)~~ | **Đã triển khai** — 89/89 test đạt, xem Chương 3.3 |
-| 2 | Bộ Tester tự động (9.2, Ưu tiên 1) | Dữ liệu sẵn, chỉ cần cấu hình nếu đã có bước 1 |
+| 1 | ~~Chỉ số cấu hình không cần code (9.1)~~ | **Đã triển khai** — xem Chương 3.3 |
+| 2 | ~~Bộ Tester tự động (9.2, Ưu tiên 1)~~ | **Đã triển khai** — 102/102 test đạt, xem 9.2 |
 | 3 | Chấm điểm theo bậc (9.3 #2) | Nhiều công ty cần ngay khi áp dụng thật |
 | 4 | Bộ Team Lead/PM + điểm team (9.2 Ưu tiên 2, 9.3 #3) | Cần dữ liệu milestone, timesheet |
 | 5 | Bộ BA (9.2 Ưu tiên 3) | Cần thêm loại task Requirement |

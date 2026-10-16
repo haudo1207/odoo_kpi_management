@@ -53,6 +53,14 @@ class ProjectTask(models.Model):
     has_unit_test = fields.Boolean("Có unit test", tracking=True)
     kpi_can_review = fields.Boolean(compute="_compute_kpi_can_review")
 
+    # T1-T3 (Bước 2, Chương 9.2): người phát hiện bug, dùng để quy T1-T3 đúng người — KHÔNG dùng
+    # create_uid vì PM có thể log bug hộ tester, hoặc bug được import, nên create_uid có thể sai.
+    bug_reporter_id = fields.Many2one(
+        "res.users", string="Người phát hiện bug", default=lambda self: self.env.user,
+        help="Mặc định là người tạo task. Chỉ KPI Manager trở lên sửa được, để tránh tự gán bug "
+             "người khác log về mình nhằm tăng T4 (số bug hợp lệ tìm được).",
+    )
+
     # D1: số ngày trễ, đo cả khi đã hoàn thành
     days_late = fields.Integer("Số ngày trễ", compute="_compute_days_late", store=True)
 
@@ -97,20 +105,27 @@ class ProjectTask(models.Model):
             if new_value != task.days_late:
                 task.days_late = new_value
 
+    def _check_kpi_manager_fields(self, vals, fields_checked, message):
+        if fields_checked & vals.keys() and not self.env.su and \
+                not self.env.user.has_group("project_kpi_management.group_kpi_manager"):
+            raise AccessError(message)
+
     @api.model_create_multi
     def create(self, vals_list):
-        if any(vals.get("has_unit_test") for vals in vals_list) and not self.env.su and \
-                not self.env.user.has_group("project_kpi_management.group_kpi_manager"):
-            raise AccessError("Chỉ quản lý KPI được xác nhận task có unit test.")
+        for vals in vals_list:
+            self._check_kpi_manager_fields(vals, {"has_unit_test"}, "Chỉ quản lý KPI được xác nhận task có unit test.")
+            self._check_kpi_manager_fields(
+                vals, {"bug_reporter_id"}, "Chỉ quản lý KPI được xác nhận người phát hiện bug."
+            )
         tasks = super().create(vals_list)
         tasks._ensure_date_end()
         return tasks
 
     def write(self, vals):
         # D6: has_unit_test là căn cứ chấm điểm, chỉ quản lý KPI được xác nhận
-        if "has_unit_test" in vals and not self.env.su and \
-                not self.env.user.has_group("project_kpi_management.group_kpi_manager"):
-            raise AccessError("Chỉ quản lý KPI được xác nhận task có unit test.")
+        self._check_kpi_manager_fields(vals, {"has_unit_test"}, "Chỉ quản lý KPI được xác nhận task có unit test.")
+        # T1-T3: bug_reporter_id là căn cứ chấm điểm, chỉ quản lý KPI được sửa (xem field ở trên)
+        self._check_kpi_manager_fields(vals, {"bug_reporter_id"}, "Chỉ quản lý KPI được xác nhận người phát hiện bug.")
         # Lọc trước super(): sau khi ghi thì không còn biết trạng thái cũ
         rejected = approved = self.browse()
         if vals.get("state") == "02_changes_requested":
@@ -126,6 +141,15 @@ class ProjectTask(models.Model):
         if {"state", "stage_id", "date_end"} & vals.keys():
             self._ensure_date_end()
         return res
+
+    @api.model
+    def _migrate_bug_reporter_id(self):
+        """Bù dữ liệu cũ (Bước 2): bug tạo trước khi có field này thì gán bug_reporter_id =
+        create_uid. Gọi qua <function> trong data XML nên chạy lại mỗi lần -u, không phải chỉ lúc
+        cài mới — chỉ tìm những bug còn thiếu nên chạy nhiều lần vẫn an toàn (không ghi đè tay)."""
+        bugs = self.search([("task_type", "=", "bug"), ("bug_reporter_id", "=", False)])
+        for bug in bugs:
+            bug.bug_reporter_id = bug.create_uid
 
     def _ensure_date_end(self):
         """date_end là mốc hoàn thành duy nhất cho D1 và D7 (working_hours_close)."""

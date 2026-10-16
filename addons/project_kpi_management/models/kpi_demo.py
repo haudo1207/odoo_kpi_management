@@ -144,6 +144,34 @@ class KpiDemo(models.AbstractModel):
         # ---- Chi: mới vào giữa kỳ, chưa đủ dữ liệu ----
         task("t10", "chi", "Trang hồ sơ khách hàng", sp=3, deadline=18)
 
+        # ---- Dung (Tester, Bước 2): 10 bug tự log, bộ KPI Tester tự động ----
+        # Bug không giao cho ai và nguyên nhân khác "code", nên không lọt vào D3/D4/D7 của An, Bình.
+        tester_job = self.env.ref(XMLID % "hr_job_tester")
+        dung_user = self.env["res.users"].create({
+            "name": "Đỗ Thị Dung", "login": "dung", "password": "dung", "tz": tz.zone,
+        })
+        dung_employee = self.env["hr.employee"].create({
+            "name": "Đỗ Thị Dung", "user_id": dung_user.id, "job_id": tester_job.id,
+            "department_id": department.id, "parent_id": manager_employee.id,
+        })
+        xmlids += [("demo_user_dung", dung_user), ("demo_employee_dung", dung_employee)]
+        origins = [t1, t2, t3, t5, t6, t7, t9, t1]
+        # (kết quả xử lý, nguyên nhân, có task gốc, lỗi production)
+        dung_bugs = [("valid", "requirement")] * 5 + [
+            ("valid", "environment"), ("wont_fix", "requirement"), ("duplicate", "requirement"),
+            ("invalid", False), (False, False),
+        ]
+        for i, (resolution, cause) in enumerate(dung_bugs):
+            bug = Task.create({
+                "name": f"Bug tester Dung #{i + 1}", "project_id": project.id, "task_type": "bug",
+                "bug_reporter_id": dung_user.id, "bug_resolution": resolution, "bug_root_cause": cause,
+                "origin_task_id": origins[i].id if i < 8 else False,
+                "is_production_bug": i == 5,
+            })
+            self.env.cr.execute("UPDATE project_task SET create_date = %s WHERE id = %s", (at(2 + i, 10), bug.id))
+            bug.invalidate_recordset(["create_date"])
+            xmlids.append((f"demo_task_dung_bug{i + 1}", bug))
+
         # ---- D8: buổi chia sẻ kiến thức ----
         sharing = self.env.ref(XMLID % "calendar_event_type_knowledge_sharing")
         Event = self.env["calendar.event"].with_context(no_mail_to_attendees=True, mail_create_nosubscribe=True)

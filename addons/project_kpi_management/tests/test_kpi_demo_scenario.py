@@ -59,6 +59,22 @@ class TestKpiDemoScenario(TransactionCase):
                 self.assertAlmostEqual(ev.kpi_score, KPI[key], places=4)
                 self.assertEqual(ev.rating, RATING[key])
 
+    def test_dung_tester_evaluation(self):
+        """Bước 2: Tester Dung (10 bug) — bảng tính tay: T4 = 7 bug hợp lệ; T5 = 2/9; T6 = 8/10;
+        T7 = 2 production / 11 bug hợp lệ trong dự án (7 của Dung + 4 của An, Bình trong kỳ), 1 dự án.
+        Điểm: 46.667·25% + 45·20% + 88.889·15% + 27.5·25% + 100·15% (T8 = 4) = 55.875."""
+        employee = self.env.ref("project_kpi_management.demo_employee_dung")
+        ev = self.env["kpi.evaluation"].create({"employee_id": employee.id, "period_id": self.period.id})
+        ev.line_ids.filtered(lambda l: l.metric_id.code == "T8").actual = 4
+        ev.action_compute_kpi()
+        expected = {"T4": (7, 7), "T5": (2 / 9 * 100, 9), "T6": (80.0, 10), "T7": (2 / 11 * 100, 1)}
+        for code, (actual, volume) in expected.items():
+            line = ev.line_ids.filtered(lambda l: l.metric_id.code == code)
+            with self.subTest(metric=code):
+                self.assertAlmostEqual(line.actual, actual, places=4)
+                self.assertAlmostEqual(line.volume, volume, places=4)
+        self.assertAlmostEqual(ev.kpi_score, 55.875, places=3)
+
     def test_binh_adjustment_reaches_pass(self):
         # Kịch bản demo: quản lý điều chỉnh +2 có lý do, Bình lên mức Đạt
         ev = self._evaluate("binh")
