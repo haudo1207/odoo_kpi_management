@@ -182,7 +182,7 @@ addons/project_kpi_management/
 ├── data/                             Dữ liệu cấu hình chuẩn (D1–D9, bộ Developer/Tester, cron, loại nhắc việc PIP...)
 ├── views/                           View cho từng model + menu
 ├── report/                          Mẫu in PDF
-└── tests/                           15 file, 142 test
+└── tests/                           15 file, 143 test
 
 addons/project_kpi_timesheet/            Module cầu nối (Bước 4): P4 + bộ "Team Lead / PM (có giờ làm)", 6 test riêng
 ```
@@ -636,7 +636,7 @@ docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management \
   --test-tags /project_kpi_management --stop-after-init --http-port 8070
 ```
 
-### 5.3. Danh sách test case (142 test, 15 file)
+### 5.3. Danh sách test case (143 test, 15 file)
 
 #### `tests/test_kpi_config.py` — 9 test (Phase 1: chỉ số, bộ KPI)
 
@@ -816,13 +816,14 @@ Mọi đường tính KPI đều đi về `kpi.evaluation.action_compute_kpi()`,
 | `test_cannot_archive_scale_in_active_template` | Không ẩn bảng bậc khi bộ KPI hoạt động còn dùng |
 | `test_percent_and_scale_name_shown_on_pdf_and_api` | PDF hiện % đạt mục tiêu và tên bảng bậc |
 
-#### `tests/test_kpi_ba.py` — 9 test (Bước 5, Chương 9.2: bộ BA)
+#### `tests/test_kpi_ba.py` — 10 test (Bước 5, Chương 9.2: bộ BA)
 
 | Test | Kiểm tra |
 |---|---|
 | `test_b1_b3_have_no_python_code` | B1, B3 là chỉ số domain, không có hàm `_metric_b1/b3`; B2 có hàm riêng; B4 nhập tay |
 | `test_requirement_link_validation` | `requirement_id` phải là task Yêu cầu, cùng dự án |
 | `test_is_on_time_flag` | Cờ đúng hạn: đúng / trễ / chưa xong / không deadline |
+| `test_open_requirement_not_yet_due_is_not_on_time` | Yêu cầu đang làm dở, chưa tới hạn: `is_on_time` = False dù `days_late` = 0 (cờ yêu cầu đã xong), không vào tử số B1, chỉ ở mẫu số |
 | `test_b1_on_time_ratio` | B1: bỏ task huỷ, ngoài kỳ, không phải Yêu cầu; quá hạn chưa xong tính trễ |
 | `test_b3_first_review_pass` | B3: chỉ tính yêu cầu đã qua review, bị trả về thì không đạt lần đầu |
 | `test_same_bug_not_for_developer_but_for_ba` | **Cùng một bug**: không tính cho Developer (D3, D4), tính cho BA (B2) |
@@ -865,7 +866,7 @@ Mọi đường tính KPI đều đi về `kpi.evaluation.action_compute_kpi()`,
 
 ### 5.4. Kết quả kiểm thử
 
-**142/142 test đạt (0 failed, 0 error)**, xác nhận trên database tạo mới hoàn toàn (không chỉ chạy
+**143/143 test đạt (0 failed, 0 error)**, xác nhận trên database tạo mới hoàn toàn (không chỉ chạy
 lại trên database cũ), lần gần nhất 2026-10-12 — sau khi bổ sung 6 mục ở Chương 9 cũ (màu xếp loại,
 chặn xung đột vai trò, nhắc việc PIP, mục tiêu theo phòng ban, chỉ số theo dự án, tự đánh giá), vá
 thêm các phát hiện khi kiểm tra qua đường đi thật (xem 5.6): quản lý ghi trực tiếp được
@@ -947,7 +948,7 @@ Mật khẩu `admin` cũ của dev vẫn còn trong lịch sử Git; môi trư�
 
 Container Odoo đọc code trực tiếp từ thư mục `addons` trên đĩa. Nếu phát triển tiếp trên `main` sau
 mốc tag bảo vệ (Chương 10) mà đến ngày bảo vệ quên chuyển về đúng tag, buổi demo sẽ chạy code
-đang làm dở — không phải bản đã kiểm chứng đủ 142 test, 6 test của module cầu nối và các bước `pre_defense_check.py`.
+đang làm dở — không phải bản đã kiểm chứng đủ 143 test, 6 test của module cầu nối và các bước `pre_defense_check.py`.
 
 **Bản được chọn để bảo vệ: `v1.2-bao-ve`** (Bước 1–5). Dự phòng: `v1.1.1-bao-ve` (Bước 1–4); `v1.1-bao-ve` có lỗi P2 tính cả phiếu thiếu dữ liệu — không dùng; mọi tag cũ giữ nguyên để truy vết, không di chuyển (Bước 1–4: chỉ số cấu hình không cần code, bộ KPI Developer/Tester/Lead-PM,
 chấm theo bậc, module cầu nối). `v1.0-bao-ve` vẫn còn nguyên làm bản dự phòng gọn hơn (chưa có Bước 1–4).
@@ -1088,7 +1089,7 @@ buộc lý do) và **chấm chỉ số định tính** (D9) — số liệu tự
 **Hệ thống đã qua điểm dừng tính năng trước bảo vệ** (xem Chương 5.6) — bản dùng để bảo vệ đóng
 băng ở tag `v1.0-bao-ve` (Chương 10), không đổi. Nội dung chương này là kế hoạch mở rộng cho giai
 đoạn **sau bảo vệ**, phát triển trực tiếp trên `main` (không tách nhánh riêng — tag đã giữ đúng mốc
-bảo vệ nên không cần). **Bước 0+1 (9.1), Bước 2 (Tester), Bước 3 (chấm điểm theo bậc), Bước 4 (Team Lead/PM) và Bước 5 (BA) đã triển khai** (142/142 test đạt); **Bước 6
+bảo vệ nên không cần). **Bước 0+1 (9.1), Bước 2 (Tester), Bước 3 (chấm điểm theo bậc), Bước 4 (Team Lead/PM) và Bước 5 (BA) đã triển khai** (143/143 test đạt); **Bước 6
 chưa triển khai**, còn ở dạng thiết kế.
 
 ### 9.1. Điểm nghẽn lớn nhất: chỉ số tự động phải viết code — ĐÃ TRIỂN KHAI
@@ -1237,9 +1238,9 @@ tra trên source 19.0) có `deadline`, `is_reached`, `reached_date`.
 |---|---|---|
 | 1 | ~~Chỉ số cấu hình không cần code (9.1)~~ | **Đã triển khai** — xem Chương 3.3 |
 | 2 | ~~Bộ Tester tự động (9.2, Ưu tiên 1)~~ | **Đã triển khai** — 109/109 test đạt, xem 9.2 |
-| 3 | ~~Chấm điểm theo bậc (9.3 #2)~~ | **Đã triển khai** — 142/142 test đạt, xem 9.3 #2 |
-| 4 | ~~Bộ Team Lead/PM + điểm team (9.2 Ưu tiên 2, 9.3 #3)~~ | **Đã triển khai** — 142/142 test đạt + 6 test module cầu nối, xem 9.2 |
-| 5 | ~~Bộ BA (9.2 Ưu tiên 3)~~ | **Đã triển khai** — 142/142 test đạt, xem 9.2 |
+| 3 | ~~Chấm điểm theo bậc (9.3 #2)~~ | **Đã triển khai** — 143/143 test đạt, xem 9.3 #2 |
+| 4 | ~~Bộ Team Lead/PM + điểm team (9.2 Ưu tiên 2, 9.3 #3)~~ | **Đã triển khai** — 143/143 test đạt + 6 test module cầu nối, xem 9.2 |
+| 5 | ~~Bộ BA (9.2 Ưu tiên 3)~~ | **Đã triển khai** — 143/143 test đạt, xem 9.2 |
 | 6 | Kỳ khác nhau theo bộ KPI, kiêm nhiệm (9.3 #4, #5) | Chỉ cần khi đã có nhiều bộ KPI chạy song song |
 
 ### 9.5. Hướng mở rộng khác (đã nêu từ trước)
@@ -1261,7 +1262,7 @@ tra trên source 19.0) có `deadline`, `is_reached`, `reached_date`.
 MVP (31/31 hạng mục) và phần lớn phạm vi Nên có/Mở rộng (7/7 hạng mục), tổng cộng 38/38 hạng mục
 trong bảng thống kê triển khai, cộng thêm 6 mục mở rộng sau khi đối chiếu với các hệ thống KPI tương
 tự (màu xếp loại, chặn xung đột vai trò, nhắc việc PIP, mục tiêu theo phòng ban, chỉ số theo dự án,
-tự đánh giá — Chương 9 cũ, nay đã triển khai). Hệ thống có 142 unit test tự động trong module chính cộng 6 test của module cầu nối (0 lỗi) cộng với
+tự đánh giá — Chương 9 cũ, nay đã triển khai). Hệ thống có 143 unit test tự động trong module chính cộng 6 test của module cầu nối (0 lỗi) cộng với
 kiểm thử thủ công trên REST API, báo cáo PDF, phân quyền, luồng nghiệp vụ hoàn chỉnh trên dữ liệu
 thật, và kiểm tra qua đúng tài khoản thật bằng XML-RPC (`scripts/pre_defense_check.py`, Chương 5.6)
 — cách kiểm tra này tự nó đã bắt được một số lỗi mà unit test (chạy bằng superuser) không bắt được.

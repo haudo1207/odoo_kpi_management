@@ -76,6 +76,18 @@ class TestKpiBa(TransactionCase):
 
     # ---- B1, B3 (domain) ----
 
+    def test_open_requirement_not_yet_due_is_not_on_time(self):
+        """Yêu cầu đang làm dở, chưa tới hạn: days_late = 0 nhưng cờ is_on_time phải là False (cờ yêu cầu đã xong),
+        nên không bao giờ vào tử số của B1; nó chỉ nằm ở mẫu số (chưa đạt) cho tới khi hoàn thành."""
+        open_future = self._requirement(date_deadline=self._days(5))
+        self.assertEqual(open_future.days_late, 0)
+        self.assertFalse(open_future.is_on_time)
+        done_on_time = self._requirement(done=self._days(-2), date_deadline=self._days(-1))
+        self.assertTrue(done_on_time.is_on_time)
+        actual, volume = self._compute("B1")
+        self.assertEqual(volume, 2)       # mẫu số: cả yêu cầu đang làm
+        self.assertAlmostEqual(actual, 50.0)  # tử số chỉ có yêu cầu đã xong đúng hạn
+
     def test_b1_on_time_ratio(self):
         self._requirement(done=self._days(-5), date_deadline=self._days(-3))                  # đúng hạn
         self._requirement(done=self._days(-3), date_deadline=self._days(-8))                  # trễ
