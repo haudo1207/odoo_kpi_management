@@ -251,7 +251,7 @@ class TestKpiDemoScenario(TransactionCase):
 
     def test_phuc_pm_evaluation(self):
         """Bước 4: PM Phúc — P1 = 1/3 milestone đúng hạn (33,33%); P2 Không áp dụng (chưa có cấp dưới chốt);
-        P3 = 56/60 bản ghi sạch (93,33%); P5 = 4. Điểm = ((33,33/80·25) + (93,33/90·20) + 100·30/100) / 75 · 100."""
+        P3 = 59/63 bản ghi sạch (93,65%; thêm 3 yêu cầu của BA Lan đã xong); P5 = 4. Điểm = ((33,33/80·25) + (93,65/90·20) + 100·30/100) / 75 · 100."""
         employee = self.env.ref("project_kpi_management.demo_employee_phuc")
         ev = self.env["kpi.evaluation"].create({"employee_id": employee.id, "period_id": self.period.id})
         ev.line_ids.filtered(lambda l: l.metric_id.code == "P5").actual = 4
@@ -260,8 +260,8 @@ class TestKpiDemoScenario(TransactionCase):
         self.assertAlmostEqual(by["P1"].actual, 100 / 3, places=4)
         self.assertEqual(by["P1"].volume, 3)
         self.assertFalse(by["P2"].is_applicable)
-        self.assertAlmostEqual(by["P3"].actual, 56 / 60 * 100, places=4)
-        self.assertAlmostEqual(ev.kpi_score, 81.54321, places=3)
+        self.assertAlmostEqual(by["P3"].actual, 59 / 63 * 100, places=4)
+        self.assertAlmostEqual(ev.kpi_score, 81.63728, places=3)
 
     def test_phuc_p2_skips_closed_evaluations_without_enough_data(self):
         """Kịch bản demo Bước 4: P2 của Phúc chỉ lấy phiếu cấp dưới đã chốt VÀ đủ dữ liệu.
@@ -294,3 +294,19 @@ class TestKpiDemoScenario(TransactionCase):
         self.assertTrue(p2.is_applicable)
         self.assertEqual(p2.volume, 2)  # Dung và Hà; Khoa (thiếu dữ liệu) không vào cả giá trị lẫn khối lượng
         self.assertAlmostEqual(p2.actual, (55.875 + 102.1528) / 2, places=3)
+
+    def test_lan_ba_evaluation(self):
+        """Bước 5: BA Lan — 3 yêu cầu (2 đúng hạn, 1 trễ; 2 qua review lần đầu); bug b7 (nguyên nhân "yêu cầu sai") của task
+        t6 hiện thực yêu cầu r1 → quy về Lan; bug #5 của tester Dung cũng "yêu cầu sai" trên t6 → 2 bug. B1 = 66,67% (74,07% ·25);
+        B2 = 2/3 = 0,6667 (target 0,3 → 45% ·30); B3 = 66,67% (95,24% ·25); B4 = 4 (100% ·20) → 75,828, tính tay trước khi chạy.
+        Cũng chứng minh b7 không tính cho Developer Bình (D3/D4 chỉ lấy nguyên nhân code)."""
+        employee = self.env.ref("project_kpi_management.demo_employee_lan")
+        ev = self.env["kpi.evaluation"].create({"employee_id": employee.id, "period_id": self.period.id})
+        ev.line_ids.filtered(lambda l: l.metric_id.code == "B4").actual = 4
+        ev.action_compute_kpi()
+        by = {line.metric_id.code: line for line in ev.line_ids}
+        self.assertAlmostEqual(by["B1"].actual, 200 / 3, places=4)
+        self.assertAlmostEqual(by["B2"].actual, 2 / 3, places=4)
+        self.assertEqual(by["B2"].volume, 3)
+        self.assertAlmostEqual(by["B3"].actual, 200 / 3, places=4)
+        self.assertAlmostEqual(ev.kpi_score, 75.828, places=3)

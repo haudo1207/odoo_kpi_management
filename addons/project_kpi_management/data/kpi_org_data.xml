@@ -167,6 +167,71 @@
             <field name="department_id" ref="hr_department_dev"/>
             <field name="kpi_template_id" ref="kpi_template_lead"/>
         </record>
+        <!-- Bước 5 (Chương 9.2, Ưu tiên 3): bộ BA. B1, B3 chỉ là cấu hình (domain) trên task loại Yêu cầu; B2 cần hàm
+             vì phải đi origin_task_id → requirement_id → BA; B4 nhập tay. BA = người trong user_ids của task Yêu cầu. -->
+        <record id="kpi_metric_b1" model="kpi.metric">
+            <field name="code">B1</field>
+            <field name="name">Yêu cầu hoàn thành đúng hạn</field>
+            <field name="category">delivery</field>
+            <field name="unit">%</field>
+            <field name="direction">higher</field>
+            <field name="compute_mode">domain</field>
+            <field name="source_model_id" ref="project.model_project_task"/>
+            <field name="user_field_id" search="[('model', '=', 'project.task'), ('name', '=', 'user_ids')]"/>
+            <field name="date_field_id" search="[('model', '=', 'project.task'), ('name', '=', 'date_deadline')]"/>
+            <field name="aggregation">ratio</field>
+            <field name="numerator_domain">[('task_type', '=', 'requirement'), ('is_on_time', '=', True)]</field>
+            <field name="denominator_domain">[('task_type', '=', 'requirement'), ('state', '!=', '1_canceled')]</field>
+            <field name="description">Task Yêu cầu có deadline trong kỳ, hoàn thành không trễ (cờ is_on_time) / tổng task Yêu cầu có deadline trong kỳ (bỏ task huỷ) × 100. Yêu cầu quá hạn chưa xong tính là trễ; chốt phiếu sau khi kỳ kết thúc.</field>
+        </record>
+        <record id="kpi_metric_b2" model="kpi.metric">
+            <field name="code">B2</field>
+            <field name="name">Mật độ bug do yêu cầu sai</field>
+            <field name="category">quality</field>
+            <field name="unit">bug/yêu cầu</field>
+            <field name="direction">lower</field>
+            <field name="compute_mode">auto</field>
+            <field name="description">Bug có nguyên nhân "Yêu cầu sai" (valid, wont_fix), truy qua task gốc → yêu cầu gốc → BA / số yêu cầu BA hoàn thành trong kỳ. Bug không truy được yêu cầu gốc không quy được về BA (xem báo cáo Kiểm tra dữ liệu).</field>
+        </record>
+        <record id="kpi_metric_b3" model="kpi.metric">
+            <field name="code">B3</field>
+            <field name="name">Yêu cầu qua review lần đầu</field>
+            <field name="category">process</field>
+            <field name="unit">%</field>
+            <field name="direction">higher</field>
+            <field name="compute_mode">domain</field>
+            <field name="source_model_id" ref="project.model_project_task"/>
+            <field name="user_field_id" search="[('model', '=', 'project.task'), ('name', '=', 'user_ids')]"/>
+            <field name="date_field_id" search="[('model', '=', 'project.task'), ('name', '=', 'date_end')]"/>
+            <field name="aggregation">ratio</field>
+            <field name="numerator_domain">[('task_type', '=', 'requirement'), ('state', '=', '1_done'), '|', ('review_approve_count', '>', 0), ('review_reject_count', '>', 0), ('review_reject_count', '=', 0)]</field>
+            <field name="denominator_domain">[('task_type', '=', 'requirement'), ('state', '=', '1_done'), '|', ('review_approve_count', '>', 0), ('review_reject_count', '>', 0)]</field>
+            <field name="description">Yêu cầu hoàn thành trong kỳ đã qua review mà chưa từng bị trả về / yêu cầu hoàn thành trong kỳ đã qua review × 100 (cùng quy tắc với D5).</field>
+        </record>
+        <record id="kpi_metric_b4" model="kpi.metric">
+            <field name="code">B4</field>
+            <field name="name">Đánh giá của quản lý (BA)</field>
+            <field name="category">collaboration</field>
+            <field name="unit">điểm</field>
+            <field name="direction">higher</field>
+            <field name="compute_mode">manual</field>
+            <field name="description">Quản lý chấm thang 1-5 về chất lượng tài liệu yêu cầu, phối hợp với Dev và khách hàng.</field>
+        </record>
+        <record id="kpi_template_ba" model="kpi.template">
+            <field name="name">Business Analyst</field>
+            <field name="description">Bộ KPI cho phân tích nghiệp vụ: B1, B3 là chỉ số cấu hình, B2 hàm Python, B4 nhập tay.</field>
+            <field name="line_ids" eval="[
+                (0, 0, {'sequence': 1, 'metric_id': ref('kpi_metric_b1'), 'target': 90, 'weight': 25, 'min_volume': 3}),
+                (0, 0, {'sequence': 2, 'metric_id': ref('kpi_metric_b2'), 'target': 0.3, 'weight': 30, 'min_volume': 1}),
+                (0, 0, {'sequence': 3, 'metric_id': ref('kpi_metric_b3'), 'target': 70, 'weight': 25, 'min_volume': 3}),
+                (0, 0, {'sequence': 4, 'metric_id': ref('kpi_metric_b4'), 'target': 4, 'weight': 20, 'min_volume': 0}),
+            ]"/>
+        </record>
+        <record id="hr_job_ba" model="hr.job">
+            <field name="name">Phân tích nghiệp vụ (BA)</field>
+            <field name="department_id" ref="hr_department_dev"/>
+            <field name="kpi_template_id" ref="kpi_template_ba"/>
+        </record>
         <!-- Bước 3: bảng bậc mẫu, chưa gắn vào bộ KPI nào (Admin gắn ở Bộ KPI > cột Bảng bậc để demo) -->
         <record id="kpi_score_scale_default" model="kpi.score.scale">
             <field name="name">Bậc 4 mức (mẫu)</field>

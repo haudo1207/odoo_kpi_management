@@ -215,6 +215,25 @@ class KpiEngine(models.AbstractModel):
         ])
         return self._ratio(len(bugs.filtered("is_production_bug")), len(bugs)), len(projects)
 
+    def _metric_b2(self, ctx):
+        """Bước 5 (B2): mật độ bug do yêu cầu sai của BA = bug có bug_root_cause = requirement, kết quả valid/wont_fix,
+        truy ngược origin_task_id → requirement_id → BA (user_ids của yêu cầu), chia cho số yêu cầu BA hoàn thành trong
+        kỳ. Quy kỳ theo ngày hoàn thành của yêu cầu, giống D3 quy theo task gốc. Khối lượng = số yêu cầu hoàn thành.
+        Cùng một bug đã bị loại khỏi D3/D4 của Developer (chỉ tính nguyên nhân "code") — trách nhiệm quy đúng người."""
+        Task = self.env["project.task"].sudo()
+        requirements = self._tasks(ctx, [
+            ("task_type", "=", "requirement"), ("state", "=", "1_done"),
+            ("date_end", ">=", ctx["start"]), ("date_end", "<", ctx["end"]),
+        ])
+        if not requirements:
+            return 0.0, 0
+        bugs = Task.search_count([
+            ("task_type", "=", "bug"), ("bug_root_cause", "=", "requirement"),
+            ("bug_resolution", "in", BUG_RESOLUTIONS_COUNTED),
+            ("origin_task_id.requirement_id", "in", requirements.ids),
+        ])
+        return bugs / len(requirements), len(requirements)
+
     def _metric_p2(self, ctx):
         """Bước 4 (P2): điểm KPI trung bình của cấp dưới trực tiếp, chỉ lấy phiếu CÙNG KỲ đã Gửi hoặc Đã duyệt
         (điểm cuối) VÀ đủ dữ liệu (insufficient_data = False). Phiếu chưa chốt hoặc thiếu dữ liệu (ví dụ nhân viên

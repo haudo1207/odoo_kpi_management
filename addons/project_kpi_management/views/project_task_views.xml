@@ -13,6 +13,7 @@
                             <field name="story_points"/>
                             <field name="kpi_can_review" invisible="1"/>
                             <field name="has_unit_test" invisible="task_type != 'feature'" readonly="not kpi_can_review"/>
+                            <field name="requirement_id" invisible="task_type != 'feature'"/>
                         </group>
                         <group string="Theo dõi">
                             <field name="days_late" decoration-danger="days_late &gt; 0"/>
@@ -69,6 +70,7 @@
             <xpath expr="//filter[@name='closed_tasks']" position="after">
                 <separator/>
                 <filter name="kpi_bug" string="Bug" domain="[('task_type', '=', 'bug')]"/>
+                <filter name="kpi_requirement" string="Yêu cầu" domain="[('task_type', '=', 'requirement')]"/>
                 <filter name="kpi_production_bug" string="Lỗi production" domain="[('task_type', '=', 'bug'), ('is_production_bug', '=', True)]"/>
                 <filter name="kpi_late" string="Trễ hạn" domain="[('days_late', '&gt;', 0)]"/>
                 <filter name="kpi_rejected" string="Bị trả về" domain="[('review_reject_count', '&gt;', 0)]"/>

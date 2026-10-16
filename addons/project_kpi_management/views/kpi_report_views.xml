@@ -93,6 +93,7 @@
                 <field name="classified_rate" digits="[16, 0]" decoration-danger="classified_rate &lt; 80"/>
                 <field name="bug_without_origin" optional="hide"/>
                 <field name="bug_unclassified" optional="hide"/>
+                <field name="bug_requirement_untraceable" optional="show"/>
                 <field name="done_without_sp" optional="hide"/>
             </list>
         </field>
@@ -106,6 +107,7 @@
                 <field name="project_id" type="row"/>
                 <field name="bug_without_origin" type="measure"/>
                 <field name="bug_unclassified" type="measure"/>
+                <field name="bug_requirement_untraceable" type="measure"/>
                 <field name="done_without_sp" type="measure"/>
                 <field name="done_without_date_end" type="measure"/>
             </pivot>

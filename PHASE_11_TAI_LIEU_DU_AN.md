@@ -182,7 +182,7 @@ addons/project_kpi_management/
 ├── data/                             Dữ liệu cấu hình chuẩn (D1–D9, bộ Developer/Tester, cron, loại nhắc việc PIP...)
 ├── views/                           View cho từng model + menu
 ├── report/                          Mẫu in PDF
-└── tests/                           14 file, 132 test
+└── tests/                           15 file, 142 test
 
 addons/project_kpi_timesheet/            Module cầu nối (Bước 4): P4 + bộ "Team Lead / PM (có giờ làm)", 6 test riêng
 ```
@@ -511,13 +511,15 @@ giữ nguyên dự án của chính nó.
 
 | Field | Kiểu | Dùng cho |
 |---|---|---|
-| `task_type` | Selection (feature/bug), required, default feature | Phân loại |
+| `task_type` | Selection (feature/bug/requirement), required, default feature | Phân loại; `requirement` thêm ở Bước 5 (BA) |
 | `story_points` | Float, digits(16,1) | D2, D3 |
 | `origin_task_id` | Many2one tự tham chiếu (`domain="[('id','!=',id)]"`) | D3, D4 — bug trỏ về task gốc |
 | `bug_ids` | One2many ngược của `origin_task_id` | Hiển thị trên task gốc |
 | `is_production_bug` | Boolean | D4 |
 | `bug_resolution` | Selection (valid/wont_fix/duplicate/invalid) | Lọc bug tính KPI |
 | `bug_root_cause` | Selection (code/requirement/environment) | Lọc bug tính KPI |
+| `requirement_id` | Many2one tự tham chiếu (domain: task loại Yêu cầu, cùng dự án) | B2 (Bước 5) — Feature trỏ về yêu cầu gốc; ràng buộc: phải là task loại Yêu cầu khác, cùng dự án |
+| `is_on_time` | Boolean, compute, store | B1 (Bước 5) — task đã xong, có deadline, `days_late = 0` (cùng quy tắc ngày địa phương với D1; D1 giữ nguyên) |
 | `bug_reporter_id` | Many2one `res.users`, default người tạo | QA1–QA4 (Bước 2) — người phát hiện bug; **không dùng `create_uid`** vì PM có thể log bug hộ tester hoặc bug được import. Chỉ KPI Manager trở lên ghi được (kiểm ở `create`/`write`, và khoá trên form); bug cũ được bù `bug_reporter_id = create_uid` đúng một lần khi nâng lên 19.0.1.1.0 (`migrations/19.0.1.1.0/post-migrate.py`) |
 | `review_reject_count`, `review_approve_count` | Integer, readonly | D5 — tăng trong `write()` khi đổi state |
 | `has_unit_test` | Boolean | D6 — chỉ KPI Manager ghi được (kiểm ở `create`/`write`) |
@@ -634,7 +636,7 @@ docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management \
   --test-tags /project_kpi_management --stop-after-init --http-port 8070
 ```
 
-### 5.3. Danh sách test case (132 test, 14 file)
+### 5.3. Danh sách test case (142 test, 15 file)
 
 #### `tests/test_kpi_config.py` — 9 test (Phase 1: chỉ số, bộ KPI)
 
@@ -814,6 +816,22 @@ Mọi đường tính KPI đều đi về `kpi.evaluation.action_compute_kpi()`,
 | `test_cannot_archive_scale_in_active_template` | Không ẩn bảng bậc khi bộ KPI hoạt động còn dùng |
 | `test_percent_and_scale_name_shown_on_pdf_and_api` | PDF hiện % đạt mục tiêu và tên bảng bậc |
 
+#### `tests/test_kpi_ba.py` — 9 test (Bước 5, Chương 9.2: bộ BA)
+
+| Test | Kiểm tra |
+|---|---|
+| `test_b1_b3_have_no_python_code` | B1, B3 là chỉ số domain, không có hàm `_metric_b1/b3`; B2 có hàm riêng; B4 nhập tay |
+| `test_requirement_link_validation` | `requirement_id` phải là task Yêu cầu, cùng dự án |
+| `test_is_on_time_flag` | Cờ đúng hạn: đúng / trễ / chưa xong / không deadline |
+| `test_b1_on_time_ratio` | B1: bỏ task huỷ, ngoài kỳ, không phải Yêu cầu; quá hạn chưa xong tính trễ |
+| `test_b3_first_review_pass` | B3: chỉ tính yêu cầu đã qua review, bị trả về thì không đạt lần đầu |
+| `test_same_bug_not_for_developer_but_for_ba` | **Cùng một bug**: không tính cho Developer (D3, D4), tính cho BA (B2) |
+| `test_b2_only_counted_bugs_of_requirement_cause` | B2 bỏ bug trùng, bug nguyên nhân code, yêu cầu ngoài kỳ |
+| `test_untraceable_requirement_bug_reported_in_data_quality` | Cột "không truy được yêu cầu gốc" đếm đúng; bug đó không tính cho BA |
+| `test_click_compute_matches_hand_calculation` | Qua nút Tính KPI: phiếu BA ra 89,328 đúng bảng tính tay |
+
+(`tests/test_kpi_demo_scenario.py` có thêm `test_lan_ba_evaluation`: BA mẫu Lan — 3 yêu cầu, bug "yêu cầu sai" của task t6 và bug #5 của tester Dung → B2 = 2/3, điểm 75,828, tính tay trước khi chạy. Thêm 3 yêu cầu của Lan khiến P3 của Phúc đổi từ 56/60 sang 59/63, điểm Phúc 81,637.)
+
 #### `tests/test_kpi_lead.py` — 9 test (Bước 4, Chương 9.2: bộ Team Lead / PM)
 
 | Test | Kiểm tra |
@@ -847,7 +865,7 @@ Mọi đường tính KPI đều đi về `kpi.evaluation.action_compute_kpi()`,
 
 ### 5.4. Kết quả kiểm thử
 
-**132/132 test đạt (0 failed, 0 error)**, xác nhận trên database tạo mới hoàn toàn (không chỉ chạy
+**142/142 test đạt (0 failed, 0 error)**, xác nhận trên database tạo mới hoàn toàn (không chỉ chạy
 lại trên database cũ), lần gần nhất 2026-10-12 — sau khi bổ sung 6 mục ở Chương 9 cũ (màu xếp loại,
 chặn xung đột vai trò, nhắc việc PIP, mục tiêu theo phòng ban, chỉ số theo dự án, tự đánh giá), vá
 thêm các phát hiện khi kiểm tra qua đường đi thật (xem 5.6): quản lý ghi trực tiếp được
@@ -879,7 +897,7 @@ Lý do cần script riêng: sửa code trên đĩa không tự áp dụng cho m�
 phải nạp lại module hoặc khởi động lại tiến trình trước, nếu không hệ thống đang chạy vẫn sai dù
 code đã đúng và test đã đạt (đúng loại lỗi đã gặp khi viết script này, xem dưới).
 
-Kiểm tra 12 mục (8 nhóm, thêm bước P4 tuỳ chọn), tự tạo kỳ/phiếu test riêng và tự dọn sạch ở cuối (kể cả khi có bước FAIL),
+Kiểm tra 13 mục (9 nhóm, thêm bước P4 tuỳ chọn), tự tạo kỳ/phiếu test riêng và tự dọn sạch ở cuối (kể cả khi có bước FAIL),
 không ảnh hưởng dữ liệu demo dùng để trình bày:
 
 1. Chặn xung đột vai trò (Mục 2): quản lý được gán thêm quyền Admin vẫn bị chặn khi duyệt phiếu
@@ -893,7 +911,8 @@ không ảnh hưởng dữ liệu demo dùng để trình bày:
 5. Bộ Tester (Bước 2, 2 bước): đăng nhập tester xác nhận không sửa được `bug_reporter_id`; Admin tính phiếu Tester ra đúng 71,0 điểm (tính tay trước).
 6. Chấm theo bậc (Bước 3): nút Tính KPI ra 60 điểm với 50% đạt mục tiêu (tuyến tính sẽ ra 50).
 7. Bộ Lead/PM (Bước 4): phiếu PM tự tạo ra đúng 82,95 điểm (P1 = 50%, P2 và P3 Không áp dụng).
-8. P4 giờ so với kế hoạch (Bước 4): chỉ chạy khi module cầu nối `project_kpi_timesheet` đã cài (130/100 giờ → 50 điểm); chưa cài thì in `[SKIP]`. Tuỳ chọn `--skip-demo-checks` chỉ chạy các bước tự tạo dữ liệu, dùng cho database không có dữ liệu mẫu.
+8. Bộ BA (Bước 5): phiếu BA tự tạo (3 yêu cầu, 1 bug "yêu cầu sai" quy về BA) ra đúng 89,33 điểm.
+9. P4 giờ so với kế hoạch (Bước 4): chỉ chạy khi module cầu nối `project_kpi_timesheet` đã cài (130/100 giờ → 50 điểm); chưa cài thì in `[SKIP]`. Tuỳ chọn `--skip-demo-checks` chỉ chạy các bước tự tạo dữ liệu, dùng cho database không có dữ liệu mẫu.
 
 Cách chạy trước khi bảo vệ:
 
@@ -928,9 +947,9 @@ Mật khẩu `admin` cũ của dev vẫn còn trong lịch sử Git; môi trư�
 
 Container Odoo đọc code trực tiếp từ thư mục `addons` trên đĩa. Nếu phát triển tiếp trên `main` sau
 mốc tag bảo vệ (Chương 10) mà đến ngày bảo vệ quên chuyển về đúng tag, buổi demo sẽ chạy code
-đang làm dở — không phải bản đã kiểm chứng đủ 132 test, 6 test của module cầu nối và các bước `pre_defense_check.py`.
+đang làm dở — không phải bản đã kiểm chứng đủ 142 test, 6 test của module cầu nối và các bước `pre_defense_check.py`.
 
-**Bản được chọn để bảo vệ: `v1.1.1-bao-ve`** (`v1.1-bao-ve` có lỗi P2 tính cả phiếu thiếu dữ liệu — không dùng; tag cũ giữ nguyên để truy vết, không di chuyển) (Bước 1–4: chỉ số cấu hình không cần code, bộ KPI Developer/Tester/Lead-PM,
+**Bản được chọn để bảo vệ: `v1.2-bao-ve`** (Bước 1–5). Dự phòng: `v1.1.1-bao-ve` (Bước 1–4); `v1.1-bao-ve` có lỗi P2 tính cả phiếu thiếu dữ liệu — không dùng; mọi tag cũ giữ nguyên để truy vết, không di chuyển (Bước 1–4: chỉ số cấu hình không cần code, bộ KPI Developer/Tester/Lead-PM,
 chấm theo bậc, module cầu nối). `v1.0-bao-ve` vẫn còn nguyên làm bản dự phòng gọn hơn (chưa có Bước 1–4).
 Nếu Bước 5 (BA) xong kịp và qua đủ kiểm tra thì gắn `v1.2-bao-ve` và đổi quy trình dưới đây sang tag mới.
 
@@ -939,7 +958,7 @@ Nếu Bước 5 (BA) xong kịp và qua đủ kiểm tra thì gắn `v1.2-bao-ve
 
 ```bash
 git stash                      # nếu còn thay đổi chưa commit trên main
-git checkout v1.1.1-bao-ve
+git checkout v1.2-bao-ve
 docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management --stop-after-init
 docker restart odoo19-web
 python scripts/pre_defense_check.py --db kpi_dev   # phải in "tất cả OK"; bước P4 in [SKIP] vì không cài hr_timesheet
@@ -955,7 +974,7 @@ trình Odoo đang chạy. Lần `-u` đầu trên database còn ở bản cũ s�
 ### 5.8. Kịch bản demo (10–15 phút, chọn lọc)
 
 Không demo hết được — chọn 5 phần, thứ tự từ nền tảng tới mở rộng. Dữ liệu mẫu: kỳ "Tháng ... (dữ liệu mẫu)", tài khoản
-`admin`, `quocviet` (quản lý), `an`, `binh`, `phuc` (PM), `dung`, `khoa` (tester); mật khẩu trùng tên đăng nhập.
+`admin`, `quocviet` (quản lý), `an`, `binh`, `phuc` (PM), `dung`, `khoa` (tester), `ha` (Developer, cấp dưới của Phúc), `lan` (BA); mật khẩu trùng tên đăng nhập.
 
 | # | Phần (thời gian) | Thao tác | Điều cần nói |
 |---|---|---|---|
@@ -963,7 +982,8 @@ Không demo hết được — chọn 5 phần, thứ tự từ nền tảng t�
 | 2 | Tạo chỉ số bằng cấu hình (3') | KPI → Cấu hình → Chỉ số KPI → tạo mới: Cách tính "Tự động (cấu hình)", model `project.task`, người = `user_ids`, ngày = `date_end`, Đếm, domain `[('state', '=', '1_done')]` → bấm **Thử tính** cho An: ra 7 | Thêm chỉ số không cần viết code, domain đọc bằng `ast.literal_eval` nên không chạy được mã tuỳ ý; chỉ Admin dùng được |
 | 3 | Bộ Tester không cần code (2') | Mở bộ "Tester (tự động)" (QA1–QA3 là bản ghi cấu hình); Tạo phiếu cho `dung`, nhập QA5 = 4, Tính KPI → QA1 = 7, điểm 55,875 | Một vai trò mới chỉ bằng dữ liệu; `bug_reporter_id` chỉ Manager sửa được để không tự gán bug cho mình |
 | 4 | Phụ thuộc giữa các phiếu: P2 (3') | Tạo + Tính phiếu của `phuc`: P2 "Không áp dụng" → tạo phiếu `dung`, `khoa`, `ha` (nhập QA5 = 4 cho Dung/Khoa, D9 = 4 cho Hà; phiếu `khoa` thiếu dữ liệu nên chọn xếp loại tay + lý do), Tính KPI, Gửi duyệt cả ba → Tính lại phiếu `phuc`: P2 ra 79,01 trên 2 phiếu | Không cần sắp thứ tự trong wizard; phiếu thiếu dữ liệu (Khoa, nhân viên mới) **không kéo điểm của quản lý xuống** — hệ thống không tự xếp loại phiếu đó thì cũng không dùng nó để chấm người khác |
-| 5 | (nếu còn thời gian, 2') Chấm theo bậc | Bộ KPI → gắn "Bậc 4 mức (mẫu)" vào một dòng → tạo phiếu mới → cột "% đạt mục tiêu" và bậc hiển thị | Phiếu cũ không đổi vì bảng bậc được chụp lúc tạo phiếu |
+| 5 | (nếu còn thời gian, 2') Một bug, hai trách nhiệm | Phiếu `lan` (BA): B2 = 2/3 vì bug "yêu cầu sai" của task t6 quy về BA; mở phiếu `binh`: D3 không tính bug đó | Một lần phân loại bug (`bug_root_cause`), trách nhiệm quy đúng người |
+| 6 | (nếu còn thời gian, 2') Chấm theo bậc | Bộ KPI → gắn "Bậc 4 mức (mẫu)" vào một dòng → tạo phiếu mới → cột "% đạt mục tiêu" và bậc hiển thị | Phiếu cũ không đổi vì bảng bậc được chụp lúc tạo phiếu |
 
 Trước buổi demo chạy `pre_defense_check.py` (5.6). Không cài `hr_timesheet` trên `kpi_dev`; P4 chỉ nói bằng lời nếu hội đồng hỏi, kèm bằng chứng là test của module cầu nối.
 
@@ -1068,7 +1088,7 @@ buộc lý do) và **chấm chỉ số định tính** (D9) — số liệu tự
 **Hệ thống đã qua điểm dừng tính năng trước bảo vệ** (xem Chương 5.6) — bản dùng để bảo vệ đóng
 băng ở tag `v1.0-bao-ve` (Chương 10), không đổi. Nội dung chương này là kế hoạch mở rộng cho giai
 đoạn **sau bảo vệ**, phát triển trực tiếp trên `main` (không tách nhánh riêng — tag đã giữ đúng mốc
-bảo vệ nên không cần). **Bước 0+1 (9.1), Bước 2 (9.2, Tester) và Bước 3 (chấm điểm theo bậc) và Bước 4 (Team Lead/PM) đã triển khai** (132/132 test đạt); **Bước 5–6
+bảo vệ nên không cần). **Bước 0+1 (9.1), Bước 2 (Tester), Bước 3 (chấm điểm theo bậc), Bước 4 (Team Lead/PM) và Bước 5 (BA) đã triển khai** (142/142 test đạt); **Bước 6
 chưa triển khai**, còn ở dạng thiết kế.
 
 ### 9.1. Điểm nghẽn lớn nhất: chỉ số tự động phải viết code — ĐÃ TRIỂN KHAI
@@ -1164,14 +1184,23 @@ tra trên source 19.0) có `deadline`, `is_reached`, `reached_date`.
 - **Module cầu nối `project_kpi_timesheet`:** `depends: project_kpi_management, hr_timesheet`, `auto_install: True`; P4 và bộ "Team Lead / PM (có giờ làm)" (P1–P5, trọng số 20/20/15/15/30) nằm hoàn toàn trong module này, test riêng trong module này. Khi chưa cài, bộ "Team Lead / PM" gốc vẫn chạy với P1–P3 và P5. Bộ có P4 là bộ riêng, không sửa bộ gốc, để gỡ cầu nối không làm lệch tổng trọng số.
 - **Quyết định về `kpi_dev`:** **không** cài `hr_timesheet`/cầu nối trên `kpi_dev` (cài sẽ thêm app Timesheet vào database demo). P4 được kiểm chứng bằng 6 test của module cầu nối trên một database riêng (`-i project_kpi_timesheet`) và bằng bước P4 của `scripts/pre_defense_check.py` (bước này tự bỏ qua nếu cầu nối chưa cài).
 
-**Ưu tiên 3 — BA:** dữ liệu có một phần (`bug_root_cause = requirement`), cần thêm loại task
-"Requirement" và cách nối task tính năng với yêu cầu gốc.
+**Ưu tiên 3 — BA — ĐÃ TRIỂN KHAI (Bước 5):** thêm loại task `requirement` (filter "Yêu cầu"), Feature trỏ về yêu cầu gốc qua
+`requirement_id`; **BA là người trong `user_ids` của task Yêu cầu**.
 
-| Mã | Chỉ số | Nguồn dữ liệu |
-|---|---|---|
-| B1 | Tỷ lệ yêu cầu bàn giao đúng hạn | Task loại Requirement |
-| B2 | Tỷ lệ bug do yêu cầu sai | `bug_root_cause = requirement`, quy về BA của yêu cầu gốc |
-| B3 | Số lần yêu cầu bị sửa sau khi chốt | Đếm lần trả về của task Requirement (dùng lại `review_reject_count`) |
+| Mã | Chỉ số | Cách tính | Chiều | Mục tiêu | Trọng số | Khối lượng tối thiểu |
+|---|---|---|---|---|---|---|
+| B1 | Yêu cầu hoàn thành đúng hạn | **Domain, tỷ lệ** (chỉ cấu hình): task Yêu cầu có deadline trong kỳ, cờ `is_on_time` / tổng (bỏ task huỷ) | Cao tốt | 90% | 25 | 3 yêu cầu |
+| B2 | Mật độ bug do yêu cầu sai | **Python `_metric_b2()`**: bug `bug_root_cause = requirement` (valid/wont_fix) → `origin_task_id` → `requirement_id` → BA, chia cho số yêu cầu BA hoàn thành trong kỳ; quy kỳ theo ngày hoàn thành của yêu cầu (giống D3 quy theo task gốc) | Thấp tốt | 0,3 bug/yêu cầu | 30 | 1 yêu cầu |
+| B3 | Yêu cầu qua review lần đầu | **Domain, tỷ lệ**: yêu cầu xong trong kỳ đã qua review (`review_approve_count > 0` hoặc `review_reject_count > 0`) mà `review_reject_count = 0` / yêu cầu xong trong kỳ đã qua review (cùng quy tắc D5) | Cao tốt | 70% | 25 | 3 yêu cầu |
+| B4 | Đánh giá của quản lý | Nhập tay | Cao tốt | 4 | 20 | 0 |
+
+**Các quyết định thiết kế của Bước 5:**
+
+- **Cờ `is_on_time` lưu sẵn** để B1 chỉ cần cấu hình; D1 không bị sửa. Dùng `days_late = 0` thay vì so trực tiếp `date_end <= date_deadline` để cùng quy tắc ngày địa phương với D1 (xong muộn trong cùng ngày deadline vẫn đúng hạn).
+- **Một lần phân loại bug, trách nhiệm quy đúng người:** bug "yêu cầu sai" bị loại khỏi D3, D4 của Developer (chỉ nguyên nhân `code`) và được tính vào B2 của BA. Có test chứng minh đúng một bug: Developer không bị tính, BA bị tính (`test_same_bug_not_for_developer_but_for_ba`).
+- **Bug không quy được về BA:** bug `bug_root_cause = requirement` nhưng task gốc không có `requirement_id` (hoặc bug không có task gốc) không thuộc BA nào — báo cáo Kiểm tra dữ liệu có thêm cột **"Bug do yêu cầu nhưng không truy được yêu cầu gốc"** để quản lý bổ sung liên kết trước khi chốt kỳ.
+- **B3 mẫu số:** dùng "đã qua review" như D5 (không dùng trạng thái `03_approved` vì task Done và Approved là hai giá trị loại trừ của cùng field `state`, task đã Done không còn là Approved).
+- **Giới hạn:** B1 như P1 — kỳ chưa kết thúc thì yêu cầu chưa tới hạn cũng tính là chưa đúng hạn (domain không có "hôm nay"), nên chốt phiếu BA sau kỳ.
 
 **Để sau (ngoài phạm vi, khác bản chất):**
 
@@ -1208,9 +1237,9 @@ tra trên source 19.0) có `deadline`, `is_reached`, `reached_date`.
 |---|---|---|
 | 1 | ~~Chỉ số cấu hình không cần code (9.1)~~ | **Đã triển khai** — xem Chương 3.3 |
 | 2 | ~~Bộ Tester tự động (9.2, Ưu tiên 1)~~ | **Đã triển khai** — 109/109 test đạt, xem 9.2 |
-| 3 | ~~Chấm điểm theo bậc (9.3 #2)~~ | **Đã triển khai** — 132/132 test đạt, xem 9.3 #2 |
-| 4 | ~~Bộ Team Lead/PM + điểm team (9.2 Ưu tiên 2, 9.3 #3)~~ | **Đã triển khai** — 132/132 test đạt + 6 test module cầu nối, xem 9.2 |
-| 5 | Bộ BA (9.2 Ưu tiên 3) | Cần thêm loại task Requirement |
+| 3 | ~~Chấm điểm theo bậc (9.3 #2)~~ | **Đã triển khai** — 142/142 test đạt, xem 9.3 #2 |
+| 4 | ~~Bộ Team Lead/PM + điểm team (9.2 Ưu tiên 2, 9.3 #3)~~ | **Đã triển khai** — 142/142 test đạt + 6 test module cầu nối, xem 9.2 |
+| 5 | ~~Bộ BA (9.2 Ưu tiên 3)~~ | **Đã triển khai** — 142/142 test đạt, xem 9.2 |
 | 6 | Kỳ khác nhau theo bộ KPI, kiêm nhiệm (9.3 #4, #5) | Chỉ cần khi đã có nhiều bộ KPI chạy song song |
 
 ### 9.5. Hướng mở rộng khác (đã nêu từ trước)
@@ -1232,7 +1261,7 @@ tra trên source 19.0) có `deadline`, `is_reached`, `reached_date`.
 MVP (31/31 hạng mục) và phần lớn phạm vi Nên có/Mở rộng (7/7 hạng mục), tổng cộng 38/38 hạng mục
 trong bảng thống kê triển khai, cộng thêm 6 mục mở rộng sau khi đối chiếu với các hệ thống KPI tương
 tự (màu xếp loại, chặn xung đột vai trò, nhắc việc PIP, mục tiêu theo phòng ban, chỉ số theo dự án,
-tự đánh giá — Chương 9 cũ, nay đã triển khai). Hệ thống có 132 unit test tự động trong module chính cộng 6 test của module cầu nối (0 lỗi) cộng với
+tự đánh giá — Chương 9 cũ, nay đã triển khai). Hệ thống có 142 unit test tự động trong module chính cộng 6 test của module cầu nối (0 lỗi) cộng với
 kiểm thử thủ công trên REST API, báo cáo PDF, phân quyền, luồng nghiệp vụ hoàn chỉnh trên dữ liệu
 thật, và kiểm tra qua đúng tài khoản thật bằng XML-RPC (`scripts/pre_defense_check.py`, Chương 5.6)
 — cách kiểm tra này tự nó đã bắt được một số lỗi mà unit test (chạy bằng superuser) không bắt được.
@@ -1240,7 +1269,7 @@ Nguyên tắc thiết kế cốt lõi — không hardcode vai trò — đã đư
 (Chương 7), không chỉ dừng ở khẳng định lý thuyết. Các giới hạn còn tồn tại (Chương 8.3) đều đã được
 xác định rõ ràng, có hướng xử lý cụ thể (Chương 9), phù hợp để trình bày minh bạch trước hội đồng.
 
-Bản dùng để bảo vệ được đóng băng ở tag Git `v1.1.1-bao-ve` (bản dự phòng gọn hơn: `v1.0-bao-ve`) — quy trình
+Bản dùng để bảo vệ được đóng băng ở tag Git `v1.2-bao-ve` (dự phòng: `v1.1.1-bao-ve`, gọn nhất: `v1.0-bao-ve`) — quy trình
 chuyển đúng về bản này vào ngày bảo vệ và kịch bản demo nằm ở Chương 5.7, 5.8. Phát triển tiếp theo hướng
 Chương 9 đi trên `main`, không ảnh hưởng các tag này.
 

@@ -184,6 +184,19 @@ class KpiDemo(models.AbstractModel):
         for key, name, deadline, done in (("h1", "Màn hình đăng nhập", 4, 3), ("h2", "Danh sách đơn hàng", 9, 8), ("h3", "Thông báo đẩy", 14, 13)):
             task(key, "ha", name, sp=5, deadline=deadline, done=at(done, 10), approve=1, unit=True, project=second_project)
 
+        # ---- Lan (BA, Bước 5): 3 yêu cầu trong dự án chính; bug b7 (nguyên nhân "yêu cầu sai") quy về Lan ----
+        lan_user = self.env["res.users"].create({"name": "Trịnh Thu Lan", "login": "lan", "password": "lan", "tz": tz.zone})
+        lan_employee = self.env["hr.employee"].create({
+            "name": "Trịnh Thu Lan", "user_id": lan_user.id, "job_id": self.env.ref(XMLID % "hr_job_ba").id,
+            "department_id": department.id, "parent_id": manager_employee.id,
+        })
+        employees["lan"] = lan_employee
+        xmlids += [("demo_user_lan", lan_user), ("demo_employee_lan", lan_employee)]
+        r1 = task("r1", "lan", "Yêu cầu: giỏ hàng", deadline=3, done=at(2, 10), approve=1, task_type="requirement")
+        task("r2", "lan", "Yêu cầu: thanh toán", deadline=6, done=at(8, 10), approve=1, reject=1, task_type="requirement")
+        task("r3", "lan", "Yêu cầu: báo cáo doanh thu", deadline=12, done=at(11, 10), approve=1, task_type="requirement")
+        t6.requirement_id = r1  # t6 (Quản lý đơn hàng) hiện thực yêu cầu r1; b7 là bug "yêu cầu sai" của t6
+
         # ---- Dung (Tester, Bước 2): 10 bug tự log, bộ KPI Tester tự động ----
         # Bug không giao cho ai và nguyên nhân khác "code", nên không lọt vào D3/D4/D7 của An, Bình.
         tester_job = self.env.ref(XMLID % "hr_job_tester")

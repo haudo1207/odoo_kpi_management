@@ -19,6 +19,11 @@ class KpiDataQualityReport(models.Model):
     bug_count = fields.Integer("Bug", readonly=True)
     bug_without_origin = fields.Integer("Bug thiếu task gốc", readonly=True)
     bug_unclassified = fields.Integer("Bug chưa phân loại", readonly=True)
+    bug_requirement_untraceable = fields.Integer(
+        "Bug do yêu cầu nhưng không truy được yêu cầu gốc", readonly=True,
+        help="Bug có nguyên nhân \"Yêu cầu sai\" nhưng task gốc không có yêu cầu gốc (requirement_id): "
+             "không quy được về BA nào (B2).",
+    )
     sp_rate = fields.Float("Tỷ lệ Feature có SP (%)", readonly=True, aggregator=None)
     origin_rate = fields.Float("Tỷ lệ bug có task gốc (%)", readonly=True, aggregator=None)
     classified_rate = fields.Float("Tỷ lệ bug đủ phân loại (%)", readonly=True, aggregator=None)
@@ -39,9 +44,12 @@ class KpiDataQualityReport(models.Model):
                         COUNT(*) FILTER (WHERE t.task_type = 'bug') AS bug_count,
                         COUNT(*) FILTER (WHERE t.task_type = 'bug' AND t.origin_task_id IS NULL) AS bug_without_origin,
                         COUNT(*) FILTER (WHERE t.task_type = 'bug'
-                                         AND (t.bug_resolution IS NULL OR t.bug_root_cause IS NULL)) AS bug_unclassified
+                                         AND (t.bug_resolution IS NULL OR t.bug_root_cause IS NULL)) AS bug_unclassified,
+                        COUNT(*) FILTER (WHERE t.task_type = 'bug' AND t.bug_root_cause = 'requirement'
+                                         AND o.requirement_id IS NULL) AS bug_requirement_untraceable
                     FROM project_task t
                     JOIN project_project p ON p.id = t.project_id
+                    LEFT JOIN project_task o ON o.id = t.origin_task_id
                     WHERE t.active
                     GROUP BY p.id, p.company_id
                 )

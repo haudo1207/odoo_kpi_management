@@ -8,7 +8,7 @@ class ProjectTask(models.Model):
     _inherit = "project.task"
 
     task_type = fields.Selection(
-        [("feature", "Feature"), ("bug", "Bug")],
+        [("feature", "Feature"), ("bug", "Bug"), ("requirement", "Yêu cầu")],
         string="Loại task",
         default="feature",
         required=True,
@@ -61,6 +61,19 @@ class ProjectTask(models.Model):
              "người khác log về mình nhằm tăng QA1 (số bug hợp lệ tìm được).",
     )
 
+    # Bước 5 (BA): task Feature trỏ về yêu cầu gốc; người phụ trách yêu cầu (user_ids của task Requirement) là BA
+    requirement_id = fields.Many2one(
+        "project.task", string="Yêu cầu gốc", index=True, copy=False,
+        domain="[('task_type', '=', 'requirement'), ('project_id', '=', project_id)]",
+        help="Task Yêu cầu mà Feature này hiện thực, cùng dự án. Bug có nguyên nhân \"Yêu cầu sai\" của Feature "
+             "được quy về BA phụ trách yêu cầu này (B2) thay vì Developer (D3, D4).",
+    )
+    is_on_time = fields.Boolean(
+        "Hoàn thành đúng hạn", compute="_compute_is_on_time", store=True,
+        help="Task đã xong, có deadline và không trễ ngày nào (cùng quy tắc ngày địa phương với D1: days_late = 0). "
+             "Dùng cho chỉ số B1; D1 giữ nguyên cách tính riêng.",
+    )
+
     # D1: số ngày trễ, đo cả khi đã hoàn thành
     days_late = fields.Integer("Số ngày trễ", compute="_compute_days_late", store=True)
 
@@ -68,6 +81,20 @@ class ProjectTask(models.Model):
         can_review = self.env.user.has_group("project_kpi_management.group_kpi_manager")
         for task in self:
             task.kpi_can_review = can_review
+
+    @api.constrains("requirement_id")
+    def _check_requirement(self):
+        for task in self.filtered("requirement_id"):
+            requirement = task.requirement_id
+            if requirement == task or requirement.task_type != "requirement":
+                raise ValidationError("Yêu cầu gốc phải là một task loại Yêu cầu khác.")
+            if requirement.project_id != task.project_id:
+                raise ValidationError("Yêu cầu gốc phải cùng dự án với task.")
+
+    @api.depends("state", "days_late", "date_deadline")
+    def _compute_is_on_time(self):
+        for task in self:
+            task.is_on_time = bool(task.state == "1_done" and task.date_deadline and task.days_late == 0)
 
     @api.constrains("origin_task_id")
     def _check_origin_task(self):

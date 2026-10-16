@@ -312,8 +312,9 @@ def check_tester(s, period_id):
         s.fail("Chấm theo bậc", f"mong đợi 60.0, thực tế {score2}")
 
 
-def _make_pm(s, suffix):
-    """Tạo PM + dự án do PM quản lý (project.user_id), trả về (login, user_id, employee_id, project_id)."""
+def _make_pm(s, suffix, job_xmlid="project_kpi_management.hr_job_pm"):
+    """Tạo PM (hoặc vai trò khác theo job) + dự án do người đó quản lý (project.user_id),
+    trả về (login, user_id, employee_id, project_id)."""
     login = f"chk_pm_{suffix}"
     s.passwords[login] = login
     _, user_group = s.ref("base.group_user")
@@ -327,7 +328,7 @@ def _make_pm(s, suffix):
         except xmlrpc.client.Fault:
             s.call("admin", "res.users", "write", [user_id], {"active": False})
     s.add_cleanup(_drop_user)
-    _, job_id = s.ref("project_kpi_management.hr_job_pm")
+    _, job_id = s.ref(job_xmlid)
     employee_id = s.call("admin", "hr.employee", "create", {"name": f"PM kiểm tra {suffix}", "user_id": user_id, "job_id": job_id})
     s.add_cleanup(lambda: s.call("admin", "hr.employee", "unlink", [employee_id]))
     project_id = s.call("admin", "project.project", "create", {"name": f"Dự án PM kiểm tra {suffix}", "user_id": user_id})
@@ -362,6 +363,46 @@ def check_lead(s):
         s.ok(f"Phiếu Lead/PM: admin tính ra {expected:.2f} điểm (P1 50%, P2 và P3 Không áp dụng), khớp bảng tính tay")
     else:
         s.fail("Phiếu Lead/PM", f"mong đợi {expected:.2f}, thực tế {score}")
+
+
+def check_ba(s):
+    """Bước 5: bộ KPI BA. Tự tạo BA, dự án, 3 yêu cầu (2 đúng hạn, 1 trễ; 2 qua review lần đầu), 1 Feature hiện thực
+    yêu cầu đầu và 1 bug "yêu cầu sai" của Feature đó (quy về BA, không về Developer). Tính tay trước khi chạy:
+    B1 = 2/3 → 74,07% ·25; B2 = 1/3 bug/yêu cầu, mục tiêu 0,3 → 90% ·30; B3 = 2/3 → 95,24% ·25; B4 = 4 → 100% ·20 = 89,33."""
+    suffix = time.strftime("%H%M%S")
+    _, user_id, employee_id, project_id = _make_pm(s, suffix + "b", "project_kpi_management.hr_job_ba")
+    now = time.time()
+    fmt = lambda days: time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(now + days * 86400))
+
+    def task(vals):
+        task_id = s.call("admin", "project.task", "create", {"project_id": project_id, **vals})
+        s.add_cleanup(lambda: s.call("admin", "project.task", "unlink", [task_id]))
+        return task_id
+
+    requirements = []
+    for deadline, approve, reject in ((5, 1, 0), (-5, 1, 1), (5, 1, 0)):
+        req = task({"name": "Yêu cầu", "task_type": "requirement", "user_ids": [(6, 0, [user_id])],
+                    "date_deadline": fmt(deadline)})
+        s.call("admin", "project.task", "write", [req], {"state": "1_done", "review_approve_count": approve,
+                                                         "review_reject_count": reject})
+        requirements.append(req)
+    feature = task({"name": "Feature", "requirement_id": requirements[0]})
+    task({"name": "Bug yêu cầu sai", "task_type": "bug", "origin_task_id": feature, "bug_resolution": "valid",
+          "bug_root_cause": "requirement"})
+    period_id = s.call("admin", "kpi.period", "create", {
+        "name": f"Kiểm tra BA {suffix}", "period_type": "sprint", "date_from": "2000-01-01", "date_to": "2099-12-31",
+    })
+    s.add_cleanup(lambda: s.call("admin", "kpi.period", "unlink", [period_id]))
+    ev_id = create_evaluation(s, None, period_id, employee_id=employee_id)
+    b4 = s.call("admin", "kpi.evaluation.line", "search", [("evaluation_id", "=", ev_id), ("metric_id.code", "=", "B4")])
+    s.call("admin", "kpi.evaluation.line", "write", b4, {"actual": 4})
+    s.call("admin", "kpi.evaluation", "action_compute_kpi", [ev_id])
+    score = s.call("admin", "kpi.evaluation", "read", [ev_id], fields=["kpi_score"])[0]["kpi_score"]
+    expected = (200 / 3 / 90 * 100 * 25 + 90 * 30 + 200 / 3 / 70 * 100 * 25 + 100 * 20) / 100
+    if abs(score - expected) < 0.01:
+        s.ok(f"Phiếu BA: admin tính ra {expected:.2f} điểm (bug yêu cầu sai quy về BA), khớp bảng tính tay")
+    else:
+        s.fail("Phiếu BA", f"mong đợi {expected:.2f}, thực tế {score}")
 
 
 def check_timesheet_bridge(s):
@@ -446,6 +487,7 @@ def main():
             check_target_override(s, period_id)
         check_tester(s, period_id)
         check_lead(s)
+        check_ba(s)
         check_timesheet_bridge(s)
     finally:
         s.run_cleanups()
