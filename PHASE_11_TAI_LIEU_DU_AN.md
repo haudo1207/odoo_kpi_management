@@ -1512,6 +1512,18 @@ xác định rõ ràng, có hướng xử lý cụ thể (Chương 9), phù hợ
 
 Hệ thống chỉ có **một mã nguồn duy nhất trên nhánh `main`**, đồng nhất với hệ thống đang chạy; mọi đợt phát triển đã hợp nhất vào đó. Quy trình ngày bảo vệ (`git pull` trên `main` → `restore_defense.sh clean` → chờ "tất cả OK") và kịch bản demo nằm ở Chương 5.7, 5.8. Các tag `v1.x-bao-ve` trên GitHub chỉ là lịch sử.
 
+**Trạng thái hoàn thiện (xác nhận 2026-10-19):**
+
+| Hạng mục | Trạng thái |
+|---|---|
+| Phạm vi Chương 1 (MVP, Nên có, Mở rộng) | Đã triển khai đủ 38/38 |
+| Kế hoạch Chương 9 (Bước 0–5, Đợt A–D) | Đã triển khai đủ; không còn việc dở dang |
+| Kiểm thử | 206/206 test đạt trên database tạo mới (`run_all_tests.sh`, 0 failed, 0 error) |
+| Hệ thống đang chạy (`kpi_defense`, bản `clean`) | `prepare_defense.sh` → "tất cả OK", phiên bản ba module đã cài đồng đều `19.0.1.7.4` |
+| Tài liệu | Đồng bộ với code (số test, tài khoản theo vai trò, kịch bản demo, giới hạn) |
+| Chưa làm (có chủ đích) | Bước 6b nhân viên kiêm nhiệm; dải xếp loại cấu hình đầy đủ; OKR, đồng bộ Jira/GitLab, DORA, bộ KPI DevOps/Support — nêu ở 8.3 và 9.6 |
+| Còn lại phía người bảo vệ | Điền ngày dừng thay đổi (5.7), chép `backups/` ra nơi khác, tổng duyệt và quay video dự phòng |
+
 ---
 
 ## Phụ lục — Thuật ngữ
