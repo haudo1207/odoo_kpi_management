@@ -31,11 +31,27 @@ class TestProjectTask(TransactionCase):
     def test_date_end_survives_stage_change(self):
         task = self._task()
         task.write({"state": "1_done"})
-        self.assertTrue(task.date_end)
-        # Đổi stage không fold: Odoo xoá date_end, task vẫn Done nên phải ghi lại
+        original = task.date_end
+        self.assertTrue(original)
+        # Đổi stage không fold: Odoo xoá date_end, task vẫn Done nên phải ghi lại — ĐÚNG giá trị cũ,
+        # không phải thời điểm đổi stage (assertEqual, không chỉ assertTrue — bản đầu chỉ kiểm "có giá
+        # trị" nên không bắt được lúc giá trị bị ghi đè bằng now(), xem test dưới)
         task.write({"stage_id": self.stage_done.id})
         self.assertEqual(task.state, "1_done")
-        self.assertTrue(task.date_end)
+        self.assertEqual(task.date_end, original)
+
+    def test_date_end_restored_not_overwritten_after_stage_flicker(self):
+        """Lỗi thật phát hiện khi đọc lại code (Chương 5.4): task Done, date_end bị Odoo xoá do đổi
+        stage (Odoo không tự lùi state khi chỉ đổi stage) — module phải khôi phục ĐÚNG giá trị cũ,
+        không ghi đè bằng thời điểm đổi stage. Ngày hoàn thành thật đặt cố định, khác xa "bây giờ", để
+        phép so sánh không phụ thuộc tốc độ chạy test."""
+        old = fields.Datetime.to_datetime("2020-01-01 00:00:00")
+        task = self._task()
+        task.write({"state": "1_done", "date_end": old})
+        self.assertEqual(task.date_end, old)
+        task.write({"stage_id": self.stage_done.id})  # stage không fold: Odoo xoá date_end
+        self.assertEqual(task.state, "1_done")
+        self.assertEqual(task.date_end, old)  # khôi phục đúng giá trị cũ, KHÔNG phải now()
 
     def test_create_done_task(self):
         self.assertTrue(self._task(state="1_done").date_end)

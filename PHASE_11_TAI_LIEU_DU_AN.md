@@ -209,7 +209,7 @@ addons/project_kpi_management/
 ├── report/                          Mẫu in PDF
 ├── migrations/19.0.1.1.0/           pre/post-migrate chạy một lần khi nâng từ bản dưới 1.1.0
 ├── scripts/                         prepare_defense.sh, pre_defense_check.py, backup/restore_defense.sh, run_all_tests.sh (Chương 5.6)
-└── tests/                           19 file, 183 test
+└── tests/                           19 file, 185 test
 
 addons/project_kpi_timesheet/            Module cầu nối (Bước 4): P4 + bộ "Team Lead / PM (có giờ làm)", 6 test riêng
 addons/project_kpi_skills/               Module cầu nối (Đợt D2): S1 mức đáp ứng kỹ năng + bộ "Developer (có năng lực)", 9 test riêng
@@ -734,7 +734,7 @@ docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management \
 
 ### 5.3. Danh sách test case (183 test, 19 file)
 
-#### `tests/test_kpi_config.py` — 10 test (Phase 1: chỉ số, bộ KPI; thêm test phiên bản đồng đều)
+#### `tests/test_kpi_config.py` — 11 test (Phase 1: chỉ số, bộ KPI; thêm test phiên bản đồng đều)
 
 | Test | Kiểm tra |
 |---|---|
@@ -747,6 +747,7 @@ docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management \
 | `test_duplicate_metric_in_template` | Một chỉ số xuất hiện 2 lần trong cùng bộ KPI bị chặn |
 | `test_archive_metric_used_in_active_template` | Ẩn chỉ số đang dùng trong bộ KPI còn hoạt động bị chặn; chỉ số không dùng thì ẩn được |
 | `test_archive_template_linked_to_job` | Ẩn bộ KPI đang gắn chức danh bị chặn; gỡ gắn kết rồi ẩn được |
+| `test_auto_metric_code_must_have_matching_function` | Đổi mã chỉ số Tự động (hoặc chuyển sang Tự động) mà không có hàm `_metric_<mã>()` tương ứng bị chặn ngay lúc lưu, không đợi tới lúc "Tính KPI" (lỗi thật phát hiện khi đọc lại code, Chương 5.4) |
 
 #### `tests/test_kpi_domain_metric.py` — 8 test (Bước 1, Chương 9.1: chỉ số cấu hình không cần code)
 
@@ -770,12 +771,13 @@ docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management \
 | `test_employee_override_wins_over_department` | Có cả hai thì ưu tiên override theo nhân viên |
 | `test_override_after_creation_does_not_change_existing_evaluation` | Tạo override sau khi đã có phiếu không làm đổi mục tiêu của phiếu cũ |
 
-#### `tests/test_project_task.py` — 7 test (Phase 2: dữ liệu task)
+#### `tests/test_project_task.py` — 8 test (Phase 2: dữ liệu task)
 
 | Test | Kiểm tra |
 |---|---|
 | `test_date_end_set_when_done_on_non_fold_stage` | Task Done trên stage không fold vẫn được tự ghi `date_end` |
-| `test_date_end_survives_stage_change` | `date_end` không mất khi đổi stage sau đó, nếu task vẫn Done |
+| `test_date_end_survives_stage_change` | `date_end` không mất khi đổi stage sau đó, nếu task vẫn Done — so đúng bằng giá trị gốc (`assertEqual`), không chỉ "có giá trị" |
+| `test_date_end_restored_not_overwritten_after_stage_flicker` | Lỗi thật phát hiện khi đọc lại code (Chương 5.4): task Done bị đổi stage khiến Odoo xoá `date_end`, module phải khôi phục ĐÚNG giá trị cũ, không ghi đè bằng thời điểm đổi stage |
 | `test_create_done_task` | Tạo task với `state=1_done` ngay từ đầu vẫn có `date_end` |
 | `test_review_reject_count` | Đếm đúng số lần bị trả về, không đếm khi ghi lại cùng trạng thái |
 | `test_days_late` | Đúng hạn, trễ (đã xong), quá hạn (chưa xong), đã huỷ → đúng số ngày trễ tương ứng |
@@ -1051,7 +1053,7 @@ Dữ liệu cố định, số đếm tính tay trước khi chạy: team của 
 
 ### 5.4. Kết quả kiểm thử
 
-**Tổng cộng 206 test, 0 failed, 0 error:** 183 test của module chính (`project_kpi_management`) + 6 của `project_kpi_timesheet` + 9 của `project_kpi_skills` + 8 của `project_kpi_survey`. Lần đầu rà soát từng tổ hợp riêng là 2026-10-16, đều trên database tạo mới hoàn toàn (không chỉ chạy lại trên database cũ): module chính một mình; module chính + `project_kpi_timesheet`; và **cả ba module cầu nối cài cùng lúc** (203 test tại thời điểm đó — chưa tính test thêm sau đó) để chắc các hàm `_metric_*` của chúng (đều kế thừa `kpi.engine`) không đè nhau. Từng module cầu nối cũng được chạy riêng bằng `--test-tags`. Lần chạy `run_all_tests.sh` (cả bốn module cùng lúc) gần nhất là **2026-10-23**, vẫn 206/206 đạt.
+**Tổng cộng 208 test, 0 failed, 0 error:** 185 test của module chính (`project_kpi_management`) + 6 của `project_kpi_timesheet` + 9 của `project_kpi_skills` + 8 của `project_kpi_survey`. Lần đầu rà soát từng tổ hợp riêng là 2026-10-16 (206 test, trước khi thêm 2 test ở đợt rà soát logic 2026-10-23), đều trên database tạo mới hoàn toàn (không chỉ chạy lại trên database cũ): module chính một mình; module chính + `project_kpi_timesheet`; và **cả ba module cầu nối cài cùng lúc** (203 test tại thời điểm đó — chưa tính test thêm sau đó) để chắc các hàm `_metric_*` của chúng (đều kế thừa `kpi.engine`) không đè nhau. Từng module cầu nối cũng được chạy riêng bằng `--test-tags`. Lần chạy `run_all_tests.sh` (cả bốn module cùng lúc) gần nhất là **2026-10-23**, 208/208 đạt (thêm 2 test khoá lại hai lỗi logic phát hiện khi đọc lại code, xem bảng dưới).
 
 **Các lỗi thật phát hiện nhờ kiểm tra qua đường đi thật** (không phải qua unit test gọi thẳng hàm), đã sửa và có test khoá lại:
 
@@ -1063,6 +1065,8 @@ Dữ liệu cố định, số đếm tính tay trước khi chạy: team của 
 | Wizard mời 360 đọc khảo sát bằng quyền của quản lý nên bị `AccessError` | Test của module cầu nối | Thao tác khảo sát chạy bằng `sudo()` sau khi đã kiểm tra quyền |
 | Server đang chạy chưa nạp code mới sau khi sửa file (lặp lại ba lần) | Script báo lỗi `KeyError`/kết quả cũ dù test đạt | `scripts/prepare_defense.sh` gói bước nạp module + khởi động lại + chờ sẵn sàng + chạy script |
 | Quản lý không thuộc nhóm KPI không đọc được phiếu nên Odoo từ chối giao nhắc việc | Test nhắc việc Đợt A | Chỉ giao cho người đọc được phiếu, nếu không thì chuyển cho người duyệt mặc định; có danh sách "Quản lý chưa có quyền KPI" |
+| Task Done bị đổi `stage_id` qua lại (Odoo không tự lùi `state` khi chỉ đổi stage) khiến `date_end` bị Odoo xoá rồi module ghi đè bằng **thời điểm đổi stage** thay vì ngày hoàn thành thật — D1/D7 có thể bị quy nhầm kỳ nếu việc đổi stage xảy ra khác kỳ | Đọc lại logic nghiệp vụ (không chạy code, 2026-10-23); test cũ chỉ kiểm `date_end` khác rỗng, không kiểm đúng giá trị nên không bắt được | Chụp `date_end` cũ **trước** `super().write()`, khôi phục đúng giá trị đó thay vì `fields.Datetime.now()` khi task đã Done từ trước (`project_task.py`) |
+| Đổi mã (`code`) của một chỉ số Tự động đang dùng (ví dụ D1 → D01) không báo lỗi lúc lưu, chỉ vỡ lúc bấm "Tính KPI" với `UserError` khó truy ngược | Đọc lại logic nghiệp vụ (2026-10-23) | Thêm `@api.constrains("code", "compute_mode")` kiểm `kpi.engine` có đúng hàm `_metric_<mã>()` tương ứng ngay lúc lưu (`kpi_metric.py`) |
 
 **Quan trọng — hạn chế của `TransactionCase`:** unit test chạy bằng superuser (`env.su = True`),
 nên bỏ qua một số kiểm tra chỉ áp dụng cho người dùng thật (ví dụ chặn xung đột vai trò). Vì vậy các
@@ -1149,7 +1153,7 @@ Container Odoo đọc code trực tiếp từ thư mục `addons` trên đĩa, n
 
 | # | Điều kiện | Cách kiểm |
 |---|---|---|
-| 1 | Test của cả bốn module đạt trên database mới | `bash addons/project_kpi_management/scripts/run_all_tests.sh` → `TẤT CẢ TEST ĐẠT` (hiện 206 test = 183 + 6 + 9 + 8) |
+| 1 | Test của cả bốn module đạt trên database mới | `bash addons/project_kpi_management/scripts/run_all_tests.sh` → `TẤT CẢ TEST ĐẠT` (hiện 208 test = 185 + 6 + 9 + 8) |
 | 2 | Con số kỳ vọng của phần mới được tính tay trước khi chạy | Bảng tính tay ghi trong tài liệu (Chương 5.3, 5.6, 5.8) |
 | 3 | Hệ thống đang chạy nạp đúng mã nguồn và kiểm tra bằng tài khoản thật đạt | `bash addons/project_kpi_management/scripts/prepare_defense.sh kpi_defense` in `tất cả OK` và bảng phiên bản đồng đều |
 | 4 | Tài liệu đồng bộ với mã nguồn | Rà các chương liên quan (số test, tài khoản theo vai trò, kịch bản demo, các con số tính tay) |
@@ -1348,6 +1352,9 @@ buộc lý do) và **chấm chỉ số định tính** (D9) — số liệu tự
 | Phản hồi 360 **không đảm bảo ẩn danh tuyệt đối** | Quản trị viên Surveys vẫn xem được từng câu trả lời của từng người (survey.user_input); hệ thống chỉ **giảm khả năng nhận diện người chấm** — quản lý KPI không đọc được câu trả lời, phiếu chỉ hiện điểm trung bình, và dưới 3 câu trả lời thì F1 "Không áp dụng" và không hiện số. Ở công ty nhỏ, ngưỡng 3 người chỉ có ý nghĩa khi team đủ đông | Trung bình — cần nói rõ với người tham gia |
 | S1 (mức đáp ứng kỹ năng) chỉ có khi cài `hr_skills` + `project_kpi_skills`, và chỉ đúng khi hồ sơ kỹ năng được cập nhật | Kỹ năng và kỹ năng yêu cầu của chức danh do nhân sự/quản lý nhập; so theo mức tiến độ (level_progress) nên các mức của hai bên phải cùng loại kỹ năng | Thấp |
 | Gửi duyệt được trước khi kỳ kết thúc | Hệ thống chỉ đòi phiếu Nháp, đã Tính KPI, đã chấm chỉ số nhập tay và (nếu thiếu dữ liệu) có xếp loại tay; **không** chặn theo ngày cuối kỳ, nên quản lý có thể chốt phiếu khi dữ liệu còn thiếu. Quy ước vận hành: chỉ Gửi duyệt sau khi kỳ kết thúc; giữa kỳ dùng Tính KPI / tạm tính hằng tuần để theo dõi. Phiếu đã gửi bị khoá nên dữ liệu đến sau không đổi điểm | Thấp — quy ước vận hành |
+| Phiếu Nháp tạo trước khi kỳ đóng vẫn Tính KPI/Gửi duyệt/Duyệt được **sau khi** kỳ đã đóng | "Đóng kỳ" (`kpi.period.state`) chỉ chặn **tạo phiếu mới** (`_check_period_open`, `@api.constrains("period_id")` chỉ bắn khi gán `period_id`, tức lúc tạo — phiếu Nháp có sẵn thì field này không đổi nữa nên không bắt lại). Đây là **lựa chọn có chủ đích**, không phải lỗ hổng: cho phép dọn nốt phiếu trễ sau khi đóng kỳ (nhân viên/quản lý thao tác chậm) mà không cần mở lại kỳ. Nếu muốn khoá cứng thì thêm điều kiện `period_id.state == 'open'` vào `action_submit()`/`action_approve()` | Thấp — đã là quyết định rõ ràng, không phải bỏ sót |
+| "Mật độ lỗi"/"tỷ lệ lỗi lọt production" ở báo cáo **team** (`kpi.team.report`) và ở D3/D4 **cá nhân** dùng công thức khác nhau | Báo cáo team đếm **mọi** bug của dự án (kể cả Trùng/Không phải lỗi) để nhìn tổng khối lượng xử lý; D3/D4 cá nhân chỉ đếm bug `valid`/`wont_fix` + nguyên nhân `code` để công bằng khi chấm điểm một người. Cộng dồn D3 của từng nhân viên trong dự án do đó **không khớp** số của báo cáo team — khác mục đích, không phải sai số | Thấp — cần nói rõ nếu hội đồng hỏi vì sao hai con số "mật độ lỗi" không khớp nhau |
+| D7 (thời gian sửa bug nghiêm trọng) tính trên **mọi** bug High/Urgent đã xong, không loại bug Trùng/Không phải lỗi như D3/D4 | Đúng theo công thức đã công bố ở Chương 3.4 (không phải lỗi code sai spec), nhưng đáng cân nhắc lại spec: sửa một bug "không phải lỗi" vẫn tính vào tốc độ phản ứng với bug nghiêm trọng của nhân viên đó | Thấp — ghi nhận để cân nhắc ở phiên bản sau, không sửa trong phạm vi đồ án này |
 | Số tạm tính giữa kỳ | D1 giữa kỳ không bị thấp giả tạo (task có deadline chưa tới và chưa xong bị loại khỏi mẫu số, có test `test_d1_on_time`); nhưng nhiều dòng "Không áp dụng" vì chưa đủ khối lượng tối thiểu, P1/B1 thấp vì milestone/yêu cầu chưa tới hạn tính là chưa đạt (domain không có "hôm nay"), và xếp loại của phiếu Nháp chỉ là tạm tính | Thấp |
 | Gợi ý mục tiêu cần ≥ 3 kỳ đã duyệt cùng loại kỳ | Ít hơn thì hiện "Chưa đủ dữ liệu"; phiếu thiếu dữ liệu và dòng Không áp dụng không tham gia | Thấp |
 | Cron cập nhật `days_late` ghi `write_date` dù giá trị không đổi | Đã kiểm chứng bằng script thật (không suy luận): `_cron_update_days_late()` gọi `flush_recordset(["days_late"])` cho mọi task quá hạn chưa xong mỗi ngày, và Odoo luôn ghi `write_date`/`write_uid` cùng lúc flush một field, kể cả khi `days_late` ra cùng giá trị cũ | Thấp — chỉ ảnh hưởng cách sắp xếp "mới cập nhật gần đây" ở các view khác, không ảnh hưởng điểm KPI |
@@ -1605,7 +1612,7 @@ trong bảng thống kê triển khai, cộng thêm 6 mục mở rộng sau khi 
 tự (**màu cho 4 mức xếp loại cố định** — khác với "dải xếp loại cấu hình đầy đủ" vẫn chưa làm, xem
 Chương 8.3/9.6 — chặn xung đột vai trò, nhắc việc PIP, mục tiêu theo phòng ban, chỉ số theo dự án,
 tự đánh giá — Chương 9 cũ, nay đã triển khai), và toàn bộ kế hoạch Bước 0–5, Đợt A–D ở Chương 9 (trừ
-Bước 6b, nêu ở 9.6). Hệ thống có 206 unit test tự động (183 ở module chính, 6 + 9 + 8 ở ba module cầu nối; 0 lỗi) cộng với
+Bước 6b, nêu ở 9.6). Hệ thống có 208 unit test tự động (185 ở module chính, 6 + 9 + 8 ở ba module cầu nối; 0 lỗi) cộng với
 kiểm thử thủ công trên REST API, báo cáo PDF, phân quyền, luồng nghiệp vụ hoàn chỉnh trên dữ liệu
 thật, và kiểm tra qua đúng tài khoản thật bằng XML-RPC (`scripts/pre_defense_check.py`, Chương 5.6)
 — cách kiểm tra này tự nó đã bắt được một số lỗi mà unit test (chạy bằng superuser) không bắt được.
@@ -1621,7 +1628,7 @@ Hệ thống chỉ có **một mã nguồn duy nhất trên nhánh `main`**, đ�
 |---|---|
 | Phạm vi Chương 1 (MVP, Nên có, Mở rộng) | Đã triển khai đủ 38/38 |
 | Kế hoạch Chương 9 (Bước 0–5, Đợt A–D) | Đã triển khai đủ; không còn việc dở dang |
-| Kiểm thử | 206/206 test đạt trên database tạo mới (`run_all_tests.sh`, 0 failed, 0 error) |
+| Kiểm thử | 208/208 test đạt trên database tạo mới (`run_all_tests.sh`, 0 failed, 0 error), gồm 2 test thêm 2026-10-23 khoá lại 2 lỗi logic phát hiện khi đọc lại code |
 | Hệ thống đang chạy (`kpi_defense`, bản `clean`) | `prepare_defense.sh` → "tất cả OK", phiên bản ba module đã cài đồng đều `19.0.1.7.4` |
 | Tài liệu | Đồng bộ với code (số test, tài khoản theo vai trò, kịch bản demo, giới hạn) |
 | Chưa làm (có chủ đích) | Bước 6b nhân viên kiêm nhiệm; dải xếp loại cấu hình đầy đủ; OKR, đồng bộ Jira/GitLab, DORA, bộ KPI DevOps/Support — nêu ở 8.3 và 9.6 |

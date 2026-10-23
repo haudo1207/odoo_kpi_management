@@ -75,7 +75,9 @@ class TestKpiConfig(TransactionCase):
     def test_archive_metric_used_in_active_template(self):
         with self.assertRaises(ValidationError):
             self.d1.action_archive()
-        unused = self.env["kpi.metric"].create({"code": "TX", "name": "Không dùng", "category": "quality"})
+        unused = self.env["kpi.metric"].create({
+            "code": "TX", "name": "Không dùng", "category": "quality", "compute_mode": "manual",
+        })
         unused.action_archive()
         self.assertFalse(unused.active)
 
@@ -87,6 +89,19 @@ class TestKpiConfig(TransactionCase):
         job.kpi_template_id = False
         template.action_archive()
         self.assertFalse(template.active)
+
+    def test_auto_metric_code_must_have_matching_function(self):
+        """Phát hiện khi đọc code lại (chưa có test khoá): đổi mã (hoặc chuyển sang Tự động) mà không
+        có hàm _metric_<mã>() tương ứng trong kpi.engine phải báo lỗi NGAY lúc lưu, không đợi tới lúc
+        bấm "Tính KPI" (nơi lỗi hiện ra là UserError chung chung, khó truy ngược nguyên nhân)."""
+        with self.assertRaises(ValidationError):
+            self.d1.code = "D01"  # D1 đang dùng, đổi mã thì không còn hàm _metric_d01()
+        self.assertEqual(self.d1.code, "D1")
+        metric = self.env["kpi.metric"].create({
+            "code": "ZZ", "name": "Không có hàm tính", "category": "quality", "compute_mode": "manual",
+        })
+        with self.assertRaises(ValidationError):
+            metric.compute_mode = "auto"  # chuyển sang Tự động mà chưa có hàm _metric_zz()
 
     def test_all_kpi_modules_share_one_release_version(self):
         """Phiên bản trong __manifest__ của mọi module KPI đang cài phải giống nhau (và theo dạng 19.0.<phát hành>): một

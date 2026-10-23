@@ -168,6 +168,22 @@ class KpiMetric(models.Model):
             except Exception as e:
                 raise ValidationError(f"Chỉ số \"{metric.name}\": domain không hợp lệ — {e}")
 
+    @api.constrains("code", "compute_mode")
+    def _check_auto_metric_has_function(self):
+        """Chỉ số Tự động (code) cần đúng một hàm `_metric_<mã>()` trong `kpi.engine` (xem
+        `compute_actual()`). Không kiểm ở đây thì lỗi chỉ lộ ra lúc bấm "Tính KPI" với `UserError`
+        chung chung — quá muộn so với lúc lưu, nhất là khi đổi mã của một chỉ số đang dùng (ví dụ
+        D1 → D01). `kpi.engine` là AbstractModel, không có record, nên tra hàm ngay trên model,
+        cùng cách `compute_actual()` tự làm."""
+        engine = self.env["kpi.engine"]
+        for metric in self.filtered(lambda m: m.compute_mode == "auto"):
+            if not getattr(engine, f"_metric_{metric.code.lower()}", None):
+                raise ValidationError(
+                    f"Chỉ số \"{metric.name}\" (mã {metric.code}): chưa có hàm "
+                    f"_metric_{metric.code.lower()}() trong kpi.engine. Nếu vừa đổi mã của chỉ số có "
+                    "sẵn, đổi lại đúng mã cũ, hoặc thêm hàm tương ứng trước khi lưu."
+                )
+
     def _is_engine_computed(self):
         """Điều kiện DUY NHẤT quyết định chỉ số nào do engine tính (mọi chế độ trừ nhập tay). Mọi nơi gọi
         engine hoặc chặn ghi số liệu (Tính KPI, wizard, cron, API, view) phải dùng hàm này thay vì tự so

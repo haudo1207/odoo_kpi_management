@@ -159,6 +159,14 @@ class ProjectTask(models.Model):
             rejected = self.filtered(lambda t: t.state != "02_changes_requested")
         elif vals.get("state") == "03_approved":
             approved = self.filtered(lambda t: t.state != "03_approved")
+        # Chụp date_end cũ TRƯỚC super(): nếu task đã Done từ trước và super() dưới đây xoá date_end
+        # (Odoo xoá khi stage_id đổi sang stage không fold — và KHÔNG tự lùi state về chưa Done khi
+        # chỉ đổi stage, state vẫn "1_done"), phải khôi phục ĐÚNG giá trị cũ. Bản đầu ghi now() trong
+        # mọi trường hợp "thiếu date_end", kể cả khi task chỉ bị đổi stage qua lại chứ không thật sự
+        # làm lại — khiến D1/D7 bị quy nhầm sang kỳ lúc đổi stage thay vì kỳ hoàn thành thật (vi phạm
+        # PCN-04 "không âm thầm tính sai"). Task MỚI chuyển sang Done trong chính lần ghi này thì
+        # không có trong dict nên vẫn được ghi now() như cũ.
+        old_date_end = {t.id: t.date_end for t in self if t.state == "1_done" and t.date_end}
         res = super().write(vals)
         for task in rejected:
             task.review_reject_count += 1
@@ -166,7 +174,7 @@ class ProjectTask(models.Model):
             task.review_approve_count += 1
         # Chạy sau super(): Odoo xoá date_end khi task sang stage không fold
         if {"state", "stage_id", "date_end"} & vals.keys():
-            self._ensure_date_end()
+            self._ensure_date_end(old_date_end)
         return res
 
     @api.model
@@ -178,8 +186,12 @@ class ProjectTask(models.Model):
         for bug in bugs:
             bug.bug_reporter_id = bug.create_uid
 
-    def _ensure_date_end(self):
-        """date_end là mốc hoàn thành duy nhất cho D1 và D7 (working_hours_close)."""
+    def _ensure_date_end(self, old_date_end=None):
+        """date_end là mốc hoàn thành duy nhất cho D1 và D7 (working_hours_close). `old_date_end`
+        (dict id → giá trị cũ, chụp trước super().write() — xem write()) phục hồi đúng giá trị cũ cho
+        task đã Done từ trước; chỉ task thật sự MỚI chuyển sang Done trong lần ghi này (không có
+        trong dict) mới được ghi now()."""
+        old_date_end = old_date_end or {}
         missing = self.filtered(lambda t: t.state == "1_done" and not t.date_end)
-        if missing:
-            missing.write({"date_end": fields.Datetime.now()})
+        for task in missing:
+            task.date_end = old_date_end.get(task.id) or fields.Datetime.now()
