@@ -732,7 +732,7 @@ docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management \
   --test-tags /project_kpi_management --stop-after-init --http-port 8070
 ```
 
-### 5.3. Danh sách test case (183 test, 19 file)
+### 5.3. Danh sách test case (185 test, 19 file)
 
 #### `tests/test_kpi_config.py` — 11 test (Phase 1: chỉ số, bộ KPI; thêm test phiên bản đồng đều)
 
@@ -1071,6 +1071,44 @@ Dữ liệu cố định, số đếm tính tay trước khi chạy: team của 
 **Quan trọng — hạn chế của `TransactionCase`:** unit test chạy bằng superuser (`env.su = True`),
 nên bỏ qua một số kiểm tra chỉ áp dụng cho người dùng thật (ví dụ chặn xung đột vai trò). Vì vậy các
 test ở trên KHÔNG đủ để kết luận hệ thống đang chạy đúng — phải xác minh thêm qua 5.6.
+
+### 5.4b. Bảng truy vết Yêu cầu → Test
+
+Ghép bảng YC ở Chương 1.4 với tên file/test ở 5.3 — không phải dữ liệu mới, chỉ để trả lời nhanh
+"chỗ này test nào cover" khi hội đồng hỏi, không cần tìm. Một YC có thể do nhiều file test cùng phủ;
+chỉ liệt kê file + (nếu cần phân biệt) tên test tiêu biểu, không lặp lại mô tả đã có ở 5.3.
+
+| YC | File/test chính kiểm tra |
+|---|---|
+| YC-01 | `test_kpi_config.py` (`test_data_loaded`, `test_display_name_and_search`, `test_duplicate_metric_code`, `test_auto_metric_code_must_have_matching_function`), `test_kpi_domain_metric.py` |
+| YC-02 | `test_kpi_config.py` (`test_total_weight_must_be_100`, `test_update_and_add_line_in_one_save`, `test_empty_template_allowed`, `test_duplicate_metric_in_template`) |
+| YC-03 | `test_kpi_config.py` (`test_archive_template_linked_to_job`), `test_kpi_reports.py` (`test_tester_template_without_code`) |
+| YC-04 | `test_project_task.py` (toàn bộ), `test_kpi_tester.py` (`test_bug_reporter_*`) |
+| YC-05 | `test_kpi_evaluation.py` (`test_closed_period_blocked`), `test_kpi_period_types.py` |
+| YC-06 | `test_kpi_evaluation.py` (`test_snapshot_from_template_and_employee`, `test_one_evaluation_per_employee_period`), `test_kpi_security.py` (`test_manager_scope`) |
+| YC-07 | `test_kpi_engine.py` (toàn bộ), `test_kpi_domain_metric.py`, `test_kpi_compute_paths.py` |
+| YC-08 | `test_kpi_evaluation.py` (`test_adjustment_rules`) |
+| YC-09 | `test_kpi_evaluation.py` (`test_workflow_lock_return_reopen`, `test_submit_requires_compute`, `test_approve_requires_submitted`), `test_kpi_security.py` (`test_only_admin_approves`) |
+| YC-10 | `test_kpi_reports.py` (`test_data_quality_report`, `test_team_report_*`), `test_kpi_dashboard.py`, `test_kpi_workflow.py` (`test_department_reports`) |
+| YC-11 | `test_kpi_reports.py` (`test_generate_wizard`), `test_kpi_compute_paths.py` (`test_generate_wizard_computes_domain_metric`), `test_kpi_period_types.py` (`test_wizard_creates_only_matching_period_type`) |
+| YC-12 | `test_kpi_reports.py` (`test_settings_change_rating_after_recompute`, `test_settings_validation`), `test_kpi_workflow.py` (`test_settings_approver_must_be_admin`) |
+| YC-13 | `test_kpi_security.py` (toàn bộ), `test_kpi_demo_scenario.py` (`test_admin_manager_role_conflict`) |
+| YC-14 | `test_kpi_integration.py` (`test_cron_generates_once_for_finished_periods`, `test_cron_skips_closed_period`), `test_kpi_workflow.py` (`test_cron_provisional_compute_touches_only_engine_lines`, `test_manual_compute_sets_both_dates`) |
+| YC-15 | `test_kpi_integration.py` (`test_pdf_report_content`) |
+| YC-16 | `test_kpi_integration.py` (`test_requires_api_key`, `test_list_respects_record_rules`, `test_detail_and_not_found`, `test_post_manual_metric`, `test_post_rejected`), `test_kpi_compute_paths.py` (`test_api_rejects_domain_metric`) |
+| YC-17 | `test_kpi_demo_scenario.py` (`test_self_assessment_wizard`, `test_copy_does_not_duplicate_self_assessment`), `test_kpi_workflow.py` (`test_employee_acknowledges_after_approval`, `test_disagree_requires_comment`, `test_only_own_employee_and_only_after_approval`, `test_acknowledgement_not_writable_directly`, `test_reopen_clears_acknowledgement`) |
+| YC-18 | `test_kpi_feedback.py` (`project_kpi_survey`, 8 test) |
+| YC-19 | `test_kpi_score_scale.py` (12 test) |
+| YC-20 | `test_kpi_timesheet.py` (`project_kpi_timesheet`, 6 test), `test_kpi_skills.py` (`project_kpi_skills`, 9 test) |
+| YC-21 | `test_kpi_target_override.py` (4 test), `test_kpi_target_suggestion.py` (7 test) |
+| YC-22 | `test_kpi_period_types.py` (`test_wizard_creates_only_matching_period_type`, `test_cron_creates_only_matching_period_type`, `test_cannot_change_period_type_with_open_period_evaluations`) |
+| YC-23 | `test_kpi_workflow.py` (`test_create_reminds_manager_to_complete` … `test_manager_without_kpi_permission_is_listed`), `test_kpi_demo_scenario.py` (`test_pip_activity_on_improve_rating`, `test_no_pip_activity_when_not_improve`) |
+| YC-24 | `test_kpi_tester.py` (12 test), `test_kpi_lead.py` (10 test), `test_kpi_ba.py` (10 test) |
+
+PCN-01→08 (yêu cầu phi chức năng, 1.5) không lặp lại ở đây: PCN-04 ("không âm thầm tính sai") là tiêu
+chí xuyên suốt mọi test về `is_applicable`/`insufficient_data` chứ không phải một test riêng; PCN-07
+(REST API theo đúng phân quyền) nằm trong YC-16 ở trên; PCN-08 (HTTPS, không public DB) là cấu hình
+triển khai (`deploy/README.md`), không kiểm bằng unit test.
 
 ### 5.5. Kiểm thử thủ công bổ sung (ngoài phạm vi unit test)
 
