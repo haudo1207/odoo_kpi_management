@@ -4,3 +4,8 @@ __pycache__/
 config/odoo.conf
 BaoCao_ProjectKPI.xlsx
 backups/
+
+# Ghi chú làm việc nội bộ (không đưa vào repo nộp bài)
+DE_XUAT_PHAT_TRIEN_MODULE_KPI.md
+HUONG_DAN_XAY_DUNG_TUAN_1_2.md
+TRIEN_KHAI_HE_THONG.md

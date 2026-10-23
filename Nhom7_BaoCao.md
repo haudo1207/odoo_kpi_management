@@ -9,10 +9,9 @@ tảng Odoo 19, tích hợp với module Project có sẵn.
 **Mã nguồn:** `addons/project_kpi_management/` (module chính) và ba module cầu nối
 `addons/project_kpi_timesheet/`, `addons/project_kpi_skills/`, `addons/project_kpi_survey/` trong
 repo này (Chương 2.3, Chương 9.6).
-**Tài liệu liên quan:** [`TRIEN_KHAI_HE_THONG.md`](TRIEN_KHAI_HE_THONG.md) (hướng dẫn thao tác
-Odoo + vị trí source — **chỉ còn đúng tới Phase 0–10, phạm vi gốc trước Phase 11, xem ghi chú đầu
-file đó**), [`HUONG_DAN_XAY_DUNG_TUAN_1_2.md`](HUONG_DAN_XAY_DUNG_TUAN_1_2.md)
-(giải thích cách viết code Phase 0–5), [`deploy/README.md`](deploy/README.md) (triển khai production).
+**Tài liệu liên quan:** [`deploy/README.md`](deploy/README.md) (triển khai production). Các
+ghi chú làm việc nội bộ giai đoạn Phase 0–10 (đề xuất ban đầu, hướng dẫn build tuần 1–2, hướng dẫn
+thao tác theo từng Phase) không đưa vào repo này — nội dung liên quan đã gộp vào tài liệu chính.
 
 ---
 
@@ -1292,9 +1291,9 @@ Trước buổi demo chạy `pre_defense_check.py` (5.6). Không cài `hr_timesh
 
 ## Chương 6 — Hướng dẫn sử dụng
 
-Hướng dẫn **đầy đủ theo từng Phase** (thao tác UI + vị trí source) nằm ở
-[`TRIEN_KHAI_HE_THONG.md`](TRIEN_KHAI_HE_THONG.md). Mục này tóm tắt nhanh theo **vai trò người
-dùng cuối** (không cần biết Phase nào).
+Hướng dẫn chi tiết theo từng Phase (thao tác UI + vị trí source) là ghi chú làm việc nội bộ,
+không đưa vào repo này. Mục này tóm tắt nhanh theo **vai trò người dùng cuối** (không cần biết Phase
+nào).
 
 ### 6.1. Vai trò KPI Administrator (quản trị hệ thống)
 
@@ -1324,8 +1323,8 @@ Ngoài hai việc này nhân viên không sửa được gì.
 
 **Loại kỳ và mục tiêu (Đợt B1):** mỗi bộ KPI có một loại kỳ (tháng, sprint, quý); Tạo phiếu cho kỳ chỉ tạo cho nhân viên có bộ cùng loại kỳ. Mục tiêu tính theo độ dài kỳ, nên bộ theo quý phải đặt mục tiêu riêng (ví dụ 60 SP/quý thay vì 20 SP/tháng). **Quản lý trực tiếp** của nhân viên nên thuộc nhóm KPI Manager — kiểm tra ở **KPI › Báo cáo › Quản lý chưa có quyền KPI** (nếu không, nhắc việc chuyển cho người duyệt mặc định). **Người duyệt mặc định** đặt ở Thiết lập.
 
-Stage "Done"/"Hoàn thành" của **mọi dự án** phải bật **Folded** (xem Chương 2.5 và
-`TRIEN_KHAI_HE_THONG.md` Phase 2) — thiếu bước này, D1 và D7 sẽ sai mà không có cảnh báo nào.
+Stage "Done"/"Hoàn thành" của **mọi dự án** phải bật **Folded** (xem Chương 2.5) — thiếu
+bước này, D1 và D7 sẽ sai mà không có cảnh báo nào.
 
 ---
 
@@ -1645,18 +1644,21 @@ Sau Bước 5 các tính năng còn lại được chia theo giá trị cho báo
 ## Chương 10 — Kết luận
 
 Đồ án đã xây dựng hoàn chỉnh module `project_kpi_management` trên Odoo 19, đáp ứng toàn bộ phạm vi
-MVP (31/31 hạng mục) và toàn bộ phạm vi Nên có/Mở rộng (7/7 hạng mục), tổng cộng 38/38 hạng mục
-trong bảng thống kê triển khai, cộng thêm 6 mục mở rộng sau khi đối chiếu với các hệ thống KPI tương
-tự (**màu cho 4 mức xếp loại cố định** — khác với "dải xếp loại cấu hình đầy đủ" vẫn chưa làm, xem
-Chương 8.3/9.6 — chặn xung đột vai trò, nhắc việc PIP, mục tiêu theo phòng ban, chỉ số theo dự án,
-tự đánh giá — Chương 9 cũ, nay đã triển khai), và toàn bộ kế hoạch Bước 0–5, Đợt A–D ở Chương 9 (trừ
-Bước 6b, nêu ở 9.6). Hệ thống có 208 unit test tự động (185 ở module chính, 6 + 9 + 8 ở ba module cầu nối; 0 lỗi) cộng với
+MVP (31/31 hạng mục) và toàn bộ phạm vi Nên có/Mở rộng (7/7 hạng mục) — tổng cộng 38/38 hạng mục
+trong bảng thống kê triển khai. Ngoài ra, hệ thống đã triển khai thêm 6 mục mở rộng sau khi đối chiếu
+với các hệ thống KPI tương tự (màu cho 4 mức xếp loại cố định, chặn xung đột vai trò, nhắc việc PIP,
+mục tiêu theo phòng ban, chỉ số theo dự án, tự đánh giá — xem Chương 8.3/9.6; riêng "dải xếp loại cấu
+hình đầy đủ" vẫn chưa làm), cùng toàn bộ kế hoạch Bước 0–5 và Đợt A–D ở Chương 9 (trừ Bước 6b, nêu ở
+9.6).
+
+Hệ thống có 208 unit test tự động (185 ở module chính, 6 + 9 + 8 ở ba module cầu nối; 0 lỗi), cộng
 kiểm thử thủ công trên REST API, báo cáo PDF, phân quyền, luồng nghiệp vụ hoàn chỉnh trên dữ liệu
-thật, và kiểm tra qua đúng tài khoản thật bằng XML-RPC (`scripts/pre_defense_check.py`, Chương 5.6)
-— cách kiểm tra này tự nó đã bắt được một số lỗi mà unit test (chạy bằng superuser) không bắt được.
-Nguyên tắc thiết kế cốt lõi — không hardcode vai trò — đã được kiểm chứng bằng demo trực tiếp
-(Chương 7), không chỉ dừng ở khẳng định lý thuyết. Các giới hạn còn tồn tại (Chương 8.3) đều đã được
-xác định rõ ràng, có hướng xử lý cụ thể (Chương 9), phù hợp để trình bày minh bạch trước hội đồng.
+thật, và kiểm tra qua tài khoản thật bằng XML-RPC (`scripts/pre_defense_check.py`, Chương 5.6) — cách
+này tự nó đã bắt được một số lỗi mà unit test (chạy bằng superuser) không bắt được.
+
+Nguyên tắc thiết kế cốt lõi — không hardcode vai trò — đã kiểm chứng bằng demo trực tiếp (Chương 7),
+không chỉ là khẳng định lý thuyết. Các giới hạn còn tồn tại (Chương 8.3) đã xác định rõ, có hướng xử
+lý cụ thể (Chương 9), phù hợp để trình bày minh bạch trước hội đồng.
 
 Hệ thống chỉ có **một mã nguồn duy nhất trên nhánh `main`**, đồng nhất với hệ thống đang chạy; mọi đợt phát triển đã hợp nhất vào đó. Quy trình ngày bảo vệ (`git pull` trên `main` → `restore_defense.sh clean` → chờ "tất cả OK") và kịch bản demo nằm ở Chương 5.7, 5.8. Các tag `v1.x-bao-ve` trên GitHub chỉ là lịch sử.
 
