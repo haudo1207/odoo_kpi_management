@@ -13,7 +13,15 @@ như thế nào, vì sao thiết kế vậy) nằm ở [`HUONG_DAN_XAY_DUNG_TUAN
 (Phase 0–5). Hai tài liệu bổ sung cho nhau, không trùng lặp nội dung.
 
 **Phạm vi:** toàn bộ repo tính tới commit `11623f1` (Tuần 1–4 đã gộp vào `main`, kịch bản mẫu đã gỡ
-phụ thuộc `--with-demo`). Phase 11 (tài liệu, bảo vệ) chưa làm, ghi ở cuối.
+phụ thuộc `--with-demo`). Phase 11 (tài liệu, bảo vệ) chưa làm lúc viết tài liệu này, ghi ở cuối.
+
+> **Cập nhật 2026-10-23 — tài liệu lịch sử, dừng ở phạm vi gốc (Phase 0–10):** mọi đợt phát triển
+> sau đó (Bước 0–5, Đợt A–D ở Chương 9 của `PHASE_11_TAI_LIEU_DU_AN.md`) **không** được ghi vào tài
+> liệu này — nó vẫn mô tả engine chỉ tính D1–D8, chưa có chỉ số cấu hình `domain`, chưa có 3 module
+> cầu nối, và Phụ lục A (cấu trúc thư mục) thiếu các file thêm sau Phase 10 (`kpi_score_scale.py`,
+> `kpi_manager_issue.py`, `project_milestone.py`, `wizard/kpi_acknowledge_wizard.py`, `migrations/`,
+> `scripts/`). Dùng tài liệu này chỉ để xem **cách thao tác UI theo từng Phase gốc**; kiến trúc và
+> danh sách chức năng hiện hành nằm ở `PHASE_11_TAI_LIEU_DU_AN.md` (Chương 2, 3, 9, 10).
 
 ---
 
@@ -347,11 +355,11 @@ gán quyền), sao lưu, cập nhật phiên bản.
 
 ---
 
-## Phase 11 — Chưa làm
+## Phase 11 — Đã làm (ghi ở tài liệu khác)
 
-Tài liệu Yêu cầu, Thiết kế CSDL, Kiến trúc, Hướng dẫn sử dụng, Test case, slide bảo vệ. Tài liệu
-này (`TRIEN_KHAI_HE_THONG.md`) có thể dùng làm khung cho phần "Hướng dẫn sử dụng" và một phần
-"Kiến trúc".
+Lúc viết tài liệu này, Phase 11 (Yêu cầu, Thiết kế CSDL, Kiến trúc, Hướng dẫn sử dụng, Test case)
+chưa làm. Nay đã làm xong, toàn bộ nằm ở `PHASE_11_TAI_LIEU_DU_AN.md` — tài liệu đó mới là bản dùng
+để bảo vệ, cập nhật tới hiện tại; tài liệu này chỉ còn giá trị tham khảo thao tác UI cho Phase 0–10.
 
 ---
 

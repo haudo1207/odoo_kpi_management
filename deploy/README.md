@@ -56,6 +56,13 @@ docker compose -f docker-compose.prod.yml --env-file .env up -d
 
 Mở `https://<tên-miền>` và đăng nhập `admin`/`admin`, **đổi mật khẩu admin ngay**.
 
+**Ba module cầu nối (tuỳ chọn, thêm chỉ số theo module gốc đã cài):** `project_kpi_timesheet` (giờ
+làm thực tế so kế hoạch — cần `hr_timesheet`), `project_kpi_skills` (mức đáp ứng kỹ năng — cần
+`hr_skills`), `project_kpi_survey` (phản hồi 360 độ — cần `survey`). Cả ba đều `auto_install`: nếu
+module gốc tương ứng đã được cài (hoặc cài cùng lúc, ví dụ
+`-i project_kpi_management,hr_timesheet`), Odoo tự cài module cầu nối, không cần `-i` riêng. Không
+cài `hr_timesheet`/`hr_skills`/`survey` thì hệ thống vẫn chạy đủ, chỉ thiếu các chỉ số đó.
+
 ## 5. Cấu hình bắt buộc sau khi cài
 
 1. **Stage Done của mọi dự án phải bật "Folded in Kanban"**: Dự án › Cấu hình › Giai đoạn. Không bật thì Odoo không ghi ngày hoàn thành, D1 và D7 sẽ sai mà không báo lỗi. Có thể kiểm tra ở KPI › Báo cáo › Kiểm tra dữ liệu (cột "Task xong thiếu ngày hoàn thành").

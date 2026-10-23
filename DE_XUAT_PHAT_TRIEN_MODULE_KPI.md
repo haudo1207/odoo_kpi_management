@@ -3,6 +3,13 @@
 > Đối chiếu module hiện tại với các hệ thống mã nguồn mở và module tương tự, xác định tính năng còn
 > thiếu, và đề xuất thứ tự triển khai trước khi bảo vệ đồ án.
 
+> **Cập nhật 2026-10-23 — tài liệu lịch sử, đã lỗi thời so với code:** đây là bản đề xuất gốc, viết
+> trước khi làm Bước 0–5 và Đợt A–D (Chương 9 của `PHASE_11_TAI_LIEU_DU_AN.md`). Toàn bộ Mức 1 và
+> Mức 2 bên dưới đã triển khai xong, trừ **mục 4 (huy hiệu Gamification)** — không làm, lý do ở cuối
+> tài liệu. Cột "Trạng thái" ở mục 1 và 2 ghi tình trạng thực tế hiện nay; nội dung gốc giữ nguyên để
+> còn thấy quá trình ra quyết định. Danh sách chức năng đang có, đối chiếu đầy đủ, nằm ở Chương 1 và
+> Chương 10 của `PHASE_11_TAI_LIEU_DU_AN.md`.
+
 ---
 
 ## 0. Hiện trạng
@@ -21,17 +28,17 @@ Các tính năng dưới đây là phần **các hệ thống khác có mà modu
 
 ## 1. Tính năng các hệ thống tương tự có mà module chưa có
 
-| Nhóm | Tính năng | Nguồn tham khảo | Module hiện tại |
-|---|---|---|---|
-| Đánh giá đa chiều | Nhân viên tự đánh giá | Frappe HR: điểm tự đánh giá tổng tính từ mức chấm và trọng số từng tiêu chí [1]. KPI Management & Performance Scorecard: mỗi chỉ số có điểm tự chấm, điểm quản lý chấm và kết quả cuối [6] | Chưa có, nhân viên chỉ xem |
-| | Phản hồi 360 độ | Odoo Appraisals: thu phản hồi từ quản lý, đồng nghiệp, cấp dưới và chính nhân viên [9] | Chưa có, D9 chỉ do quản lý chấm |
-| Mục tiêu | Mục tiêu theo phòng ban | Frappe HR: tạo kỳ đánh giá riêng cho chi nhánh, phòng ban hoặc chức danh [3] | Chỉ sửa tay trên phiếu Nháp |
-| | Mục tiêu từ dữ liệu lịch sử | Apache DevLake: lập mức nền năng lực từ dữ liệu lịch sử (lạc quan, khả dĩ, bi quan) [13] | Chưa có |
-| | Mục tiêu cá nhân gắn với task | Frappe HR: điểm KRA tự tính từ mức hoàn thành các mục tiêu gắn với KRA [1][4] | Chưa có |
-| Theo dõi trong kỳ | Cập nhật KPI định kỳ, có lịch sử | OCA `kpi`: bộ lịch chạy mỗi giờ, cập nhật KPI theo chu kỳ từng chỉ số [15] | Chỉ tính khi bấm nút |
-| | Dải xếp loại có màu, cấu hình được | OCA `kpi`: mỗi khoảng ngưỡng có tên, min, max và màu [15] | 4 mức cố định |
-| Sau đánh giá | Kế hoạch cải thiện cho người điểm thấp | HRMS Performance Management: gợi ý kế hoạch cải thiện (PIP) khi kết quả thấp [8] | Chưa có |
-| Cấp team | Chỉ số theo team/dự án | Apache DevLake: dashboard dựng sẵn cho yêu cầu, lỗi, pull request, build, DORA [11][12] | Chỉ theo cá nhân |
+| Nhóm | Tính năng | Nguồn tham khảo | Module hiện tại (lúc viết đề xuất) | Trạng thái nay |
+|---|---|---|---|---|
+| Đánh giá đa chiều | Nhân viên tự đánh giá | Frappe HR: điểm tự đánh giá tổng tính từ mức chấm và trọng số từng tiêu chí [1]. KPI Management & Performance Scorecard: mỗi chỉ số có điểm tự chấm, điểm quản lý chấm và kết quả cuối [6] | Chưa có, nhân viên chỉ xem | **Đã làm** (`self_score`, `employee_comment`) |
+| | Phản hồi 360 độ | Odoo Appraisals: thu phản hồi từ quản lý, đồng nghiệp, cấp dưới và chính nhân viên [9] | Chưa có, D9 chỉ do quản lý chấm | **Đã làm** (Đợt D1, `project_kpi_survey`, chỉ số F1) |
+| Mục tiêu | Mục tiêu theo phòng ban | Frappe HR: tạo kỳ đánh giá riêng cho chi nhánh, phòng ban hoặc chức danh [3] | Chỉ sửa tay trên phiếu Nháp | **Đã làm** (`kpi.target.override`, Đợt B) |
+| | Mục tiêu từ dữ liệu lịch sử | Apache DevLake: lập mức nền năng lực từ dữ liệu lịch sử (lạc quan, khả dĩ, bi quan) [13] | Chưa có | **Đã làm** (gợi ý theo percentile 25/50/75, Đợt B) |
+| | Mục tiêu cá nhân gắn với task | Frappe HR: điểm KRA tự tính từ mức hoàn thành các mục tiêu gắn với KRA [1][4] | Chưa có | Chưa làm (OKR, xem Chương 9.6 "Không làm") |
+| Theo dõi trong kỳ | Cập nhật KPI định kỳ, có lịch sử | OCA `kpi`: bộ lịch chạy mỗi giờ, cập nhật KPI theo chu kỳ từng chỉ số [15] | Chỉ tính khi bấm nút | **Đã làm** (cron tạm tính, Đợt A3) |
+| | Dải xếp loại có màu, cấu hình được | OCA `kpi`: mỗi khoảng ngưỡng có tên, min, max và màu [15] | 4 mức cố định | Chưa làm (xem Chương 9.6 "Không làm") |
+| Sau đánh giá | Kế hoạch cải thiện cho người điểm thấp | HRMS Performance Management: gợi ý kế hoạch cải thiện (PIP) khi kết quả thấp [8] | Chưa có | **Đã làm** (nhắc việc PIP, Đợt A1) |
+| Cấp team | Chỉ số theo team/dự án | Apache DevLake: dashboard dựng sẵn cho yêu cầu, lỗi, pull request, build, DORA [11][12] | Chỉ theo cá nhân | **Đã làm một phần** (báo cáo phòng ban, Đợt A5; không làm DORA/đồng bộ Jira-GitLab) |
 
 ---
 
@@ -39,31 +46,31 @@ Các tính năng dưới đây là phần **các hệ thống khác có mà modu
 
 ### Mức 1 — Nên làm trước bảo vệ (công sức nhỏ, giá trị cao)
 
-| # | Tính năng | Lý do ưu tiên | Cách triển khai |
-|---|---|---|---|
-| 1 | **Chặn xung đột vai trò** | Đang là giới hạn đã ghi ở Chương 8.3, sửa được thì xoá một điểm yếu | Trong `action_approve()` và `action_return()`: báo lỗi nếu người duyệt là quản lý trực tiếp (`employee_id.parent_id.user_id`) hoặc chính nhân viên. Thêm 2 test |
-| 2 | **Mục tiêu theo phòng ban** | Giải quyết D2 "theo team" đang phải sửa tay | Model mới `kpi.target.override` (`template_line_id`, `department_id`, `employee_id`, `target`). Khi tạo phiếu, lấy mục tiêu theo thứ tự: nhân viên → phòng ban → template. Thêm 3 test cho 3 mức |
-| 3 | **Nhắc việc và kế hoạch cải thiện** | `kpi.evaluation` đã kế thừa `mail.activity.mixin` nhưng chưa dùng | Tạo phiếu → activity cho quản lý "Chấm D9". Gửi duyệt → activity cho Admin "Duyệt phiếu". Duyệt với xếp loại "Cần cải thiện" → activity cho quản lý "Lập kế hoạch cải thiện" |
-| 4 | **Huy hiệu cho nhân viên Xuất sắc** | Tận dụng module Gamification có sẵn trong Odoo Community [16], chứng minh nguyên tắc "không xây lại thứ đã có" | Thêm `gamification` vào `depends`, tạo 1 huy hiệu trong data XML. Duyệt phiếu Xuất sắc thì tự trao huy hiệu |
+| # | Tính năng | Lý do ưu tiên | Cách triển khai | Trạng thái nay |
+|---|---|---|---|---|
+| 1 | **Chặn xung đột vai trò** | Đang là giới hạn đã ghi ở Chương 8.3, sửa được thì xoá một điểm yếu | Trong `action_approve()` và `action_return()`: báo lỗi nếu người duyệt là quản lý trực tiếp (`employee_id.parent_id.user_id`) hoặc chính nhân viên. Thêm 2 test | **Đã làm** |
+| 2 | **Mục tiêu theo phòng ban** | Giải quyết D2 "theo team" đang phải sửa tay | Model mới `kpi.target.override` (`template_line_id`, `department_id`, `employee_id`, `target`). Khi tạo phiếu, lấy mục tiêu theo thứ tự: nhân viên → phòng ban → template. Thêm 3 test cho 3 mức | **Đã làm** |
+| 3 | **Nhắc việc và kế hoạch cải thiện** | `kpi.evaluation` đã kế thừa `mail.activity.mixin` nhưng chưa dùng | Tạo phiếu → activity cho quản lý "Chấm D9". Gửi duyệt → activity cho Admin "Duyệt phiếu". Duyệt với xếp loại "Cần cải thiện" → activity cho quản lý "Lập kế hoạch cải thiện" | **Đã làm** (Đợt A1) |
+| 4 | **Huy hiệu cho nhân viên Xuất sắc** | Tận dụng module Gamification có sẵn trong Odoo Community [16], chứng minh nguyên tắc "không xây lại thứ đã có" | Thêm `gamification` vào `depends`, tạo 1 huy hiệu trong data XML. Duyệt phiếu Xuất sắc thì tự trao huy hiệu | **Chưa làm** — module `gamification` không có trong `depends`; giá trị trình diễn thấp so với ba Đợt B/C/D đã chọn làm thay, bỏ qua có chủ đích |
 
 ### Mức 2 — Làm nếu còn thời gian
 
-| # | Tính năng | Cách triển khai |
+| # | Tính năng | Cách triển khai | Trạng thái nay |
+|---|---|---|---|
+| 5 | **Nhân viên tự đánh giá** | Thêm trạng thái "Chờ nhân viên phản hồi" giữa Nháp và Đã gửi. Field `self_score` trên dòng nhập tay, `employee_comment` trên phiếu. Record rule cho nhân viên ghi đúng 2 field này | **Đã làm** |
+| 6 | **Báo cáo cấp team** | SQL view `kpi.team.report` theo phòng ban/dự án, cùng cách làm với `kpi.data.quality.report`: tỷ lệ đúng hạn, mật độ lỗi, lỗi lọt production, thời gian sửa bug | **Đã làm** (Đợt A5, báo cáo phòng ban) |
+| 7 | **Bộ KPI BA có chỉ số tự động** | Thêm `_metric_ba1()`: tỷ lệ bug do yêu cầu sai, dựa trên `bug_root_cause = requirement` đã có. Chứng minh dữ liệu Phase 2 dùng lại được cho vai trò khác | **Đã làm** (bộ BA: B1, B2, B3, Đợt B) |
+| 8 | **Tạm tính giữa kỳ** | Cron hằng tuần gọi lại "Tính lại KPI" cho phiếu Nháp của kỳ đang mở, để quản lý và nhân viên thấy tiến độ sớm | **Đã làm** (Đợt A3, cron tạm tính) |
+
+### Mức 3 — Ghi vào Hướng phát triển (lúc viết đề xuất)
+
+| Tính năng | Lý do để sau | Trạng thái nay |
 |---|---|---|
-| 5 | **Nhân viên tự đánh giá** | Thêm trạng thái "Chờ nhân viên phản hồi" giữa Nháp và Đã gửi. Field `self_score` trên dòng nhập tay, `employee_comment` trên phiếu. Record rule cho nhân viên ghi đúng 2 field này |
-| 6 | **Báo cáo cấp team** | SQL view `kpi.team.report` theo phòng ban/dự án, cùng cách làm với `kpi.data.quality.report`: tỷ lệ đúng hạn, mật độ lỗi, lỗi lọt production, thời gian sửa bug |
-| 7 | **Bộ KPI BA có chỉ số tự động** | Thêm `_metric_ba1()`: tỷ lệ bug do yêu cầu sai, dựa trên `bug_root_cause = requirement` đã có. Chứng minh dữ liệu Phase 2 dùng lại được cho vai trò khác |
-| 8 | **Tạm tính giữa kỳ** | Cron hằng tuần gọi lại "Tính lại KPI" cho phiếu Nháp của kỳ đang mở, để quản lý và nhân viên thấy tiến độ sớm |
-
-### Mức 3 — Ghi vào Hướng phát triển
-
-| Tính năng | Lý do để sau |
-|---|---|
-| Phản hồi 360 độ | Cần model phản hồi riêng, phân quyền phức tạp, ẩn danh |
-| Mục tiêu cá nhân/OKR gắn task | Gần như một module riêng |
-| Gợi ý mục tiêu từ lịch sử | Cần dữ liệu nhiều kỳ mới có ý nghĩa |
-| Dải xếp loại cấu hình có màu | Giá trị thấp so với công sức đổi cấu trúc Settings hiện tại |
-| Đồng bộ Jira/GitLab, DORA | Phụ thuộc hạ tầng ngoài |
+| Phản hồi 360 độ | Cần model phản hồi riêng, phân quyền phức tạp, ẩn danh | **Đã làm** (Đợt D1, xem mục 1 ở trên) |
+| Mục tiêu cá nhân/OKR gắn task | Gần như một module riêng | Vẫn chưa làm — giữ ở Chương 9.6 "Không làm" |
+| Gợi ý mục tiêu từ lịch sử | Cần dữ liệu nhiều kỳ mới có ý nghĩa | **Đã làm** (percentile 25/50/75, không cần nhiều kỳ — tính trên kỳ hiện có) |
+| Dải xếp loại cấu hình có màu | Giá trị thấp so với công sức đổi cấu trúc Settings hiện tại | Vẫn chưa làm — giữ ở Chương 9.6 "Không làm" |
+| Đồng bộ Jira/GitLab, DORA | Phụ thuộc hạ tầng ngoài | Vẫn chưa làm — giữ ở Chương 9.6 "Không làm" |
 
 ---
 

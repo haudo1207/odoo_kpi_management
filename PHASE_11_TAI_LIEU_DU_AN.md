@@ -6,9 +6,12 @@
 
 **Tên đồ án:** Xây dựng module quản lý và đánh giá KPI nhân sự (`project_kpi_management`) trên nền
 tảng Odoo 19, tích hợp với module Project có sẵn.
-**Mã nguồn:** `addons/project_kpi_management/` trong repo này.
+**Mã nguồn:** `addons/project_kpi_management/` (module chính) và ba module cầu nối
+`addons/project_kpi_timesheet/`, `addons/project_kpi_skills/`, `addons/project_kpi_survey/` trong
+repo này (Chương 2.3, Chương 9.6).
 **Tài liệu liên quan:** [`TRIEN_KHAI_HE_THONG.md`](TRIEN_KHAI_HE_THONG.md) (hướng dẫn thao tác
-Odoo + vị trí source theo từng Phase), [`HUONG_DAN_XAY_DUNG_TUAN_1_2.md`](HUONG_DAN_XAY_DUNG_TUAN_1_2.md)
+Odoo + vị trí source — **chỉ còn đúng tới Phase 0–10, phạm vi gốc trước Phase 11, xem ghi chú đầu
+file đó**), [`HUONG_DAN_XAY_DUNG_TUAN_1_2.md`](HUONG_DAN_XAY_DUNG_TUAN_1_2.md)
 (giải thích cách viết code Phase 0–5), [`deploy/README.md`](deploy/README.md) (triển khai production).
 
 ---
@@ -66,16 +69,24 @@ chứ không theo từng task riêng lẻ.
 | YC-04 | Nhân viên (Developer) | Dữ liệu công việc (task, bug) được ghi nhận đủ để tính KPI: loại task, story point, phân loại bug, số lần trả về, có unit test |
 | YC-05 | KPI Administrator / Manager | Tạo kỳ đánh giá (tháng/sprint/quý), đóng/mở kỳ |
 | YC-06 | Quản lý trực tiếp | Tạo phiếu đánh giá cho nhân viên mình quản lý, trong một kỳ cụ thể |
-| YC-07 | Hệ thống | Tự động tính 8/9 chỉ số (D1–D8) từ dữ liệu task/bug/lịch; chỉ số còn lại (D9) do quản lý chấm tay |
+| YC-07 | Hệ thống | Tự động tính phần lớn chỉ số của mỗi bộ KPI từ dữ liệu Project/Calendar có sẵn (ví dụ 8/9 chỉ số Developer D1–D8); chỉ số nhập tay (D9...) do quản lý chấm; chỉ số *cấu hình* (`compute_mode = domain`) không cần viết hàm Python (Bước 1, Chương 9.1) |
 | YC-08 | Quản lý trực tiếp | Điều chỉnh điểm cuối trong biên độ cho phép, bắt buộc ghi lý do khi điều chỉnh khác 0 |
 | YC-09 | Quản lý trực tiếp → KPI Administrator | Phiếu đi qua quy trình Nháp → Gửi duyệt → Duyệt; Trả về/Mở lại phải ghi lý do, lưu vết |
-| YC-10 | KPI Administrator / Manager | Xem báo cáo: xu hướng điểm theo kỳ, phân bố xếp loại, phân tích theo chỉ số, kiểm tra chất lượng dữ liệu |
+| YC-10 | KPI Administrator / Manager | Xem báo cáo: xu hướng điểm theo kỳ, phân bố xếp loại, phân tích theo chỉ số, kiểm tra chất lượng dữ liệu, chỉ số cấp team/dự án, màn hình tổng quan theo kỳ |
 | YC-11 | KPI Administrator | Tạo phiếu hàng loạt theo kỳ (và theo phòng ban nếu cần) |
-| YC-12 | KPI Administrator | Chỉnh ngưỡng xếp loại, điểm trần, biên độ điều chỉnh qua giao diện Settings, không sửa code |
-| YC-13 | Hệ thống | Mọi vai trò chỉ xem/sửa đúng phạm vi của mình (phân quyền) |
-| YC-14 | Hệ thống | Tự động tạo phiếu khi kỳ kết thúc (không cần quản lý nhớ tạo tay) |
+| YC-12 | KPI Administrator | Chỉnh ngưỡng xếp loại, điểm trần, biên độ điều chỉnh, người duyệt mặc định qua giao diện Settings, không sửa code |
+| YC-13 | Hệ thống | Mọi vai trò chỉ xem/sửa đúng phạm vi của mình (phân quyền), chặn xung đột (người duyệt không phải chính nhân viên hay quản lý trực tiếp) |
+| YC-14 | Hệ thống | Tự động tạo phiếu khi kỳ kết thúc (không cần quản lý nhớ tạo tay); tạm tính giữa kỳ cho phiếu Nháp (Đợt A3) |
 | YC-15 | Nhân viên/Quản lý | In phiếu đánh giá ra PDF để lưu trữ/ký tay |
 | YC-16 | Công cụ ngoài (CI, quản lý test) | Đọc/ghi dữ liệu phiếu qua REST API có xác thực |
+| YC-17 | Nhân viên | Tự đánh giá (điểm tự chấm cho chỉ số nhập tay, nhận xét) trước khi phiếu được duyệt; xác nhận (đồng ý/không đồng ý) sau khi phiếu Đã duyệt (Đợt A2) |
+| YC-18 | Nhân viên khác (đồng nghiệp/cấp dưới) | Phản hồi 360 độ qua khảo sát khi được quản lý mời, ẩn danh một phần (Đợt D1, module `project_kpi_survey`) |
+| YC-19 | KPI Administrator | Cấu hình bộ KPI theo nhiều bậc điểm liên tục (không chỉ công thức tuyến tính 2 chiều), chụp bậc đã áp dụng vào dòng phiếu (Bước 3) |
+| YC-20 | Hệ thống | Mở rộng chỉ số từ dữ liệu giờ làm (Timesheet, module `project_kpi_timesheet`) và năng lực khai báo (`hr_skills`, module `project_kpi_skills`), chỉ bật khi các module gốc tương ứng được cài |
+| YC-21 | KPI Administrator | Đặt mục tiêu riêng theo nhân viên hoặc phòng ban cho một dòng chỉ số, có gợi ý mục tiêu tính từ phân bố dữ liệu lịch sử (phân vị 25/50/75) |
+| YC-22 | KPI Administrator | Đặt loại kỳ (tháng/sprint/quý) theo từng bộ KPI, không bắt buộc mọi bộ dùng chung một loại kỳ |
+| YC-23 | Hệ thống | Nhắc việc tự động: chấm D9 khi tạo phiếu, duyệt phiếu khi gửi, lập kế hoạch cải thiện (PIP) khi xếp loại thấp; nếu quản lý không đủ quyền đọc phiếu thì chuyển cho người duyệt mặc định |
+| YC-24 | KPI Administrator | Bộ KPI riêng cho vai trò Tester (QA1–QA5), Team Lead/PM (P1–P5), BA (B1–B4), chứng minh mở rộng vai trò chỉ bằng cấu hình |
 
 ### 1.5. Yêu cầu phi chức năng
 
@@ -107,20 +118,26 @@ chứ không theo từng task riêng lẻ.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│ Tầng tích hợp     REST API (controllers/api.py) · Báo cáo PDF    │
+│ Tầng vào/ra       REST API (controllers/api.py) · Báo cáo PDF    │
 │                   (report/) · Cron (data/ir_cron_data.xml)       │
 ├─────────────────────────────────────────────────────────────────┤
-│ Tầng trình bày    Views (list/form/search/pivot/graph) · Wizard  │
-│                   (wizard/) · Settings (res_config_settings.py)  │
+│ Tầng trình bày    Views (list/form/search/pivot/graph/kanban) ·  │
+│                   Wizard (wizard/) · Settings                     │
 ├─────────────────────────────────────────────────────────────────┤
-│ Tầng nghiệp vụ    kpi.metric · kpi.template(.line) · kpi.period  │
-│                   kpi.evaluation(.line) · kpi.engine · kpi.data  │
-│                   .quality.report                                │
+│ Tầng nghiệp vụ    kpi.metric · kpi.template(.line) ·             │
+│                   kpi.target.override · kpi.score.scale(.step) · │
+│                   kpi.period · kpi.evaluation(.line) ·           │
+│                   kpi.engine · kpi.data.quality.report ·         │
+│                   kpi.team.report                                 │
 ├─────────────────────────────────────────────────────────────────┤
-│ Tầng tích hợp     Mở rộng project.task, hr.job, hr.employee —    │
-│ với Odoo gốc      ghi thêm field KPI vào model có sẵn, không     │
+│ Tầng tích hợp     Mở rộng project.task, project.milestone,       │
+│ với Odoo gốc      hr.job, hr.employee, res.config.settings —     │
+│                   ghi thêm field KPI vào model có sẵn, không     │
 │                   tạo bảng song song                              │
 └─────────────────────────────────────────────────────────────────┘
+Module cầu nối (auto_install, chỉ bật khi module gốc tương ứng đã cài): project_kpi_timesheet
+(hr_timesheet), project_kpi_skills (hr_skills), project_kpi_survey (survey) — mỗi module thêm
+_inherit = "kpi.engine" (chỉ số mới) và bộ KPI riêng, không sửa 4 tầng trên.
 ```
 
 ### 2.2. Luồng dữ liệu chính
@@ -137,12 +154,16 @@ hr.employee                                                   ▼
    └──────────────────────────────────────────────────▶ │        │ action_compute_kpi()
 kpi.period ──period_id──────────────────────────────────┘        │
                                                                    │
-                                            kpi.engine._metric_d1..d8()
-                                                    │ đọc (sudo)
-                                                    ▼
-                                project.task (task_type, story_points,
-                                bug_resolution, bug_root_cause, ...),
-                                calendar.event (nhãn "Chia sẻ kiến thức")
+                                    kpi.engine.compute_actual(metric, employee, kỳ, job, evaluation)
+                                       │ chỉ số auto: _metric_<mã>()   │ chỉ số domain: _compute_domain_metric()
+                                       │ đọc (sudo)                    │ ghép domain cấu hình + user/kỳ
+                                       ▼                                ▼
+                        project.task (task_type, story_points,   kpi.metric (source_model_id,
+                        bug_resolution, bug_root_cause, ...),     numerator_domain, aggregation...)
+                        calendar.event (nhãn "Chia sẻ kiến thức"),
+                        project.milestone (is_reached_on_time),
+                        và bảng của module cầu nối đang cài (account.analytic.line/hr.skill,
+                        survey.user_input) qua các hàm _metric_<mã>() riêng của từng module
 
 kpi.evaluation.line (mỗi dòng 1 chỉ số)
    actual, volume ──compute──▶ is_applicable, score, weighted_score
@@ -168,7 +189,10 @@ addons/project_kpi_management/
 │   ├── project_task.py             Mở rộng project.task: field KPI
 │   ├── kpi_period.py               Kỳ đánh giá + sinh phiếu hàng loạt + cron
 │   ├── kpi_evaluation.py           Phiếu + dòng phiếu + công thức điểm + quy trình + PIP + tự đánh giá
-│   ├── kpi_engine.py               Tính D1–D8 + chỉ số cấu hình domain (AbstractModel, không bảng)
+│   ├── kpi_engine.py               Tính D1–D8, QA/P/B + chỉ số cấu hình domain (AbstractModel, không bảng)
+│   ├── kpi_score_scale.py          Bảng bậc điểm liên tục (Bước 3)
+│   ├── kpi_manager_issue.py        Danh sách "Quản lý chưa có quyền KPI" (TransientModel, Đợt B)
+│   ├── project_milestone.py        Mở rộng project.milestone: is_reached_on_time (P1)
 │   ├── kpi_demo.py                 Kịch bản dữ liệu mẫu (AbstractModel)
 │   ├── kpi_data_quality.py         SQL view kiểm tra chất lượng dữ liệu
 │   ├── kpi_team_report.py          SQL view chỉ số cấp team/dự án (Mục 5)
@@ -177,11 +201,14 @@ addons/project_kpi_management/
 │   ├── kpi_evaluation_reason_wizard.py      Lý do Trả về/Mở lại
 │   ├── kpi_evaluation_generate_wizard.py    Tạo phiếu hàng loạt
 │   ├── kpi_self_assessment_wizard.py        Nhân viên tự đánh giá (Mục 6)
+│   ├── kpi_acknowledge_wizard.py            Nhân viên xác nhận kết quả sau Đã duyệt (Đợt A2)
 │   └── kpi_metric_test_wizard.py            Nút "Thử tính" chỉ số cấu hình (Bước 1)
 ├── security/                        3 nhóm quyền + record rule + CSV quyền model
-├── data/                             Dữ liệu cấu hình chuẩn (D1–D9, bộ Developer/Tester, cron, loại nhắc việc PIP...)
-├── views/                           View cho từng model + menu
+├── data/                             Dữ liệu cấu hình chuẩn (D1–D9, QA1–QA5, P1–P5, B1–B4, bộ theo vai trò, cron, loại nhắc việc PIP...)
+├── views/                           View cho từng model + menu + dashboard kanban
 ├── report/                          Mẫu in PDF
+├── migrations/19.0.1.1.0/           pre/post-migrate chạy một lần khi nâng từ bản dưới 1.1.0
+├── scripts/                         prepare_defense.sh, pre_defense_check.py, backup/restore_defense.sh, run_all_tests.sh (Chương 5.6)
 └── tests/                           19 file, 183 test
 
 addons/project_kpi_timesheet/            Module cầu nối (Bước 4): P4 + bộ "Team Lead / PM (có giờ làm)", 6 test riêng
@@ -223,7 +250,7 @@ thiết kế. Chỉ số *Nhập tay* (`compute_mode = manual`) không có giớ
 | `hr.department` | Model phòng ban có sẵn, không đổi | — |
 | `calendar.event` | `user_id`, `categ_ids`, `start`/`stop` | — (chỉ thêm 1 bản ghi `calendar.event.type` làm nhãn) |
 | `mail.thread`, `mail.activity.mixin` | Lịch sử (chatter) | `kpi.evaluation` kế thừa để có lịch sử duyệt/trả về |
-| `res.config.settings` | Cơ chế Settings app chuẩn | 6 field tham số KPI |
+| `res.config.settings` | Cơ chế Settings app chuẩn | 7 field tham số KPI |
 | `res.groups.privilege` (Odoo 19) | Cơ chế nhóm quyền mới | 1 privilege "KPI", 3 group con |
 
 **Phát hiện quan trọng khi đối chiếu source Odoo 19** (ảnh hưởng trực tiếp thiết kế, không chỉ là
@@ -247,14 +274,15 @@ bắt buộc: stage Done/Hoàn thành của mọi dự án phải bật **Folded
 | 5 | `kpi.evaluation` | Bảng thật | Phiếu đánh giá |
 | 6 | `kpi.evaluation.line` | Bảng thật | Dòng chỉ số trong phiếu |
 | 7 | `kpi.data.quality.report` | **SQL view** (`_auto = False`) | Báo cáo chất lượng dữ liệu, chỉ đọc |
-| 8 | `kpi.engine` | AbstractModel, không bảng | Thuật toán tính D1–D8 |
+| 8 | `kpi.engine` | AbstractModel, không bảng | Thuật toán tính chỉ số tự động (D1–D8, QA1–QA3/QA4, P2/P3, B2) + chỉ số cấu hình domain; mỗi module cầu nối mở rộng bằng `_inherit` để thêm `_metric_<mã>()` riêng |
 | 9 | `kpi.demo` | AbstractModel, không bảng | Nạp kịch bản mẫu |
 | 10 | `kpi.evaluation.reason.wizard` | TransientModel | Lý do Trả về/Mở lại |
 | 11 | `kpi.evaluation.generate.wizard` | TransientModel | Tạo phiếu hàng loạt |
 | 12 | `project.task` *(mở rộng)* | Bảng gốc Odoo | Thêm field KPI |
 | 13 | `hr.job` *(mở rộng)* | Bảng gốc Odoo | Thêm `kpi_template_id` |
 | 14 | `hr.employee` *(mở rộng)* | Bảng gốc Odoo | Thêm smart button |
-| 15 | `res.config.settings` *(mở rộng)* | TransientModel gốc Odoo | Thêm 6 tham số |
+| — | `project.milestone` *(mở rộng)* | Bảng gốc Odoo | Thêm `is_reached_on_time` (P1, Bước 4) |
+| 15 | `res.config.settings` *(mở rộng)* | TransientModel gốc Odoo | Thêm 7 tham số |
 | 16 | `kpi.target.override` | Bảng thật | Mục tiêu riêng theo nhân viên/phòng ban cho một dòng chỉ số |
 | 17 | `kpi.team.report` | **SQL view** (`_auto = False`) | Chỉ số cấp team (dự án): đúng hạn, mật độ lỗi, lỗi production, giờ sửa bug |
 | 18 | `kpi.self.assessment.wizard`(`.line`) | TransientModel | Nhân viên tự đánh giá (Mục 6) |
@@ -264,23 +292,28 @@ bắt buộc: stage Done/Hoàn thành của mọi dự án phải bật **Folded
 | 22 | `kpi.acknowledge.wizard` | TransientModel | Nhân viên xác nhận kết quả sau khi phiếu Đã duyệt (Đợt A2, Chương 9.6) |
 | 23 | `kpi.manager.issue` | TransientModel | Danh sách "Quản lý chưa có quyền KPI" (lỗi cấu hình cần sửa tận gốc, Đợt B) |
 | — | `kpi.feedback.request`, `kpi.feedback.invite.wizard` | Model, TransientModel | Chỉ có khi cài `project_kpi_survey` (Đợt D1): lời mời đánh giá 360 (ai được mời, đã trả lời chưa) và wizard "Mời đánh giá 360" |
+| — | `survey.user_input` *(mở rộng, chỉ khi cài `project_kpi_survey`)* | Bảng gốc Odoo | Ghi đè `_mark_done()`: nộp bài xong thì tự đóng nhắc việc "Đánh giá 360" tương ứng |
 
 ### 3.2. Sơ đồ quan hệ (ERD dạng văn bản)
 
 ```
 hr.job ──1:1 (field)──▶ kpi.template ──1:N──▶ kpi.template.line ──N:1──▶ kpi.metric
-  ▲ N:1                                                                      ▲ N:1
-hr.employee                                                                  │
-  │ N:1                                                                      │
-  ├──employee_id──┐                                                         │
-kpi.period ──1:N──▶ kpi.evaluation ──1:N──▶ kpi.evaluation.line ────────────┘
+  ▲ N:1                                             │ N:1                    ▲ N:1
+hr.employee                                         ▼                        │
+  │ N:1                                     kpi.target.override        kpi.score.scale
+  ├──employee_id──┐                      (employee_id xor department_id)    │ N:1
+kpi.period ──1:N──▶ kpi.evaluation ──1:N──▶ kpi.evaluation.line ─────────────┘ (scale_id)
                          │ N:1 (job_id, department_id — chụp lúc tạo, không liên kết động)
-                    (mail.thread: lịch sử duyệt/trả về/mở lại)
+                         │ (mail.thread: lịch sử duyệt/trả về/mở lại)
+                         └──1:N──▶ kpi.feedback.request ──N:1──▶ survey.user_input
+                                   (chỉ có khi cài project_kpi_survey; reviewer_id → res.users)
 
 project.task ──N:1 (origin_task_id, tự tham chiếu)──▶ project.task   (bug ↔ task gốc)
+project.task ──N:1 (requirement_id, tự tham chiếu)──▶ project.task   (feature ↔ yêu cầu, B2)
 project.task ──N:1 (user_ids)──▶ res.users ──1:1──▶ hr.employee
+project.milestone ──N:1 (project_id)──▶ project.project
 
-kpi.data.quality.report  (SQL view, GROUP BY theo project.task.project_id — không có FK thật)
+kpi.data.quality.report, kpi.team.report  (SQL view, GROUP BY theo project.task.project_id — không có FK thật)
 ```
 
 ### 3.3. Chi tiết từng bảng
@@ -492,6 +525,43 @@ return max(min(score, cap), 0.0)
 Chỉ áp dụng khi `is_applicable = True`; dòng không áp dụng có `score = 0` và bị loại khỏi cả tử số
 lẫn mẫu số khi tính `kpi_score` của phiếu.
 
+#### `kpi.score.scale` / `kpi.score.scale.step` — Bảng bậc điểm liên tục (Bước 3)
+
+| Model | Field | Kiểu | Ràng buộc | Ghi chú |
+|---|---|---|---|---|
+| `kpi.score.scale` | `name` | Char | required | Tên bảng bậc |
+| | `active` | Boolean | default True | Ẩn bị chặn nếu còn `kpi.template.line` đang dùng |
+| | `step_ids` | One2many → `.step` | | `copy=True` |
+| `kpi.score.scale.step` | `scale_id` | Many2one, `ondelete=cascade` | required | |
+| | `pct_from` | Float, digits(16,2) | required, CHECK ≥ 0 | % đạt mục tiêu bắt đầu của bậc |
+| | `pct_to` | Float, compute | | % bắt đầu của bậc kế tiếp (không gồm); bậc cuối không giới hạn |
+| | `score` | Float, digits(16,2) | required, CHECK ≥ 0 | Điểm của bậc |
+
+Tra theo **% đạt mục tiêu** (`actual/target` hoặc `target/actual` tuỳ chiều), không theo giá trị thực
+tế — một bảng dùng chung được cho nhiều chỉ số, kể cả khi mục tiêu đổi theo phòng ban/nhân viên.
+`_check_steps()` (`@api.constrains`) đảm bảo các bậc không chồng khoảng và phủ liên tục từ 0% (bậc
+thấp nhất bắt buộc `pct_from = 0`, các `pct_from` không trùng nhau). `kpi.template.line.scale_id`
+(tuỳ chọn — không gắn thì dùng công thức 2 chiều mặc định ở 3.4) được **chụp lại** vào dòng phiếu lúc
+tạo (`kpi.evaluation.line.scale_json/scale_name/achievement_pct`) bằng `_snapshot()`, nên sửa bảng
+bậc sau đó không đổi điểm phiếu cũ — cùng nguyên tắc chụp mục tiêu/trọng số. Trần điểm (`score_cap`)
+vẫn áp dụng sau khi tra bậc.
+
+#### `kpi.feedback.request` — Lời mời đánh giá 360 độ (chỉ có khi cài `project_kpi_survey`, Đợt D1)
+
+| Field | Kiểu | Ràng buộc | Ghi chú |
+|---|---|---|---|
+| `evaluation_id` | Many2one → `kpi.evaluation` | required, `ondelete=cascade` | |
+| `employee_id` | related → `evaluation_id.employee_id`, store | | Nhân viên được đánh giá (không phải người đánh giá) |
+| `reviewer_id` | Many2one → `res.users` | required | Người được mời đánh giá |
+| `survey_id` | Many2one → `survey.survey` | required, readonly | Khảo sát dùng (mẫu "Phản hồi 360 độ") |
+| `user_input_id` | Many2one → `survey.user_input` | readonly, `ondelete=set null`, `copy=False` | Câu trả lời riêng của người này; nội dung/điểm chỉ nhóm Surveys đọc được |
+| `state` | Selection, compute, store | `pending`/`done` | Theo `user_input_id.state == "done"` |
+
+Ràng buộc SQL: `UNIQUE(evaluation_id, reviewer_id)` — một người không được mời hai lần trên cùng
+phiếu. Kế thừa `mail.thread`, `mail.activity.mixin` để gắn nhắc việc riêng cho từng người được mời
+(không gắn trên `kpi.evaluation` vì người được mời không đọc được phiếu của người khác — xem Chương
+9.6). F1 (chỉ số 360) là trung bình `scoring_percentage` của các câu trả lời `done`, `min_volume = 3`.
+
 #### `kpi.data.quality.report` — Báo cáo chất lượng dữ liệu (SQL view)
 
 Không phải bảng thật (`_auto = False`), tạo bằng `CREATE VIEW` trong `init()`, nhóm theo
@@ -594,14 +664,16 @@ tốc độ phản ứng khi sửa).
 | Nên có | Tăng tính thực tế |
 | Mở rộng | Làm nếu còn thời gian / đề cương yêu cầu |
 
-### 4.2. Bảng thống kê triển khai (38 hạng mục)
+### 4.2. Bảng thống kê triển khai (38 hạng mục phạm vi gốc + các đợt mở rộng)
 
-**Tổng hợp:** Có sẵn 10 · Customize 14 · Xây mới 14 — MVP 31 · Nên có 4 · Mở rộng 3.
+**Phạm vi gốc (Phase 0–10, trước Phase 11):** Có sẵn 10 · Customize 14 · Xây mới 14 — MVP 31 · Nên
+có 4 · Mở rộng 3, tổng 38 hạng mục.
 
-Bảng đầy đủ (STT, nhóm, tính năng, Odoo hiện có, nội dung triển khai, Phase, phạm vi) nằm trong
-[`lo-trinh-hoc-odoo-dev.md`](lo-trinh-hoc-odoo-dev.md) mục "Bảng thống kê triển khai" — đây là tài
-liệu phân tích gốc dùng xuyên suốt quá trình xây dựng, không sao chép lại ở đây để tránh hai bản dễ
-lệch nhau khi cập nhật. Tóm tắt theo Phase:
+> **Lưu ý:** bảng chi tiết gốc (STT, nhóm, tính năng, Odoo hiện có, nội dung triển khai, Phase, phạm
+> vi) nằm trong tài liệu phân tích dùng nội bộ lúc lên kế hoạch ban đầu, không đưa vào repo này.
+> Tóm tắt theo Phase bên dưới cộng với bảng YC ở Chương 1.4 và danh sách chỉ số/model ở Chương 3 đủ
+> để truy vết lại từng hạng mục; bảng "Trạng thái hoàn thiện" ở Chương 10 là nguồn xác nhận hiện
+> hành, không phải bảng này.
 
 | Phase | Nội dung | Phạm vi |
 |---|---|---|
@@ -616,6 +688,20 @@ lệch nhau khi cập nhật. Tóm tắt theo Phase:
 | 8 | Bộ KPI Tester (chứng minh mở rộng không sửa code) | Nên có |
 | 9 | Cron cuối kỳ, báo cáo PDF, REST API | Mở rộng |
 | 10 | Cấu hình deploy production | Bàn giao |
+
+**Phase 11 trở đi — các đợt mở rộng sau phạm vi gốc** (chi tiết ở Chương 9, tổng hợp ở Chương 10):
+
+| Đợt | Nội dung | Phạm vi |
+|---|---|---|
+| Bước 0–1 | Chỉ số cấu hình `domain` (không cần code) | Mở rộng |
+| Bước 2 | Bộ KPI Tester tự động (QA1–QA5) | Mở rộng |
+| Bước 3 | Bảng bậc điểm liên tục (`kpi.score.scale`) | Mở rộng |
+| Bước 4 | Bộ Team Lead/PM (P1–P5) + module cầu nối Timesheet (P4) | Mở rộng |
+| Bước 5 | Bộ BA (B1–B4) | Mở rộng |
+| Đợt A | Nhắc việc/PIP, xác nhận kết quả, tạm tính giữa kỳ, báo cáo phòng ban | Mở rộng |
+| Đợt B | Mục tiêu theo phòng ban/nhân viên, gợi ý theo lịch sử, kỳ riêng theo bộ KPI | Mở rộng |
+| Đợt C | Màn hình tổng quan (dashboard kanban theo kỳ) | Mở rộng |
+| Đợt D | Module cầu nối Skills (S1) và Survey (F1, phản hồi 360) | Mở rộng |
 
 ### 4.3. Công nghệ sử dụng
 
@@ -965,7 +1051,7 @@ Dữ liệu cố định, số đếm tính tay trước khi chạy: team của 
 
 ### 5.4. Kết quả kiểm thử
 
-**Tổng cộng 206 test, 0 failed, 0 error:** 183 test của module chính (`project_kpi_management`) + 6 của `project_kpi_timesheet` + 9 của `project_kpi_skills` + 8 của `project_kpi_survey`. Lần gần nhất 2026-10-16, đều trên database tạo mới hoàn toàn (không chỉ chạy lại trên database cũ): module chính một mình; module chính + `project_kpi_timesheet`; và **cả ba module cầu nối cài cùng lúc** (203 test tại thời điểm chạy — chưa tính test thêm sau đó) để chắc các hàm `_metric_*` của chúng (đều kế thừa `kpi.engine`) không đè nhau. Từng module cầu nối cũng được chạy riêng bằng `--test-tags`.
+**Tổng cộng 206 test, 0 failed, 0 error:** 183 test của module chính (`project_kpi_management`) + 6 của `project_kpi_timesheet` + 9 của `project_kpi_skills` + 8 của `project_kpi_survey`. Lần đầu rà soát từng tổ hợp riêng là 2026-10-16, đều trên database tạo mới hoàn toàn (không chỉ chạy lại trên database cũ): module chính một mình; module chính + `project_kpi_timesheet`; và **cả ba module cầu nối cài cùng lúc** (203 test tại thời điểm đó — chưa tính test thêm sau đó) để chắc các hàm `_metric_*` của chúng (đều kế thừa `kpi.engine`) không đè nhau. Từng module cầu nối cũng được chạy riêng bằng `--test-tags`. Lần chạy `run_all_tests.sh` (cả bốn module cùng lúc) gần nhất là **2026-10-23**, vẫn 206/206 đạt.
 
 **Các lỗi thật phát hiện nhờ kiểm tra qua đường đi thật** (không phải qua unit test gọi thẳng hàm), đã sửa và có test khoá lại:
 
@@ -1266,6 +1352,21 @@ buộc lý do) và **chấm chỉ số định tính** (D9) — số liệu tự
 | Gợi ý mục tiêu cần ≥ 3 kỳ đã duyệt cùng loại kỳ | Ít hơn thì hiện "Chưa đủ dữ liệu"; phiếu thiếu dữ liệu và dòng Không áp dụng không tham gia | Thấp |
 | Cron cập nhật `days_late` ghi `write_date` dù giá trị không đổi | Đã kiểm chứng bằng script thật (không suy luận): `_cron_update_days_late()` gọi `flush_recordset(["days_late"])` cho mọi task quá hạn chưa xong mỗi ngày, và Odoo luôn ghi `write_date`/`write_uid` cùng lúc flush một field, kể cả khi `days_late` ra cùng giá trị cũ | Thấp — chỉ ảnh hưởng cách sắp xếp "mới cập nhật gần đây" ở các view khác, không ảnh hưởng điểm KPI |
 
+### 8.4. Nơi dùng `sudo()` và quyền đã kiểm trước đó
+
+`kpi_evaluation.py` và `kpi_engine.py` là hai file dùng `sudo()` nhiều nhất (engine phải đọc
+`project.task`/`calendar.event`/... của toàn bộ nhân viên, không chỉ của người đang xem phiếu). Quy
+tắc chung: **`sudo()` chỉ dùng sau khi quyền ghi/đọc trên chính model gọi tới đã được record rule
+hoặc một kiểm tra tường minh xác nhận** — không có chỗ nào gọi `sudo()` ngay từ đầu hàm.
+
+| Chỗ dùng `sudo()` | Quyền đã kiểm trước đó |
+|---|---|
+| `kpi.engine.compute_actual()` và các `_metric_<mã>()` | Người gọi phải đã có quyền đọc `kpi.evaluation`/ghi `kpi.evaluation.line` (record rule theo nhân viên trực tiếp/KPI Manager); engine chỉ đọc dữ liệu nguồn (task, bug, lịch...) để tính ra một con số, không trả về bản ghi gốc cho người gọi |
+| `kpi.evaluation.employee_comment` / `kpi.evaluation.line.self_score` (ghi qua wizard Tự đánh giá) | Wizard tự kiểm `self.env.user == evaluation.employee_id.user_id` trước khi gọi `sudo().write()` — chặn ở `create()`/`write()` của model cho mọi lời gọi không qua wizard (Chương 3.3) |
+| `kpi.evaluation.ack_decision/ack_comment` (wizard Xác nhận kết quả) | Cùng cơ chế: kiểm đúng là chính nhân viên và phiếu đã Duyệt trước khi `sudo()` ghi |
+| `kpi.feedback.invite.wizard.action_invite()` (tạo câu trả lời khảo sát) | Kiểm đúng là quản lý trực tiếp của nhân viên và phiếu còn Nháp (`AccessError`/`UserError` nếu sai) **trước** mọi thao tác `sudo()` trên `survey.user_input`/`kpi.feedback.request` — có test riêng khoá thứ tự này (`test_permission_checks_happen_before_any_sudo_write`, Chương 5.3) sau khi phát hiện bản đầu đọc `scoring_type` bằng quyền quản lý bị `AccessError` |
+| `kpi.period._cron_*`, `kpi.evaluation._cron_provisional_compute` | Cron chạy bằng người dùng hệ thống (không phải một tài khoản cụ thể), không có "quyền người gọi" để kiểm — đây là cách Odoo chạy cron chuẩn, không phải lách quyền |
+
 ---
 
 ## Chương 9 — Hướng phát triển
@@ -1499,10 +1600,12 @@ Sau Bước 5 các tính năng còn lại được chia theo giá trị cho báo
 ## Chương 10 — Kết luận
 
 Đồ án đã xây dựng hoàn chỉnh module `project_kpi_management` trên Odoo 19, đáp ứng toàn bộ phạm vi
-MVP (31/31 hạng mục) và phần lớn phạm vi Nên có/Mở rộng (7/7 hạng mục), tổng cộng 38/38 hạng mục
+MVP (31/31 hạng mục) và toàn bộ phạm vi Nên có/Mở rộng (7/7 hạng mục), tổng cộng 38/38 hạng mục
 trong bảng thống kê triển khai, cộng thêm 6 mục mở rộng sau khi đối chiếu với các hệ thống KPI tương
-tự (màu xếp loại, chặn xung đột vai trò, nhắc việc PIP, mục tiêu theo phòng ban, chỉ số theo dự án,
-tự đánh giá — Chương 9 cũ, nay đã triển khai). Hệ thống có 206 unit test tự động (183 ở module chính, 6 + 9 + 8 ở ba module cầu nối; 0 lỗi) cộng với
+tự (**màu cho 4 mức xếp loại cố định** — khác với "dải xếp loại cấu hình đầy đủ" vẫn chưa làm, xem
+Chương 8.3/9.6 — chặn xung đột vai trò, nhắc việc PIP, mục tiêu theo phòng ban, chỉ số theo dự án,
+tự đánh giá — Chương 9 cũ, nay đã triển khai), và toàn bộ kế hoạch Bước 0–5, Đợt A–D ở Chương 9 (trừ
+Bước 6b, nêu ở 9.6). Hệ thống có 206 unit test tự động (183 ở module chính, 6 + 9 + 8 ở ba module cầu nối; 0 lỗi) cộng với
 kiểm thử thủ công trên REST API, báo cáo PDF, phân quyền, luồng nghiệp vụ hoàn chỉnh trên dữ liệu
 thật, và kiểm tra qua đúng tài khoản thật bằng XML-RPC (`scripts/pre_defense_check.py`, Chương 5.6)
 — cách kiểm tra này tự nó đã bắt được một số lỗi mà unit test (chạy bằng superuser) không bắt được.
@@ -1512,7 +1615,7 @@ xác định rõ ràng, có hướng xử lý cụ thể (Chương 9), phù hợ
 
 Hệ thống chỉ có **một mã nguồn duy nhất trên nhánh `main`**, đồng nhất với hệ thống đang chạy; mọi đợt phát triển đã hợp nhất vào đó. Quy trình ngày bảo vệ (`git pull` trên `main` → `restore_defense.sh clean` → chờ "tất cả OK") và kịch bản demo nằm ở Chương 5.7, 5.8. Các tag `v1.x-bao-ve` trên GitHub chỉ là lịch sử.
 
-**Trạng thái hoàn thiện (xác nhận 2026-10-19):**
+**Trạng thái hoàn thiện (xác nhận lần đầu 2026-10-19, kiểm tra lại 2026-10-23):**
 
 | Hạng mục | Trạng thái |
 |---|---|
