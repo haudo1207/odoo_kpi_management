@@ -4,11 +4,11 @@
 > thiếu, và đề xuất thứ tự triển khai trước khi bảo vệ đồ án.
 
 > **Cập nhật 2026-10-23 — tài liệu lịch sử, đã lỗi thời so với code:** đây là bản đề xuất gốc, viết
-> trước khi làm Bước 0–5 và Đợt A–D (Chương 9 của `PHASE_11_TAI_LIEU_DU_AN.md`). Toàn bộ Mức 1 và
+> trước khi làm Bước 0–5 và Đợt A–D (Chương 9 của `Nhom7_BaoCao.md`). Toàn bộ Mức 1 và
 > Mức 2 bên dưới đã triển khai xong, trừ **mục 4 (huy hiệu Gamification)** — không làm, lý do ở cuối
 > tài liệu. Cột "Trạng thái" ở mục 1 và 2 ghi tình trạng thực tế hiện nay; nội dung gốc giữ nguyên để
 > còn thấy quá trình ra quyết định. Danh sách chức năng đang có, đối chiếu đầy đủ, nằm ở Chương 1 và
-> Chương 10 của `PHASE_11_TAI_LIEU_DU_AN.md`.
+> Chương 10 của `Nhom7_BaoCao.md`.
 
 ---
 

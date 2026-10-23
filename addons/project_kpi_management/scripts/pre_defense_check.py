@@ -2,7 +2,7 @@
 """Kiểm tra nhanh trước buổi bảo vệ — chạy qua XML-RPC thật, đăng nhập bằng đúng tài khoản sẽ
 dùng khi demo (admin, quocviet, an), không phải TransactionCase giả lập (TransactionCase chạy
 bằng superuser nên env.su=True, bỏ qua một số kiểm tra chỉ áp dụng cho người dùng thật — xem
-Chương 5.4 trong PHASE_11_TAI_LIEU_DU_AN.md).
+Chương 5.4 trong Nhom7_BaoCao.md).
 
 Vì sao cần script riêng (không chỉ chạy lại unit test):
   - Sửa code trên đĩa không tự áp dụng cho một server Odoo đang chạy liên tục — phải nạp lại

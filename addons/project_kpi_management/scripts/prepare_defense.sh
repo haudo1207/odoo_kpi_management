@@ -17,7 +17,7 @@ echo "== 1/4  Tìm các module KPI đã cài trong database '$DB'"
 MODULES=$(docker exec "$DBC" psql -U odoo -d "$DB" -Atc \
   "select string_agg(name, ',' order by name) from ir_module_module where name like 'project_kpi%' and state = 'installed'")
 if [ -z "$MODULES" ]; then
-  echo "Database '$DB' chưa cài module KPI nào. Dựng database trước (Chương 5.7 trong PHASE_11_TAI_LIEU_DU_AN.md)." >&2
+  echo "Database '$DB' chưa cài module KPI nào. Dựng database trước (Chương 5.7 trong Nhom7_BaoCao.md)." >&2
   exit 1
 fi
 echo "   $MODULES"
