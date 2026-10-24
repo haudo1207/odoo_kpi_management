@@ -1,3 +1,5 @@
+import re
+
 from odoo.exceptions import AccessError, UserError
 from odoo.tests import TransactionCase, tagged
 
@@ -248,6 +250,19 @@ class TestKpiDemoScenario(TransactionCase):
         self.assertFalse(copy.employee_comment)
         copy_manual_line = copy.line_ids.filtered(lambda l: l.compute_mode == "manual")
         self.assertEqual(copy_manual_line.self_score, 0)
+
+    def test_self_assessment_line_list_cannot_add_or_delete_rows(self):
+        """Lỗi thật gặp khi demo trực tiếp (Chương 5.4): list "Tự chấm" trong wizard thiếu
+        create="0"/delete="0" nên Odoo tự hiện sẵn "Thêm dòng" ở cuối bảng — bấm nhầm (kể cả click
+        vào khoảng trống dưới dòng cuối) tạo một dòng rỗng không có evaluation_line_id (bắt buộc),
+        lưu thì vỡ ValidationError khó hiểu. Kiểm view thay vì giả lập UI (không có trình duyệt ở
+        TransactionCase)."""
+        arch = self.env["kpi.self.assessment.wizard"].get_views([(False, "form")])["views"]["form"]["arch"]
+        m = re.search(r'<field name="line_ids">\s*<list([^>]*)>', arch)
+        self.assertIsNotNone(m, "không tìm thấy <list> của line_ids trong view")
+        attrs = m.group(1)
+        self.assertIn('create="0"', attrs)
+        self.assertIn('delete="0"', attrs)
 
     def test_phuc_pm_evaluation(self):
         """Bước 4: PM Phúc — P1 = 1/3 milestone đúng hạn (33,33%); P2 Không áp dụng (chưa có cấp dưới chốt);

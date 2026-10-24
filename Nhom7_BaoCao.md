@@ -208,7 +208,7 @@ addons/project_kpi_management/
 ├── report/                          Mẫu in PDF
 ├── migrations/19.0.1.1.0/           pre/post-migrate chạy một lần khi nâng từ bản dưới 1.1.0
 ├── scripts/                         prepare_defense.sh, pre_defense_check.py, backup/restore_defense.sh, run_all_tests.sh (Chương 5.6)
-└── tests/                           19 file, 185 test
+└── tests/                           19 file, 186 test
 
 addons/project_kpi_timesheet/            Module cầu nối (Bước 4): P4 + bộ "Team Lead / PM (có giờ làm)", 6 test riêng
 addons/project_kpi_skills/               Module cầu nối (Đợt D2): S1 mức đáp ứng kỹ năng + bộ "Developer (có năng lực)", 9 test riêng
@@ -731,7 +731,7 @@ docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management \
   --test-tags /project_kpi_management --stop-after-init --http-port 8070
 ```
 
-### 5.3. Danh sách test case (185 test, 19 file)
+### 5.3. Danh sách test case (186 test, 19 file)
 
 #### `tests/test_kpi_config.py` — 11 test (Phase 1: chỉ số, bộ KPI; thêm test phiên bản đồng đều)
 
@@ -820,7 +820,7 @@ docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management \
 | `test_employee_without_user` | Nhân viên chưa có tài khoản → báo lỗi rõ ràng, không trả về 0 |
 | `test_compute_on_evaluation` | Gọi qua `action_compute_kpi()` từ phiếu, không ghi đè chỉ số nhập tay |
 
-#### `tests/test_kpi_demo_scenario.py` — 17 test (đối chiếu bảng tính tay; từ Bước 2 trở đi thêm test cho Dung, Phúc, Lan, người duyệt mặc định và lịch sử gợi ý — mô tả ở các mục tương ứng bên dưới)
+#### `tests/test_kpi_demo_scenario.py` — 18 test (đối chiếu bảng tính tay; từ Bước 2 trở đi thêm test cho Dung, Phúc, Lan, người duyệt mặc định và lịch sử gợi ý — mô tả ở các mục tương ứng bên dưới)
 
 | Test | Kiểm tra |
 |---|---|
@@ -834,6 +834,7 @@ docker exec odoo19-web odoo -d kpi_dev -u project_kpi_management \
 | `test_no_pip_activity_when_not_improve` | Phiếu không xếp loại Cần cải thiện thì không tạo nhắc việc PIP |
 | `test_self_assessment_wizard` | Chỉ chính nhân viên (không phải quản lý) tự đánh giá được qua wizard; không ai ghi trực tiếp được `employee_comment`/`self_score` qua `write()` lẫn `create()` (kể cả quản lý, vốn có quyền ghi phiếu/dòng phiếu khi Nháp); hết Nháp thì không tự đánh giá được nữa; `self_score` không ảnh hưởng `final_rating` |
 | `test_copy_does_not_duplicate_self_assessment` | Nhân bản phiếu đã tự đánh giá không chép `employee_comment`/`self_score` sang phiếu mới, không bị chặn `create()` nhầm |
+| `test_self_assessment_line_list_cannot_add_or_delete_rows` | Lỗi thật gặp khi tổng duyệt demo (Chương 5.4): list "Tự chấm" trong wizard phải có `create="0" delete="0"`, không cho tự thêm/xoá dòng (tránh dòng rỗng thiếu `evaluation_line_id`) |
 
 #### `tests/test_kpi_security.py` — 6 test (Phase 5: phân quyền)
 
@@ -1052,7 +1053,7 @@ Dữ liệu cố định, số đếm tính tay trước khi chạy: team của 
 
 ### 5.4. Kết quả kiểm thử
 
-**Tổng cộng 208 test, 0 failed, 0 error:** 185 test của module chính (`project_kpi_management`) + 6 của `project_kpi_timesheet` + 9 của `project_kpi_skills` + 8 của `project_kpi_survey`. Lần đầu rà soát từng tổ hợp riêng là 2026-10-16 (206 test, trước khi thêm 2 test ở đợt rà soát logic 2026-10-23), đều trên database tạo mới hoàn toàn (không chỉ chạy lại trên database cũ): module chính một mình; module chính + `project_kpi_timesheet`; và **cả ba module cầu nối cài cùng lúc** (203 test tại thời điểm đó — chưa tính test thêm sau đó) để chắc các hàm `_metric_*` của chúng (đều kế thừa `kpi.engine`) không đè nhau. Từng module cầu nối cũng được chạy riêng bằng `--test-tags`. Lần chạy `run_all_tests.sh` (cả bốn module cùng lúc) gần nhất là **2026-10-23**, 208/208 đạt (thêm 2 test khoá lại hai lỗi logic phát hiện khi đọc lại code, xem bảng dưới).
+**Tổng cộng 209 test, 0 failed, 0 error:** 186 test của module chính (`project_kpi_management`) + 6 của `project_kpi_timesheet` + 9 của `project_kpi_skills` + 8 của `project_kpi_survey`. Lần đầu rà soát từng tổ hợp riêng là 2026-10-16 (206 test, trước khi thêm 3 test ở hai đợt rà soát/tổng duyệt sau đó), đều trên database tạo mới hoàn toàn (không chỉ chạy lại trên database cũ): module chính một mình; module chính + `project_kpi_timesheet`; và **cả ba module cầu nối cài cùng lúc** (203 test tại thời điểm đó — chưa tính test thêm sau đó) để chắc các hàm `_metric_*` của chúng (đều kế thừa `kpi.engine`) không đè nhau. Từng module cầu nối cũng được chạy riêng bằng `--test-tags`. Lần chạy `run_all_tests.sh` (cả bốn module cùng lúc) gần nhất là **2026-10-24**, 209/209 đạt (2 test khoá lỗi logic đọc code 2026-10-23 + 1 test khoá lỗi view gặp lúc tổng duyệt demo 2026-10-24, xem bảng dưới).
 
 **Các lỗi thật phát hiện nhờ kiểm tra qua đường đi thật** (không phải qua unit test gọi thẳng hàm), đã sửa và có test khoá lại:
 
@@ -1066,6 +1067,7 @@ Dữ liệu cố định, số đếm tính tay trước khi chạy: team của 
 | Quản lý không thuộc nhóm KPI không đọc được phiếu nên Odoo từ chối giao nhắc việc | Test nhắc việc Đợt A | Chỉ giao cho người đọc được phiếu, nếu không thì chuyển cho người duyệt mặc định; có danh sách "Quản lý chưa có quyền KPI" |
 | Task Done bị đổi `stage_id` qua lại (Odoo không tự lùi `state` khi chỉ đổi stage) khiến `date_end` bị Odoo xoá rồi module ghi đè bằng **thời điểm đổi stage** thay vì ngày hoàn thành thật — D1/D7 có thể bị quy nhầm kỳ nếu việc đổi stage xảy ra khác kỳ | Đọc lại logic nghiệp vụ (không chạy code, 2026-10-23); test cũ chỉ kiểm `date_end` khác rỗng, không kiểm đúng giá trị nên không bắt được | Chụp `date_end` cũ **trước** `super().write()`, khôi phục đúng giá trị đó thay vì `fields.Datetime.now()` khi task đã Done từ trước (`project_task.py`) |
 | Đổi mã (`code`) của một chỉ số Tự động đang dùng (ví dụ D1 → D01) không báo lỗi lúc lưu, chỉ vỡ lúc bấm "Tính KPI" với `UserError` khó truy ngược | Đọc lại logic nghiệp vụ (2026-10-23) | Thêm `@api.constrains("code", "compute_mode")` kiểm `kpi.engine` có đúng hàm `_metric_<mã>()` tương ứng ngay lúc lưu (`kpi_metric.py`) |
+| Wizard Tự đánh giá: list "Tự chấm" thiếu `create="0"/delete="0"` nên Odoo tự hiện "Thêm dòng" — bấm nhầm (kể cả click vào khoảng trống dưới dòng cuối) tạo dòng rỗng thiếu `evaluation_line_id` (bắt buộc), lưu vỡ `ValidationError` khó hiểu | Gặp khi tổng duyệt demo trực tiếp (2026-10-24) | Thêm `create="0" delete="0"` vào view (`kpi_self_assessment_wizard_views.xml`); test đọc arch view để khoá lại |
 
 **Quan trọng — hạn chế của `TransactionCase`:** unit test chạy bằng superuser (`env.su = True`),
 nên bỏ qua một số kiểm tra chỉ áp dụng cho người dùng thật (ví dụ chặn xung đột vai trò). Vì vậy các
@@ -1190,7 +1192,7 @@ Container Odoo đọc code trực tiếp từ thư mục `addons` trên đĩa, n
 
 | # | Điều kiện | Cách kiểm |
 |---|---|---|
-| 1 | Test của cả bốn module đạt trên database mới | `bash addons/project_kpi_management/scripts/run_all_tests.sh` → `TẤT CẢ TEST ĐẠT` (hiện 208 test = 185 + 6 + 9 + 8) |
+| 1 | Test của cả bốn module đạt trên database mới | `bash addons/project_kpi_management/scripts/run_all_tests.sh` → `TẤT CẢ TEST ĐẠT` (hiện 209 test = 186 + 6 + 9 + 8) |
 | 2 | Con số kỳ vọng của phần mới được tính tay trước khi chạy | Bảng tính tay ghi trong tài liệu (Chương 5.3, 5.6, 5.8) |
 | 3 | Hệ thống đang chạy nạp đúng mã nguồn và kiểm tra bằng tài khoản thật đạt | `bash addons/project_kpi_management/scripts/prepare_defense.sh kpi_defense` in `tất cả OK` và bảng phiên bản đồng đều |
 | 4 | Tài liệu đồng bộ với mã nguồn | Rà các chương liên quan (số test, tài khoản theo vai trò, kịch bản demo, các con số tính tay) |
@@ -1651,7 +1653,7 @@ mục tiêu theo phòng ban, chỉ số theo dự án, tự đánh giá — xem 
 hình đầy đủ" vẫn chưa làm), cùng toàn bộ kế hoạch Bước 0–5 và Đợt A–D ở Chương 9 (trừ Bước 6b, nêu ở
 9.6).
 
-Hệ thống có 208 unit test tự động (185 ở module chính, 6 + 9 + 8 ở ba module cầu nối; 0 lỗi), cộng
+Hệ thống có 209 unit test tự động (186 ở module chính, 6 + 9 + 8 ở ba module cầu nối; 0 lỗi), cộng
 kiểm thử thủ công trên REST API, báo cáo PDF, phân quyền, luồng nghiệp vụ hoàn chỉnh trên dữ liệu
 thật, và kiểm tra qua tài khoản thật bằng XML-RPC (`scripts/pre_defense_check.py`, Chương 5.6) — cách
 này tự nó đã bắt được một số lỗi mà unit test (chạy bằng superuser) không bắt được.
@@ -1668,7 +1670,7 @@ Hệ thống chỉ có **một mã nguồn duy nhất trên nhánh `main`**, đ�
 |---|---|
 | Phạm vi Chương 1 (MVP, Nên có, Mở rộng) | Đã triển khai đủ 38/38 |
 | Kế hoạch Chương 9 (Bước 0–5, Đợt A–D) | Đã triển khai đủ; không còn việc dở dang |
-| Kiểm thử | 208/208 test đạt trên database tạo mới (`run_all_tests.sh`, 0 failed, 0 error), gồm 2 test thêm 2026-10-23 khoá lại 2 lỗi logic phát hiện khi đọc lại code |
+| Kiểm thử | 209/209 test đạt trên database tạo mới (`run_all_tests.sh`, 0 failed, 0 error), gồm 2 test thêm 2026-10-23 khoá 2 lỗi logic đọc code + 1 test thêm 2026-10-24 khoá lỗi view gặp lúc tổng duyệt demo |
 | Hệ thống đang chạy (`kpi_defense`, bản `clean`) | `prepare_defense.sh` → "tất cả OK", phiên bản ba module đã cài đồng đều `19.0.1.7.4` |
 | Tài liệu | Đồng bộ với code (số test, tài khoản theo vai trò, kịch bản demo, giới hạn) |
 | Chưa làm (có chủ đích) | Bước 6b nhân viên kiêm nhiệm; dải xếp loại cấu hình đầy đủ; OKR, đồng bộ Jira/GitLab, DORA, bộ KPI DevOps/Support — nêu ở 8.3 và 9.6 |
