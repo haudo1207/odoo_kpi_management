@@ -129,8 +129,9 @@ def create_evaluation(s, employee_xmlid, period_id, employee_id=None):
 
 
 def check_role_conflict_and_pip(s, period_id):
-    """Mục 2 + Mục 3: quản lý được gán thêm quyền Admin không tự duyệt được phiếu nhân viên mình
-    quản lý; phiếu Cần cải thiện khi duyệt tạo đúng nhắc việc PIP."""
+    """Mục 2 + Mục 3 (bản sửa YC-09, commit b3dcffc): quản lý trực tiếp (nhóm KPI Manager, không
+    cần thêm quyền Admin) tự duyệt được phiếu của chính nhân viên mình quản lý; nhưng không ai được
+    tự duyệt phiếu của CHÍNH MÌNH, kể cả quản lý; phiếu Cần cải thiện khi duyệt tạo đúng nhắc việc PIP."""
     ev_id = create_evaluation(s, "project_kpi_management.demo_employee_binh", period_id)
     s.call("admin", "kpi.evaluation", "write", [ev_id], {
         "manual_rating": "improve", "manual_rating_note": "Script kiểm tra trước bảo vệ",
@@ -141,23 +142,47 @@ def check_role_conflict_and_pip(s, period_id):
     s.call("admin", "kpi.evaluation", "action_compute_kpi", [ev_id])
     s.call("admin", "kpi.evaluation", "action_submit", [ev_id])
 
-    _, admin_group_id = s.ref("project_kpi_management.group_kpi_admin")
     _, quocviet_id = s.ref("project_kpi_management.demo_user_manager")
-    had_admin_before = s.call("admin", "res.users", "has_group", [quocviet_id], "project_kpi_management.group_kpi_admin")
-    if not had_admin_before:
-        s.call("admin", "res.users", "write", [quocviet_id], {"group_ids": [(4, admin_group_id)]})
-        s.add_cleanup(lambda: s.call("admin", "res.users", "write", [quocviet_id], {"group_ids": [(3, admin_group_id)]}))
 
     try:
         s.call("quocviet", "kpi.evaluation", "action_approve", [ev_id])
-        s.fail("Chặn xung đột vai trò", "quản lý vẫn duyệt được phiếu nhân viên mình quản lý")
-    except xmlrpc.client.Fault as e:
-        if "quản lý trực tiếp" in e.faultString or "chính nhân viên" in e.faultString:
-            s.ok("Chặn xung đột vai trò (quocviet bị chặn đúng)")
+        state = s.call("admin", "kpi.evaluation", "read", [ev_id], fields=["state"])[0]["state"]
+        if state == "approved":
+            s.ok("Quản lý trực tiếp tự duyệt được phiếu đội mình (quocviet duyệt phiếu Bình)")
         else:
-            s.fail("Chặn xung đột vai trò", f"bị chặn nhưng sai lý do: {e.faultString[:200]}")
+            s.fail("Quản lý tự duyệt phiếu đội mình", f"trạng thái sau duyệt là '{state}', mong đợi 'approved'")
+    except xmlrpc.client.Fault as e:
+        s.fail("Quản lý tự duyệt phiếu đội mình", f"bị chặn nhầm: {e.faultString[:200]}")
 
-    s.call("admin", "kpi.evaluation", "action_approve", [ev_id])
+    _, manager_employee_id = s.ref("project_kpi_management.demo_employee_manager")
+    _, developer_template_id = s.ref("project_kpi_management.kpi_template_developer")
+    ev_self_id = s.call("admin", "kpi.evaluation", "create", {
+        "employee_id": manager_employee_id, "period_id": period_id, "template_id": developer_template_id,
+    })
+    s.add_cleanup(lambda: _force_unlink_evaluation(s, ev_self_id))
+    s.call("admin", "kpi.evaluation", "write", [ev_self_id], {
+        "manual_rating": "pass", "manual_rating_note": "Script kiểm tra trước bảo vệ",
+    })
+    self_manual_line_ids = s.call("admin", "kpi.evaluation.line", "search",
+                                   [("evaluation_id", "=", ev_self_id), ("compute_mode", "=", "manual")])
+    s.call("admin", "kpi.evaluation.line", "write", self_manual_line_ids, {"actual_entered": True})
+    s.call("admin", "kpi.evaluation", "action_compute_kpi", [ev_self_id])
+    s.call("admin", "kpi.evaluation", "action_submit", [ev_self_id])
+
+    # Để chứng minh đây là chặn xung đột vai trò (không phải chỉ thiếu quyền), tạm cấp luôn quyền
+    # Admin cho quocviet — dù đủ quyền cao nhất vẫn phải bị chặn vì phiếu là của chính mình.
+    _, admin_group_id = s.ref("project_kpi_management.group_kpi_admin")
+    s.call("admin", "res.users", "write", [quocviet_id], {"group_ids": [(4, admin_group_id)]})
+    s.add_cleanup(lambda: s.call("admin", "res.users", "write", [quocviet_id], {"group_ids": [(3, admin_group_id)]}))
+    try:
+        s.call("quocviet", "kpi.evaluation", "action_approve", [ev_self_id])
+        s.fail("Chặn tự duyệt phiếu chính mình", "quocviet tự duyệt được phiếu của chính mình")
+    except xmlrpc.client.Fault as e:
+        if "chính" in e.faultString:
+            s.ok("Chặn tự duyệt phiếu chính mình (quocviet bị chặn đúng)")
+        else:
+            s.fail("Chặn tự duyệt phiếu chính mình", f"bị chặn nhưng sai lý do: {e.faultString[:200]}")
+
     rating = s.call("admin", "kpi.evaluation", "read", [ev_id], fields=["final_rating"])[0]["final_rating"]
     if rating != "improve":
         s.fail("Nhắc việc PIP", f"final_rating mong đợi 'improve', thực tế '{rating}'")
