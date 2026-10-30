@@ -60,16 +60,31 @@ class TestKpiSecurity(TransactionCase):
         ev.computed_date = "2026-10-01 00:00:00"
         ev.action_submit()
 
-    def test_only_admin_approves(self):
+    def test_manager_approves_own_team_but_not_others(self):
+        """Bản sửa theo YC-09: quản lý trực tiếp (nhóm KPI Manager, không cần thêm quyền Admin) tự
+        Duyệt/Trả về/Mở lại được phiếu của CHÍNH nhân viên mình quản lý trực tiếp, nhưng vẫn không
+        đụng được phiếu của nhân viên nhóm khác (ev_out) — đó vẫn là việc của KPI Administrator."""
         self._submit(self.ev_dev)
-        with self.assertRaises(AccessError):
-            self.ev_dev.with_user(self.manager).action_approve()
-        with self.assertRaises(AccessError):
-            self.ev_dev.with_user(self.manager).action_return_draft()
-        self.ev_dev.with_user(self.admin).action_approve()
+        self.ev_dev.with_user(self.manager).action_approve()
         self.assertEqual(self.ev_dev.state, "approved")
+        self.ev_dev.with_user(self.manager).action_reopen()  # mở wizard: tự mở lại được phiếu đội mình
+        self.assertEqual(self.ev_dev.state, "approved")  # action_reopen chỉ mở wizard, chưa đổi state
+
+        self._submit(self.ev_out)
         with self.assertRaises(AccessError):
-            self.ev_dev.with_user(self.manager).action_reopen()
+            self.ev_out.with_user(self.manager).action_approve()
+        self.ev_out.with_user(self.admin).action_approve()
+        self.assertEqual(self.ev_out.state, "approved")
+
+    def test_self_approval_blocked_even_with_admin(self):
+        """Xung đột vai trò duy nhất còn lại sau bản sửa: một người không được tự duyệt phiếu của
+        chính mình, dù được gán thêm quyền Admin."""
+        self._submit(self.ev_manager)
+        self.manager.write({"group_ids": [(4, self.env.ref("project_kpi_management.group_kpi_admin").id)]})
+        with self.assertRaises(AccessError):
+            self.ev_manager.with_user(self.manager).action_approve()
+        self.ev_manager.with_user(self.admin).action_approve()
+        self.assertEqual(self.ev_manager.state, "approved")
 
     def test_has_unit_test_manager_only(self):
         project = self.env["project.project"].create({"name": "Quyền task"})

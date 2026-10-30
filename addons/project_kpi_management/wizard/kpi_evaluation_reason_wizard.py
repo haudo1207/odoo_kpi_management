@@ -13,7 +13,7 @@ class KpiEvaluationReasonWizard(models.TransientModel):
     def action_confirm(self):
         self.ensure_one()
         ev = self.evaluation_id
-        ev._check_kpi_admin()
+        ev._check_can_approve()
         ev._check_no_role_conflict()
         expected = "submitted" if self.mode == "return" else "approved"
         if ev.state != expected:

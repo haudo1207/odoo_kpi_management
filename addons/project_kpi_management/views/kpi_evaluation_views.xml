@@ -35,11 +35,11 @@
                     <button name="action_submit" string="Gửi duyệt" type="object" class="btn-primary"
                             invisible="state != 'draft' or not computed_date" groups="project_kpi_management.group_kpi_manager"/>
                     <button name="action_approve" string="Duyệt" type="object" class="btn-primary"
-                            invisible="state != 'submitted'" groups="project_kpi_management.group_kpi_admin"/>
+                            invisible="state != 'submitted'" groups="project_kpi_management.group_kpi_manager"/>
                     <button name="action_return_draft" string="Trả về nháp" type="object"
-                            invisible="state != 'submitted'" groups="project_kpi_management.group_kpi_admin"/>
+                            invisible="state != 'submitted'" groups="project_kpi_management.group_kpi_manager"/>
                     <button name="action_reopen" string="Mở lại" type="object"
-                            invisible="state != 'approved'" groups="project_kpi_management.group_kpi_admin"/>
+                            invisible="state != 'approved'" groups="project_kpi_management.group_kpi_manager"/>
                     <button name="action_open_self_assessment" string="Tự đánh giá" type="object"
                             invisible="not is_own_evaluation or state != 'draft' or not id"/>
                     <button name="action_open_acknowledge" string="Xác nhận kết quả" type="object" class="btn-primary"

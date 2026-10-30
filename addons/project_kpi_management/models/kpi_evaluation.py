@@ -322,23 +322,41 @@ class KpiEvaluation(models.Model):
             "domain": [("id", "in", self._late_bugs().ids)],
         }
 
-    def _check_kpi_admin(self):
-        if not self.env.su and not self.env.user.has_group("project_kpi_management.group_kpi_admin"):
-            raise AccessError("Chỉ KPI Administrator được duyệt, trả về hoặc mở lại phiếu.")
+    def _check_can_approve(self):
+        """Duyệt/Trả về/Mở lại được nếu là KPI Administrator (mọi phiếu), hoặc là quản lý trực tiếp
+        (nhóm KPI Manager) của chính nhân viên trên phiếu — bản sửa theo YC-09: quản lý trực tiếp
+        tự xử lý được phiếu của đội mình, KPI Administrator chủ yếu lo cấu hình và xử lý các phiếu
+        còn lại (nhân viên chưa có quản lý thuộc nhóm KPI, hoặc phiếu ngoài đội của người khác).
+        Trước đây hàm này chỉ kiểm tra group (`_check_kpi_admin`); giờ cần biết đúng phiếu nào mới
+        trả lời được "có duyệt được không", nên nhận self (recordset các phiếu)."""
+        if self.env.su:
+            return
+        user = self.env.user
+        if user.has_group("project_kpi_management.group_kpi_admin"):
+            return
+        for ev in self:
+            employee = ev.employee_id.sudo()
+            if not (user.has_group("project_kpi_management.group_kpi_manager") and employee.parent_id.user_id == user):
+                raise AccessError(
+                    f"{user.name} không phải KPI Administrator, cũng không phải quản lý trực tiếp "
+                    f"của {employee.name}, không được duyệt, trả về hay mở lại phiếu {ev.name}."
+                )
 
     def _check_no_role_conflict(self):
-        """Không cho một người vừa là nhân viên/quản lý trực tiếp vừa tự duyệt phiếu của chính họ
-        bằng vai trò KPI Administrator (Chương 8.3 cũ). Dựa vào self.env.user nên vẫn đúng khi gọi
-        qua sudo(); bỏ qua khi chạy bằng superuser (cron, script) vì đó không phải một người duyệt."""
+        """Không cho một người tự duyệt/trả về/mở lại phiếu của CHÍNH MÌNH, dù có thêm quyền Admin
+        hay Manager — nhân viên không được vừa là người được đánh giá vừa là người xử lý phiếu đó.
+        Quản lý trực tiếp xử lý phiếu của nhân viên mình quản lý KHÔNG còn bị coi là xung đột (xem
+        _check_can_approve) kể từ bản sửa theo YC-09 — bản cũ (Chương 8.3 cũ) từng chặn cả quản lý
+        trực tiếp ở đây, khiến quản lý không bao giờ tự duyệt được phiếu đội mình."""
         if self.env.su:
             return
         user = self.env.user
         for ev in self:
             employee = ev.employee_id.sudo()
-            if user in (employee.user_id, employee.parent_id.user_id):
+            if user == employee.user_id:
                 raise AccessError(
-                    f"{user.name} là chính nhân viên hoặc quản lý trực tiếp của {employee.name}, "
-                    f"không được duyệt, trả về hay mở lại phiếu {ev.name}."
+                    f"{user.name} là chính nhân viên trên phiếu {ev.name}, không được tự duyệt, trả "
+                    "về hay mở lại phiếu của chính mình."
                 )
 
     def action_submit(self):
@@ -361,7 +379,7 @@ class KpiEvaluation(models.Model):
         return True
 
     def action_approve(self):
-        self._check_kpi_admin()
+        self._check_can_approve()
         self._check_no_role_conflict()
         if self.filtered(lambda e: e.state != "submitted"):
             raise UserError("Chỉ duyệt được phiếu đã gửi.")
@@ -428,9 +446,9 @@ class KpiEvaluation(models.Model):
                     approver = ev._default_approver()
                     if not approver:
                         ev.message_post(body="Chưa đặt người duyệt mặc định hợp lệ (Thiết lập KPI), không tạo nhắc việc duyệt.")
-                    elif approver in (employee.user_id, employee.parent_id.user_id):
-                        ev.message_post(body=f"{approver.name} là nhân viên hoặc quản lý trực tiếp của phiếu này nên không "
-                                             "được duyệt — không tạo nhắc việc duyệt.")
+                    elif approver == employee.user_id:
+                        ev.message_post(body=f"{approver.name} là chính nhân viên trên phiếu này nên không được tự "
+                                             "duyệt — không tạo nhắc việc duyệt.")
                     else:
                         ev.sudo().activity_schedule(
                             act_type_xmlid=ACT_APPROVE_XMLID, user_id=approver.id, summary="Duyệt phiếu KPI",
@@ -513,7 +531,7 @@ class KpiEvaluation(models.Model):
 
     def _open_reason_wizard(self, mode):
         self.ensure_one()
-        self._check_kpi_admin()
+        self._check_can_approve()
         self._check_no_role_conflict()
         return {
             "type": "ir.actions.act_window",

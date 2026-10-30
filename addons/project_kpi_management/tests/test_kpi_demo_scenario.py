@@ -116,18 +116,24 @@ class TestKpiDemoScenario(TransactionCase):
         with self.assertRaises(UserError):
             ev.line_ids[:1].write({"actual": 999})
 
-    def test_admin_manager_role_conflict(self):
-        """Mục 2: một người vừa là quản lý trực tiếp vừa được gán thêm KPI Administrator
-        không được tự duyệt phiếu của nhân viên mình quản lý (Chương 8.3 cũ), nhưng vẫn
-        duyệt được phiếu của nhân viên không do mình quản lý trực tiếp."""
+    def test_manager_role_conflict(self):
+        """Bản sửa theo YC-09: quản lý trực tiếp (nhóm KPI Manager của dữ liệu mẫu, không cần thêm
+        quyền Admin) tự duyệt được phiếu của chính nhân viên mình quản lý (an), nhưng không duyệt
+        được phiếu của nhân viên KHÔNG do mình quản lý trực tiếp — trừ khi được gán thêm quyền KPI
+        Administrator. Nhân viên cũng không bao giờ tự duyệt được phiếu của chính mình, kể cả khi
+        được gán thêm quyền Admin."""
         manager_user = self.env.ref("project_kpi_management.demo_user_manager")
-        manager_user.write({"group_ids": [(4, self.env.ref("project_kpi_management.group_kpi_admin").id)]})
 
         ev_an = self._evaluate("an")
         ev_an.action_submit()
+        ev_an.with_user(manager_user).action_approve()  # an do chính manager_user quản lý trực tiếp
+        self.assertEqual(ev_an.state, "approved")
+
+        an_user = self.env.ref("project_kpi_management.demo_employee_an").user_id
+        an_user.write({"group_ids": [(4, self.env.ref("project_kpi_management.group_kpi_admin").id)]})
         with self.assertRaises(AccessError):
-            ev_an.with_user(manager_user).action_approve()
-        self.assertEqual(ev_an.state, "submitted")
+            # an không được tự mở lại phiếu của chính mình, dù được gán thêm quyền Admin
+            ev_an.with_user(an_user).action_reopen()
 
         dev_job = self.env.ref("project_kpi_management.hr_job_developer")
         other_user = self.env["res.users"].create({"name": "Đỗ Thu Hương", "login": "huong_test"})
@@ -141,7 +147,12 @@ class TestKpiDemoScenario(TransactionCase):
         # Nhân viên mới tạo, không có task/bug: chỉ D9 áp dụng, không đủ trọng số như "chi"
         ev_other.write({"manual_rating": "pass", "manual_rating_note": "Nhân viên khác nhóm, không có dữ liệu task"})
         ev_other.action_submit()
-        ev_other.with_user(manager_user).action_approve()
+        with self.assertRaises(AccessError):
+            # other_employee không do manager_user quản lý trực tiếp
+            ev_other.with_user(manager_user).action_approve()
+        manager_user.write({"group_ids": [(4, self.env.ref("project_kpi_management.group_kpi_admin").id)]})
+        ev_other.with_user(manager_user).action_approve()  # có thêm quyền Admin thì duyệt được
+        self.assertEqual(ev_other.state, "approved")
         self.assertEqual(ev_other.state, "approved")
 
     def test_pip_activity_on_improve_rating(self):

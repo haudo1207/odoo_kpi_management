@@ -16,7 +16,7 @@
 
     <record id="group_kpi_manager" model="res.groups">
         <field name="name">Manager</field>
-        <field name="comment">Quản lý trực tiếp: tính KPI, chấm D9, điều chỉnh điểm và gửi duyệt phiếu của nhân viên mình quản lý.</field>
+        <field name="comment">Quản lý trực tiếp: tính KPI, chấm D9, điều chỉnh điểm, gửi duyệt, và tự Duyệt/Trả về/Mở lại được phiếu của nhân viên mình quản lý trực tiếp.</field>
         <field name="sequence">20</field>
         <field name="privilege_id" ref="res_groups_privilege_kpi"/>
         <field name="implied_ids" eval="[(4, ref('group_kpi_user')), (4, ref('project.group_project_manager'))]"/>
@@ -24,7 +24,7 @@
 
     <record id="group_kpi_admin" model="res.groups">
         <field name="name">Administrator</field>
-        <field name="comment">Cấu hình KPI, duyệt, trả về và mở lại mọi phiếu.</field>
+        <field name="comment">Cấu hình KPI; duyệt, trả về và mở lại được MỌI phiếu (kể cả phiếu ngoài đội của ai đó, hoặc khi quản lý trực tiếp chưa có nhóm KPI) — quản lý trực tiếp đã tự xử lý được phiếu đội mình nên Admin không còn là người duyệt chính, chủ yếu lo cấu hình.</field>
         <field name="sequence">30</field>
         <field name="privilege_id" ref="res_groups_privilege_kpi"/>
         <field name="implied_ids" eval="[(4, ref('group_kpi_manager'))]"/>

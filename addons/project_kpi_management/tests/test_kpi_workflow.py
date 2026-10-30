@@ -90,13 +90,26 @@ class TestKpiWorkflow(TransactionCase):
         self.assertFalse(self._acts(ev, APPROVE))
         self.assertIn("Chưa đặt người duyệt", ev.message_ids[0].body)
 
-    def test_approver_in_role_conflict_is_skipped(self):
-        """Người duyệt mặc định lại là quản lý trực tiếp của phiếu: không được duyệt nên không giao nhắc việc."""
+    def test_approver_is_direct_manager_no_longer_skipped(self):
+        """Bản sửa theo YC-09: người duyệt mặc định trùng với quản lý trực tiếp của phiếu KHÔNG còn
+        bị coi là xung đột (quản lý trực tiếp giờ tự duyệt được đội mình) — nhắc việc vẫn được tạo
+        bình thường, giao đúng cho quản lý."""
         self.manager.group_ids = [(4, self.env.ref("project_kpi_management.group_kpi_admin").id)]
         self.env["ir.config_parameter"].sudo().set_param("project_kpi_management.default_approver_id", str(self.manager.id))
         ev = self._ready_to_submit(self._evaluation())
         ev.action_submit()
+        approve = self._acts(ev, APPROVE)
+        self.assertEqual((len(approve), approve.user_id), (1, self.manager))
+
+    def test_approver_is_employee_itself_is_skipped(self):
+        """Xung đột vai trò duy nhất còn lại: người duyệt mặc định lại chính là nhân viên trên phiếu
+        (dù được gán thêm quyền Admin) — không được tự duyệt nên không giao nhắc việc duyệt."""
+        self.user.group_ids = [(4, self.env.ref("project_kpi_management.group_kpi_admin").id)]
+        self.env["ir.config_parameter"].sudo().set_param("project_kpi_management.default_approver_id", str(self.user.id))
+        ev = self._ready_to_submit(self._evaluation())
+        ev.action_submit()
         self.assertFalse(self._acts(ev, APPROVE))
+        self.assertIn("là chính nhân viên trên phiếu này", ev.message_ids[0].body)
 
     def test_manager_without_kpi_group_falls_back_to_approver(self):
         plain = new_test_user(self.env, login="wf_plain", groups="base.group_user")
