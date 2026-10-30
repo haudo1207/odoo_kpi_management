@@ -68,7 +68,7 @@ cài `hr_timesheet`/`hr_skills`/`survey` thì hệ thống vẫn chạy đủ, c
 1. **Stage Done của mọi dự án phải bật "Folded in Kanban"**: Dự án › Cấu hình › Giai đoạn. Không bật thì Odoo không ghi ngày hoàn thành, D1 và D7 sẽ sai mà không báo lỗi. Có thể kiểm tra ở KPI › Báo cáo › Kiểm tra dữ liệu (cột "Task xong thiếu ngày hoàn thành").
 2. Gắn **Bộ KPI** cho từng chức danh: Nhân viên › Cấu hình › Chức danh.
 3. Nhân viên phải có **tài khoản người dùng** và **quản lý trực tiếp** (trường Quản lý trên hồ sơ).
-4. Phân quyền: Thiết lập › Người dùng › tab Quyền truy cập, mục KPI: User / Manager / Administrator.
+4. Phân quyền: Thiết lập › Người dùng › tab Quyền truy cập, mục KPI: User / Manager / Administrator. **Nhóm KPI không tự cấp quyền sửa Project** — mục Project ở cùng tab, gán thêm **User** cho Developer/Tester/BA (để tự đánh dấu task Hoàn thành, nhập story point...); Lead/PM đã tự có **Project Manager** khi gán KPI Manager.
 5. Ngưỡng xếp loại, điểm trần, biên độ điều chỉnh: KPI › Cấu hình › Thiết lập.
 6. Tạo kỳ đánh giá: KPI › Cấu hình › Kỳ đánh giá. Khi kỳ kết thúc, tác vụ tự động tạo phiếu và Tính KPI.
 

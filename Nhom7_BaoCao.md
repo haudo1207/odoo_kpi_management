@@ -108,6 +108,13 @@ chứ không theo từng task riêng lẻ.
   quyền theo nhóm dựa vào quan hệ này.
 - Stage "Done"/"Hoàn thành" của mọi dự án phải bật **Folded** (mục kỹ thuật, xem Chương 2.5) — đây
   là ràng buộc vận hành bắt buộc, không phải lỗi phần mềm.
+- **Quyền KPI không tự cấp quyền Project.** Nhóm `KPI User` chỉ cho đọc/tự đánh giá/xác nhận phiếu
+  KPI, không cho sửa `project.task` — nhân viên (Developer/Tester/BA) cần được gán thêm quyền
+  **Project User** (Lead/PM: **Project Manager**, đã tự có qua `KPI Manager` → `implied_ids`) thì
+  mới tự đánh dấu task Hoàn thành, nhập story point... được. Thiếu bước này, nhân viên vẫn đăng
+  nhập xem được phiếu của mình bình thường, chỉ riêng thao tác trên Project bị từ chối quyền —
+  **phát hiện khi kiểm tra trực tiếp bằng tài khoản thật** (dữ liệu mẫu trước đây thiếu bước này,
+  đã sửa trong `kpi_demo.py`; xem thêm Chương 6 và `deploy/README.md`).
 
 ---
 
@@ -1330,6 +1337,13 @@ Ngoài hai việc này nhân viên không sửa được gì.
 
 Stage "Done"/"Hoàn thành" của **mọi dự án** phải bật **Folded** (xem Chương 2.5) — thiếu
 bước này, D1 và D7 sẽ sai mà không có cảnh báo nào.
+
+**Gán thêm quyền Project cho nhân viên (xem Chương 1.6).** Nhóm KPI chỉ cấp quyền trên model KPI,
+không cấp quyền sửa `project.task`. Mỗi nhân viên Developer/Tester/BA cần thêm nhóm **Project ›
+User** để tự đánh dấu task Hoàn thành, nhập story point...; Team Lead/PM cần **Project › Manager**
+(nhóm này đã tự có khi gán KPI Manager, qua `implied_ids`). Thiếu bước này, nhân viên vẫn vào xem
+được phiếu KPI của mình bình thường — lỗi chỉ lộ ra khi họ thao tác trên Project, dễ bị bỏ sót lúc
+onboard nhân viên mới.
 
 ---
 

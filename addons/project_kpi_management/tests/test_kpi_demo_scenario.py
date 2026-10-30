@@ -357,6 +357,18 @@ class TestKpiDemoScenario(TransactionCase):
         demo_names = {self.env.ref(f"project_kpi_management.demo_employee_{k}").name for k in ("an", "binh", "chi", "ha", "dung", "khoa", "phuc", "lan")}
         self.assertFalse(demo_names & set(flagged))
 
+    def test_demo_developers_can_actually_edit_their_own_tasks(self):
+        """Phát hiện khi kiểm tra bằng tài khoản thật (Chương 1.6/6.4): nhóm KPI không cấp quyền sửa
+        project.task — thiếu Project User thì nhân viên vẫn xem được phiếu KPI của mình bình thường,
+        chỉ riêng thao tác trên Project bị từ chối quyền một cách âm thầm (không có cảnh báo nào ở
+        phía KPI). Test đi qua đúng hành động thật: ghi thử một field bình thường của task."""
+        for key in ("an", "binh", "chi", "ha", "dung", "khoa", "lan"):
+            user = self.env.ref(f"project_kpi_management.demo_user_{key}")
+            self.assertTrue(user.has_group("project.group_project_user"), key)
+        an = self.env.ref("project_kpi_management.demo_user_an")
+        task = self.env.ref("project_kpi_management.demo_task_t1")  # task của chính An
+        task.with_user(an).write({"name": task.name})  # không raise AccessError
+
     def test_demo_scale_evaluation_matches_hand_calculation(self):
         """Bước 3 (Chương 9.6): phiếu mẫu "Đặng Gia Khánh" — D2 mục tiêu 20 SP, thực tế 17 SP → 85%
         đạt mục tiêu → bảng bậc "Bậc 4 mức (mẫu)" cho 75 điểm (tuyến tính sẽ ra 85). Trước khi sửa

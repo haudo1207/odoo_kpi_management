@@ -67,10 +67,16 @@ class KpiDemo(models.AbstractModel):
         })
         xmlids += [("demo_user_manager", manager_user), ("demo_employee_manager", manager_employee)]
 
+        # Nhóm KPI không tự cấp quyền sửa Project (Chương 1.6/6.4): Developer/Tester/BA cần thêm
+        # Project User để tự đánh dấu task Hoàn thành, nhập story point... — Lead/PM đã tự có
+        # Project Manager qua group_kpi_manager.implied_ids nên không cần thêm ở đây.
+        project_user_group = self.env.ref("project.group_project_user")
+
         employees = {}
         for key, name, login in (("an", "Nguyễn Văn An", "an"), ("binh", "Trần Thị Bình", "binh"), ("chi", "Lê Minh Chi", "chi")):
             user = self.env["res.users"].create({
                 "name": name, "login": login, "password": login, "tz": tz.zone,
+                "group_ids": [(4, project_user_group.id)],
             })
             employee = self.env["hr.employee"].create({
                 "name": name,
@@ -181,7 +187,10 @@ class KpiDemo(models.AbstractModel):
         # ---- Hà (Developer, cấp dưới thứ 3 của PM Phúc): đủ dữ liệu, ở dự án riêng ----
         # Để dự án chính (Phúc quản lý, P3 của Phúc và QA4 của Dung) không đổi. 3 Feature xong đúng hạn, đã qua review
         # lần đầu, có unit test, không bug: phiếu đủ dữ liệu → vào P2, khác Khoa (mới vào, thiếu dữ liệu → bị loại).
-        ha_user = self.env["res.users"].create({"name": "Lý Thanh Hà", "login": "ha", "password": "ha", "tz": tz.zone})
+        ha_user = self.env["res.users"].create({
+            "name": "Lý Thanh Hà", "login": "ha", "password": "ha", "tz": tz.zone,
+            "group_ids": [(4, project_user_group.id)],
+        })
         ha_employee = self.env["hr.employee"].create({
             "name": "Lý Thanh Hà", "user_id": ha_user.id, "job_id": dev_job.id,
             "department_id": department.id, "parent_id": pm_employee.id,
@@ -196,7 +205,10 @@ class KpiDemo(models.AbstractModel):
             task(key, "ha", name, sp=5, deadline=deadline, done=at(done, 10), approve=1, unit=True, project=second_project)
 
         # ---- Lan (BA, Bước 5): 3 yêu cầu trong dự án chính; bug b7 (nguyên nhân "yêu cầu sai") quy về Lan ----
-        lan_user = self.env["res.users"].create({"name": "Trịnh Thu Lan", "login": "lan", "password": "lan", "tz": tz.zone})
+        lan_user = self.env["res.users"].create({
+            "name": "Trịnh Thu Lan", "login": "lan", "password": "lan", "tz": tz.zone,
+            "group_ids": [(4, project_user_group.id)],
+        })
         lan_employee = self.env["hr.employee"].create({
             "name": "Trịnh Thu Lan", "user_id": lan_user.id, "job_id": self.env.ref(XMLID % "hr_job_ba").id,
             "department_id": department.id, "parent_id": manager_employee.id,
@@ -213,6 +225,7 @@ class KpiDemo(models.AbstractModel):
         tester_job = self.env.ref(XMLID % "hr_job_tester")
         dung_user = self.env["res.users"].create({
             "name": "Đỗ Thị Dung", "login": "dung", "password": "dung", "tz": tz.zone,
+            "group_ids": [(4, project_user_group.id)],
         })
         dung_employee = self.env["hr.employee"].create({
             "name": "Đỗ Thị Dung", "user_id": dung_user.id, "job_id": tester_job.id,
@@ -220,7 +233,10 @@ class KpiDemo(models.AbstractModel):
         })
         # Khoa: tester mới vào, chưa log bug nào. Cùng Dung là 2 cấp dưới của PM Phúc — để demo P2 chuyển từ
         # "Không áp dụng" sang có số khi cả hai phiếu được Gửi duyệt (P2 cần ≥ 2 phiếu cấp dưới đã chốt).
-        khoa_user = self.env["res.users"].create({"name": "Vũ Minh Khoa", "login": "khoa", "password": "khoa", "tz": tz.zone})
+        khoa_user = self.env["res.users"].create({
+            "name": "Vũ Minh Khoa", "login": "khoa", "password": "khoa", "tz": tz.zone,
+            "group_ids": [(4, project_user_group.id)],
+        })
         khoa_employee = self.env["hr.employee"].create({
             "name": "Vũ Minh Khoa", "user_id": khoa_user.id, "job_id": tester_job.id,
             "department_id": department.id, "parent_id": pm_employee.id,
@@ -276,6 +292,7 @@ class KpiDemo(models.AbstractModel):
             self.env.ref(XMLID % "kpi_score_scale_default")
         khanh_user = self.env["res.users"].create({
             "name": "Đặng Gia Khánh", "login": "khanh", "password": "khanh", "tz": tz.zone,
+            "group_ids": [(4, self.env.ref("project.group_project_user").id)],
         })
         khanh_employee = self.env["hr.employee"].create({
             "name": "Đặng Gia Khánh", "user_id": khanh_user.id, "job_id": dev_job.id,
