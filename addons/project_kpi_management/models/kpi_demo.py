@@ -265,6 +265,37 @@ class KpiDemo(models.AbstractModel):
             hist_ev.write({"state": "approved", "approved_date": datetime.combine(end, datetime.min.time())})
             hist_period.state = "closed"
 
+        # ---- Chấm theo bậc (Bước 3): minh hoạ bảng bậc "Bậc 4 mức (mẫu)" trên một phiếu thật ----
+        # D2 mục tiêu 20 SP (giống bộ Developer gốc), thực tế 17 SP → 85% đạt mục tiêu → bậc "từ 80%"
+        # = 75 điểm (tuyến tính sẽ ra 85) — cùng số liệu đã dùng ở test_kpi_score_scale.py.
+        scale_template = self.env.ref(XMLID % "kpi_template_developer").copy({
+            "name": "Developer (chấm theo bậc, mẫu)",
+            "description": "Như bộ Developer, D2 chấm theo bảng bậc \"Bậc 4 mức (mẫu)\" thay vì tuyến tính (Bước 3, minh hoạ).",
+        })
+        scale_template.line_ids.filtered(lambda l: l.metric_id.code == "D2").scale_id = \
+            self.env.ref(XMLID % "kpi_score_scale_default")
+        khanh_user = self.env["res.users"].create({
+            "name": "Đặng Gia Khánh", "login": "khanh", "password": "khanh", "tz": tz.zone,
+        })
+        khanh_employee = self.env["hr.employee"].create({
+            "name": "Đặng Gia Khánh", "user_id": khanh_user.id, "job_id": dev_job.id,
+            "department_id": department.id, "parent_id": manager_employee.id,
+        })
+        employees["khanh"] = khanh_employee
+        xmlids += [
+            ("demo_user_khanh", khanh_user), ("demo_employee_khanh", khanh_employee),
+            ("demo_template_scale", scale_template),
+        ]
+        # project=second_project (không phải dự án của PM Phúc): tránh đổi P3 (chất lượng dữ liệu dự
+        # án của Phúc, đã tính tay 32/36) khi thêm task này.
+        task("t11", "khanh", "Trang tìm kiếm sản phẩm", sp=17, deadline=14, done=at(13, 10), approve=1,
+             unit=True, project=second_project)
+        scale_ev = self.env["kpi.evaluation"].create({
+            "employee_id": khanh_employee.id, "period_id": period.id, "template_id": scale_template.id,
+        })
+        scale_ev.action_compute_kpi()
+        xmlids.append(("demo_evaluation_scale", scale_ev))
+
         # ---- D8: buổi chia sẻ kiến thức ----
         sharing = self.env.ref(XMLID % "calendar_event_type_knowledge_sharing")
         Event = self.env["calendar.event"].with_context(no_mail_to_attendees=True, mail_create_nosubscribe=True)

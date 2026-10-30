@@ -356,3 +356,35 @@ class TestKpiDemoScenario(TransactionCase):
         flagged = self.env["kpi.manager.issue"].search(issues["domain"]).mapped("employee_name")
         demo_names = {self.env.ref(f"project_kpi_management.demo_employee_{k}").name for k in ("an", "binh", "chi", "ha", "dung", "khoa", "phuc", "lan")}
         self.assertFalse(demo_names & set(flagged))
+
+    def test_demo_scale_evaluation_matches_hand_calculation(self):
+        """Bước 3 (Chương 9.6): phiếu mẫu "Đặng Gia Khánh" — D2 mục tiêu 20 SP, thực tế 17 SP → 85%
+        đạt mục tiêu → bảng bậc "Bậc 4 mức (mẫu)" cho 75 điểm (tuyến tính sẽ ra 85). Trước khi sửa
+        bảng bậc mặc định (bậc "từ 80%" là 80, không phải 75), ví dụ này không khớp số đã công bố ở
+        kịch bản demo — đã đối chiếu và sửa lại dữ liệu mẫu cho khớp (xem kpi_org_data.xml)."""
+        ev = self.env.ref("project_kpi_management.demo_evaluation_scale")
+        line = ev.line_ids.filtered(lambda l: l.metric_id.code == "D2")
+        self.assertAlmostEqual(line.achievement_pct, 85.0, places=2)
+        self.assertEqual(line.score, 75.0)
+        self.assertEqual(line.scale_name, "Bậc 4 mức (mẫu)")
+
+    def test_demo_skills_evaluation_reproducible_from_scenario(self):
+        """Đợt D2: phiếu minh hoạ S1 của An phải tự có khi nạp kịch bản mẫu (không phải dữ liệu chỉ
+        tồn tại trong bản sao lưu đã thao tác tay) — chỉ chạy khi module project_kpi_skills đã cài."""
+        ev = self.env.ref("project_kpi_skills.demo_evaluation_skills", raise_if_not_found=False)
+        if not ev:
+            self.skipTest("project_kpi_skills chưa cài trên database test này")
+        line = ev.line_ids.filtered(lambda l: l.metric_id.code == "S1")
+        self.assertAlmostEqual(line.actual, 66.666666, places=4)
+        self.assertAlmostEqual(line.score, 83.333333, places=4)
+
+    def test_demo_feedback_evaluation_reproducible_from_scenario(self):
+        """Đợt D1: phiếu minh hoạ phản hồi 360 của Chi phải tự có khi nạp kịch bản mẫu, ở đúng trạng
+        thái Nháp và CHƯA mời ai — sẵn sàng cho demo trực tiếp mời 3 người. Chỉ chạy khi module
+        project_kpi_survey đã cài."""
+        ev = self.env.ref("project_kpi_survey.demo_evaluation_feedback", raise_if_not_found=False)
+        if not ev:
+            self.skipTest("project_kpi_survey chưa cài trên database test này")
+        self.assertEqual(ev.state, "draft")
+        self.assertEqual(ev.template_id.name, "Developer (có phản hồi 360)")
+        self.assertEqual(self.env["kpi.feedback.request"].search_count([("evaluation_id", "=", ev.id)]), 0)

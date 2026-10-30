@@ -235,11 +235,12 @@
         <!-- Bước 3: bảng bậc mẫu, chưa gắn vào bộ KPI nào (Admin gắn ở Bộ KPI > cột Bảng bậc để demo) -->
         <record id="kpi_score_scale_default" model="kpi.score.scale">
             <field name="name">Bậc 4 mức (mẫu)</field>
-            <field name="description">Dưới 50%: 0 điểm; từ 50%: 50; từ 80%: 80; từ 100%: 100.</field>
+            <field name="description">Dưới 50%: 0 điểm; từ 50%: 50; từ 80%: 75; từ 100%: 100 (bậc "từ 80%" thấp hơn tuyến tính,
+                để demo thấy rõ khác biệt — ví dụ 85% đạt mục tiêu ra 75 điểm, không phải 85).</field>
             <field name="step_ids" eval="[
                 (0, 0, {'pct_from': 0, 'score': 0}),
                 (0, 0, {'pct_from': 50, 'score': 50}),
-                (0, 0, {'pct_from': 80, 'score': 80}),
+                (0, 0, {'pct_from': 80, 'score': 75}),
                 (0, 0, {'pct_from': 100, 'score': 100}),
             ]"/>
         </record>
