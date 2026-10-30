@@ -63,6 +63,31 @@ class TestKpiPeriodTypes(TransactionCase):
         self.assertIn(self.quarter_employee, quarter.evaluation_ids.employee_id)
         self.assertNotIn(self.month_employee, quarter.evaluation_ids.employee_id)
 
+    def test_overlapping_periods_double_count_the_same_completed_work(self):
+        """Lỗ hổng phát hiện khi audit (chưa có trong Chương 8.3): kpi.period không có ràng buộc chống
+        chồng lắp cùng loại kỳ (chỉ có CHECK date_from <= date_to). Admin tạo nhầm (hoặc sửa tay) hai
+        kỳ "month" cùng khoảng ngày (hoặc chỉ cần GIAO NHAU) thì CÙNG MỘT task Done bị tính D2 (và mọi
+        chỉ số tự động khác) trọn vẹn ở CẢ HAI phiếu của cùng nhân viên — không có cảnh báo nào, một
+        nhân viên hoàn thành công việc một lần có thể bị/được tính KPI hai lần nếu hai kỳ chồng lắp."""
+        project = self.env["project.project"].create({"name": "Overlap test"})
+        done_at = fields.Datetime.now() - timedelta(days=5)
+        self.env["project.task"].create({
+            "name": "Task chung", "project_id": project.id,
+            "user_ids": [(6, 0, self.month_employee.user_id.ids)],
+            "story_points": 10,
+        }).write({"state": "1_done", "date_end": done_at})
+
+        period_a = self._period("month", 20, -10, name="Kỳ A (tháng 10, chồng lắp)")
+        period_b = self._period("month", 15, -5, name="Kỳ B (tháng 10, chồng lắp một phần)")
+        ev_a = self.env["kpi.evaluation"].create({"employee_id": self.month_employee.id, "period_id": period_a.id})
+        ev_b = self.env["kpi.evaluation"].create({"employee_id": self.month_employee.id, "period_id": period_b.id})
+        ev_a.action_compute_kpi()
+        ev_b.action_compute_kpi()
+        d2_a = ev_a.line_ids.filtered(lambda l: l.metric_id.code == "D2")
+        d2_b = ev_b.line_ids.filtered(lambda l: l.metric_id.code == "D2")
+        self.assertEqual(d2_a.actual, 10.0)
+        self.assertEqual(d2_b.actual, 10.0)  # cùng 10 story point bị tính lại ở kỳ chồng lắp, không bị loại trừ
+
     def test_cannot_change_period_type_with_open_period_evaluations(self):
         period = self._period("quarter", 20, -10)
         self.env["kpi.evaluation"].create({"employee_id": self.quarter_employee.id, "period_id": period.id})

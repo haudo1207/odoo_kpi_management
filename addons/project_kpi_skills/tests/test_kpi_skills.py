@@ -1,7 +1,10 @@
 from datetime import timedelta
 
+from psycopg2 import IntegrityError
+
 from odoo import fields
 from odoo.tests import TransactionCase, new_test_user, tagged
+from odoo.tools import mute_logger
 
 
 @tagged("post_install", "-at_install")
@@ -84,6 +87,17 @@ class TestKpiSkills(TransactionCase):
     def test_job_without_required_skills_is_not_applicable(self):
         job = self.env["hr.job"].create({"name": "Không yêu cầu kỹ năng"})
         self.assertEqual(self._s1(self._employee([("Python", 100, {})], job=job), job=job), (0.0, 0))
+
+    def test_sales_demo_script_metric_code_collides_with_s1(self):
+        """Lỗi phát hiện khi audit (Chương 7.2/KICH_BAN_DEMO.md Phần 7): kịch bản demo "dựng vai trò
+        Sales hoàn toàn mới" hướng dẫn tạo chỉ số mã "S1" ("Doanh số đạt được"). Khi project_kpi_skills
+        đã cài (luôn đúng ở kpi_defense — S1 "Mức đáp ứng kỹ năng" đã tồn tại), mã này trùng và vi phạm
+        UNIQUE(code) — kịch bản sẽ vỡ (IntegrityError thô, không phải UserError dễ hiểu) nếu làm đúng
+        như tài liệu khi trình bày trực tiếp trước hội đồng."""
+        with mute_logger("odoo.sql_db"), self.assertRaises(IntegrityError):
+            self.env["kpi.metric"].create({
+                "code": "S1", "name": "Doanh số đạt được", "category": "delivery", "compute_mode": "manual",
+            })
 
     def test_old_period_unchanged_after_skill_upgrade(self):
         """Nâng mức SQL sau kỳ: bản cũ được đóng (valid_to = hôm qua), bản mới bắt đầu hôm nay. Kỳ đã qua (cuối kỳ cách

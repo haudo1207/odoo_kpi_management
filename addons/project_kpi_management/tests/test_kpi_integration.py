@@ -130,3 +130,15 @@ class TestKpiApi(KpiFixtureMixin, HttpCase):
         self.assertEqual(status, 404)
         status, _ = self._call(f"{base}/D9", key=self.key_dev, payload={"actual": 5})
         self.assertEqual(status, 403)  # nhân viên chỉ được xem phiếu của mình, không được sửa
+
+    def test_malformed_query_params_return_400_not_500(self):
+        """Phát hiện khi audit: period_id/limit/offset bị ép kiểu bằng int() thẳng trong controller
+        (không qua try/except riêng) — nếu không phải _handle_errors bắt ValueError chung cho mọi
+        route thì một query string sai kiểu sẽ lộ traceback 500 thay vì JSON lỗi 400."""
+        status, _ = self._call("/api/kpi/evaluations?period_id=khong-phai-so", key=self.key_manager)
+        self.assertEqual(status, 400)
+        status, _ = self._call("/api/kpi/evaluations?limit=khong-phai-so", key=self.key_manager)
+        self.assertEqual(status, 400)
+        status, _ = self._call(f"/api/kpi/evaluations/{self.ev_dev.id}/metrics/D9", key=self.key_manager,
+                                payload={"actual": "khong-phai-so"})
+        self.assertEqual(status, 400)
