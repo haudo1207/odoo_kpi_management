@@ -79,6 +79,16 @@ class TestKpiSecurity(TransactionCase):
         wizard.action_confirm()
         self.assertEqual(self.ev_dev.state, "draft")  # manager tự mở lại xong thật, không cần quyền Admin
 
+        # Khép kín ma trận 2x2 (role x mode): "reopen" đã test ở trên, còn thiếu "return" cho Manager
+        # — cùng model wizard nên cùng rủi ro ACL, nhưng chưa có test nào đi hết đường này trước đây.
+        self._submit(self.ev_dev)
+        self.ev_dev.with_user(self.manager).action_return_draft()  # không bị chặn ở bước mở action
+        wizard_return = self.env["kpi.evaluation.reason.wizard"].with_user(self.manager).create({
+            "evaluation_id": self.ev_dev.id, "mode": "return", "reason": "Cần sửa lại D9",
+        })
+        wizard_return.action_confirm()
+        self.assertEqual(self.ev_dev.state, "draft")  # manager tự trả về nháp xong thật
+
         self._submit(self.ev_out)
         with self.assertRaises(AccessError):
             self.ev_out.with_user(self.manager).action_approve()
