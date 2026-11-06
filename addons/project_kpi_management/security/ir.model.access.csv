@@ -14,6 +14,7 @@ access_kpi_evaluation_manager,kpi.evaluation.manager,model_kpi_evaluation,group_
 access_kpi_evaluation_line_user,kpi.evaluation.line.user,model_kpi_evaluation_line,group_kpi_user,1,0,0,0
 access_kpi_evaluation_line_manager,kpi.evaluation.line.manager,model_kpi_evaluation_line,group_kpi_manager,1,1,1,1
 access_kpi_evaluation_reason_wizard_admin,kpi.evaluation.reason.wizard.admin,model_kpi_evaluation_reason_wizard,group_kpi_admin,1,1,1,1
+access_kpi_evaluation_reason_wizard_manager,kpi.evaluation.reason.wizard.manager,model_kpi_evaluation_reason_wizard,group_kpi_manager,1,1,1,1
 access_kpi_evaluation_generate_wizard_admin,kpi.evaluation.generate.wizard.admin,model_kpi_evaluation_generate_wizard,group_kpi_admin,1,1,1,1
 access_kpi_self_assessment_wizard_user,kpi.self.assessment.wizard.user,model_kpi_self_assessment_wizard,group_kpi_user,1,1,1,1
 access_kpi_self_assessment_wizard_line_user,kpi.self.assessment.wizard.line.user,model_kpi_self_assessment_wizard_line,group_kpi_user,1,1,1,1

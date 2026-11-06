@@ -63,12 +63,21 @@ class TestKpiSecurity(TransactionCase):
     def test_manager_approves_own_team_but_not_others(self):
         """Bản sửa theo YC-09: quản lý trực tiếp (nhóm KPI Manager, không cần thêm quyền Admin) tự
         Duyệt/Trả về/Mở lại được phiếu của CHÍNH nhân viên mình quản lý trực tiếp, nhưng vẫn không
-        đụng được phiếu của nhân viên nhóm khác (ev_out) — đó vẫn là việc của KPI Administrator."""
+        đụng được phiếu của nhân viên nhóm khác (ev_out) — đó vẫn là việc của KPI Administrator.
+        Mở lại phải đi hết wizard thật (tạo + xác nhận), không chỉ mở được action: bản sửa đầu chỉ
+        cập nhật _check_can_approve()/view mà quên cấp quyền ACL cho group_kpi_manager trên model
+        kpi.evaluation.reason.wizard, nên quản lý bấm nút thấy được nhưng lưu wizard sẽ bị AccessError
+        — lỗi này không lộ ra nếu test chỉ gọi action_reopen() (hàm đó chỉ trả về action, chưa tạo
+        wizard) mà không tự tạo + xác nhận wizard như dưới đây."""
         self._submit(self.ev_dev)
         self.ev_dev.with_user(self.manager).action_approve()
         self.assertEqual(self.ev_dev.state, "approved")
-        self.ev_dev.with_user(self.manager).action_reopen()  # mở wizard: tự mở lại được phiếu đội mình
-        self.assertEqual(self.ev_dev.state, "approved")  # action_reopen chỉ mở wizard, chưa đổi state
+        self.ev_dev.with_user(self.manager).action_reopen()  # không bị chặn ở bước mở action
+        wizard = self.env["kpi.evaluation.reason.wizard"].with_user(self.manager).create({
+            "evaluation_id": self.ev_dev.id, "mode": "reopen", "reason": "Cần tính lại điểm",
+        })
+        wizard.action_confirm()
+        self.assertEqual(self.ev_dev.state, "draft")  # manager tự mở lại xong thật, không cần quyền Admin
 
         self._submit(self.ev_out)
         with self.assertRaises(AccessError):
